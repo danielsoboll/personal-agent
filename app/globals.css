@@ -4,6 +4,8 @@
 @source "../components";
 @source "../app";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #eef2f7;
   --foreground: #0f172a;
@@ -12,18 +14,17 @@
   --muted: #475569;
   --accent: #1e3a5f;
   --accent-soft: #dbeafe;
+  --lifexp-press-duration: 200ms;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0b1220;
-    --foreground: #e2e8f0;
-    --surface: #111827;
-    --border: #334155;
-    --muted: #94a3b8;
-    --accent: #60a5fa;
-    --accent-soft: #1e293b;
-  }
+.dark {
+  --background: #0b1220;
+  --foreground: #e2e8f0;
+  --surface: #111827;
+  --border: #334155;
+  --muted: #94a3b8;
+  --accent: #60a5fa;
+  --accent-soft: #1e293b;
 }
 
 @theme inline {
@@ -42,4 +43,131 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}
+
+/*
+ * 3D-Steintafel wie LifeXP — für ThemeToggle und künftige Buttons.
+ */
+:where(
+  button:not(.lifexp-thought-bubble),
+  a.lifexp-pressable-3d,
+  a.rounded-2xl.border-2,
+  a.rounded-xl.border-2,
+  a.rounded-full.border-2
+) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  transform-origin: center bottom;
+  transform: translateY(0);
+  transition:
+    transform var(--lifexp-press-duration) cubic-bezier(0.33, 1, 0.68, 1),
+    box-shadow var(--lifexp-press-duration) cubic-bezier(0.33, 1, 0.68, 1),
+    border-color var(--lifexp-press-duration) ease-out,
+    background-color var(--lifexp-press-duration) ease-out,
+    background-image var(--lifexp-press-duration) ease-out,
+    color var(--lifexp-press-duration) ease-out,
+    opacity var(--lifexp-press-duration) ease-out;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 240, 0.42),
+    inset 0 -2px 0 rgba(148, 163, 184, 0.22),
+    0 3px 0 rgba(148, 163, 184, 0.38),
+    0 5px 14px -5px rgba(51, 65, 85, 0.18);
+}
+
+:where(
+  button:not(.lifexp-thought-bubble),
+  a.lifexp-pressable-3d,
+  a.rounded-2xl.border-2,
+  a.rounded-xl.border-2,
+  a.rounded-full.border-2
+)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: linear-gradient(
+    168deg,
+    rgba(255, 251, 235, 0.28) 0%,
+    rgba(231, 229, 228, 0.1) 42%,
+    rgba(87, 83, 78, 0.14) 100%
+  );
+}
+
+:where(
+  button:not(.lifexp-thought-bubble),
+  a.lifexp-pressable-3d,
+  a.rounded-2xl.border-2,
+  a.rounded-xl.border-2,
+  a.rounded-full.border-2
+)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0.28;
+  mix-blend-mode: multiply;
+  background-image:
+    repeating-linear-gradient(
+      7deg,
+      transparent,
+      transparent 3px,
+      rgba(68, 64, 60, 0.035) 3px,
+      rgba(68, 64, 60, 0.035) 4px
+    ),
+    repeating-linear-gradient(
+      -11deg,
+      transparent,
+      transparent 4px,
+      rgba(120, 113, 108, 0.03) 4px,
+      rgba(120, 113, 108, 0.03) 5px
+    );
+}
+
+.dark :where(
+  button:not(.lifexp-thought-bubble),
+  a.lifexp-pressable-3d,
+  a.rounded-2xl.border-2,
+  a.rounded-xl.border-2,
+  a.rounded-full.border-2
+)::before {
+  background: linear-gradient(
+    168deg,
+    rgba(214, 211, 209, 0.1) 0%,
+    rgba(68, 64, 60, 0.06) 45%,
+    rgba(12, 10, 9, 0.22) 100%
+  );
+}
+
+.dark :where(
+  button:not(.lifexp-thought-bubble),
+  a.lifexp-pressable-3d,
+  a.rounded-2xl.border-2,
+  a.rounded-xl.border-2,
+  a.rounded-full.border-2
+)::after {
+  opacity: 0.35;
+  mix-blend-mode: soft-light;
+}
+
+:where(button:not(:disabled), a.lifexp-pressable-3d, a.rounded-2xl.border-2, a.rounded-xl.border-2, a.rounded-full.border-2):hover {
+  transform: translateY(-1px);
+}
+
+:where(button:not(:disabled), a.lifexp-pressable-3d, a.rounded-2xl.border-2, a.rounded-xl.border-2, a.rounded-full.border-2):active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 4px rgba(51, 65, 85, 0.18),
+    0 1px 0 rgba(148, 163, 184, 0.28);
+}
+
+.dark :where(button:not(:disabled), a.lifexp-pressable-3d, a.rounded-2xl.border-2, a.rounded-xl.border-2, a.rounded-full.border-2):active {
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.35),
+    0 1px 0 rgba(30, 41, 59, 0.5);
 }

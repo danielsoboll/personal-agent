@@ -2,6 +2,10 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
 import { APP_ICON_PATHS, APP_NAME } from '@/lib/appIcon'
+import {
+  THEME_FALLBACK_BG_LIGHT,
+  themeInitScript,
+} from '@/lib/theme'
 
 import './globals.css'
 
@@ -17,7 +21,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: 'Behördenpost digital verwalten — Briefe, Fristen und Antworten an einem Ort.',
+  description: 'Briefe, Anträge und E-Mails mit persönlichem Hintergrund besser verstehen — alles lokal auf dem Gerät.',
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,
@@ -35,7 +39,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   viewportFit: 'cover',
-  themeColor: '#1e3a5f',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#1e3a5f' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b1220' },
+  ],
   width: 'device-width',
   initialScale: 1,
 }
@@ -48,9 +55,12 @@ export default function RootLayout({
   return (
     <html
       lang="de"
+      suppressHydrationWarning
+      style={{ backgroundColor: THEME_FALLBACK_BG_LIGHT }}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         {children}
       </body>
     </html>

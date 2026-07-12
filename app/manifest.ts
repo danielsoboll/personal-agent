@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: APP_NAME,
     short_name: APP_NAME,
-    description: 'Behördenpost digital verwalten — Briefe, Fristen und Antworten an einem Ort.',
+    description: 'Briefe, Anträge und E-Mails mit persönlichem Hintergrund besser verstehen — alles lokal auf dem Gerät.',
     start_url: '/',
     display: 'standalone',
     background_color: '#1e3a5f',

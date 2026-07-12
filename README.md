@@ -27,6 +27,8 @@ App: [http://localhost:3000](http://localhost:3000)
 | `NEXT_PUBLIC_SUPABASE_URL` | `.env.local`, Vercel | Supabase Projekt-URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `.env.local`, Vercel | Supabase Anon Key |
 | `SUPABASE_SERVICE_ROLE_KEY` | `.env.local`, Vercel | Nur serverseitig |
+| `OPENAI_API_KEY` | `.env.local`, Vercel | KI-Dokumentenanalyse |
+| `OPENAI_MODEL` | optional | Standard: `gpt-4o-mini` |
 | `CANONICAL_HOST` | Vercel (optional) | Production-Domain |
 
 ## Supabase einrichten
