@@ -13,28 +13,25 @@ export default function ThemeToggle() {
     setIsDark(document.documentElement.classList.contains('dark'))
   }, [])
 
-  const toggle = () => {
+  function toggle() {
     const nextDark = !document.documentElement.classList.contains('dark')
-    applyDarkClass(nextDark)
     const pref: ThemePreference = nextDark ? 'dark' : 'light'
     setStoredTheme(pref)
+    applyDarkClass(nextDark)
     setIsDark(nextDark)
-    try {
-      window.dispatchEvent(new Event('behoerdenpost-theme-change'))
-    } catch {
-      /* ignore */
-    }
+    window.dispatchEvent(new Event('behoerdenpost-theme-change'))
   }
 
   return (
     <button
       type="button"
       onClick={toggle}
-      className="lifexp-pressable-3d flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-stone-400 bg-gradient-to-b from-stone-100 via-stone-200/95 to-stone-400/75 text-lg hover:border-stone-500 hover:from-stone-50 hover:via-stone-100 hover:to-stone-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-stone-600 dark:from-stone-700 dark:via-stone-800 dark:to-stone-950 dark:text-amber-200 dark:hover:border-stone-500 dark:hover:from-stone-600 dark:hover:via-stone-700 dark:hover:to-stone-900"
+      style={{ touchAction: 'manipulation', WebkitTapHighlightColor: 'transparent' }}
+      className="lifexp-flat-button flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border-2 border-stone-400 bg-gradient-to-b from-stone-100 via-stone-200/95 to-stone-400/75 text-lg shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 dark:border-stone-600 dark:from-stone-700 dark:via-stone-800 dark:to-stone-950 dark:text-amber-200"
       aria-label={mounted && isDark ? 'Hellmodus aktivieren' : 'Dunkelmodus aktivieren'}
       aria-pressed={mounted ? isDark : undefined}
     >
-      {mounted && isDark ? '☀️' : '🌙'}
+      <span suppressHydrationWarning>{mounted && isDark ? '☀️' : '🌙'}</span>
     </button>
   )
 }

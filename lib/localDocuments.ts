@@ -1,3 +1,4 @@
+import { createId } from '@/lib/createId'
 import { LOCAL_STORES, runLocalTransaction } from '@/lib/localDb'
 import { getActiveCaseId } from '@/lib/localCases'
 
@@ -37,7 +38,7 @@ export async function addDocumentPhoto(blob: Blob, maxPhotos: number, caseId?: s
   }
 
   const photo: StoredPhoto = {
-    id: crypto.randomUUID(),
+    id: createId(),
     caseId: activeCaseId,
     blob,
     createdAt: Date.now(),

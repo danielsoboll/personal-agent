@@ -1,35 +1,19 @@
-'use client'
+import OnboardingShell, {
+  FormStickyFooter,
+  PrimaryButton,
+  PrivacyNote,
+  formBottomSpacerClass,
+} from '@/components/onboarding/OnboardingShell'
 
-import { FormEvent, useState } from 'react'
-import { useRouter } from 'next/navigation'
-
-import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
-import { setDraftCaseTitle } from '@/lib/draftCase'
+import { continueWithCaseTitle } from './actions'
 
 export default function NewCasePage() {
-  const router = useRouter()
-  const [title, setTitle] = useState('')
-
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const trimmed = title.trim()
-    if (!trimmed) return
-
-    setDraftCaseTitle(trimmed)
-    router.push('/name')
-  }
-
   return (
-    <OnboardingShell
-      title="Neuer Fall"
-      subtitle="Behördenpost"
-      footer={
-        <PrimaryButton type="submit" form="new-case-form" disabled={!title.trim()}>
-          Weiter
-        </PrimaryButton>
-      }
-    >
-      <form id="new-case-form" className="flex flex-1 flex-col gap-8" onSubmit={handleSubmit}>
+    <OnboardingShell title="Neuer Fall" subtitle="Behördenpost">
+      <form
+        action={continueWithCaseTitle}
+        className={`flex flex-1 flex-col gap-8 ${formBottomSpacerClass}`}
+      >
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold tracking-tight">Wie soll der Fall heißen?</h2>
           <p className="leading-7 text-muted">
@@ -43,16 +27,21 @@ export default function NewCasePage() {
           <input
             type="text"
             name="title"
+            required
             autoComplete="off"
-            enterKeyHint="next"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="go"
             placeholder="z. B. Unterhalt Neuberechnung"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base outline-none ring-accent focus:ring-2"
+            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2 [font-size:16px]"
           />
         </label>
 
         <PrivacyNote variant="storage" />
+
+        <FormStickyFooter>
+          <PrimaryButton type="submit">Weiter</PrimaryButton>
+        </FormStickyFooter>
       </form>
     </OnboardingShell>
   )

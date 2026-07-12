@@ -9,7 +9,7 @@ function ScanFallback() {
     <OnboardingShell
       title="Dokument fotografieren"
       subtitle="Behördenpost"
-      footer={<PrimaryButton disabled>Prüfen</PrimaryButton>}
+      footer={<PrimaryButton inactive>Prüfen</PrimaryButton>}
     >
       <p className="text-sm text-muted">Wird geladen …</p>
     </OnboardingShell>

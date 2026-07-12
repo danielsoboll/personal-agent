@@ -1,0 +1,41 @@
+---
+description: JSONL-Fallakte und KI-Prompts — Single Source of Truth für Behördenpost
+globs: lib/caseFile*.ts,lib/prompts/**,app/api/analyze/**,app/api/assess/**,app/api/prepare-step/**
+alwaysApply: false
+---
+
+# Behördenpost: JSONL & KI-Anweisungen
+
+## Wo was liegt
+
+| Thema | Datei |
+|-------|-------|
+| JSONL Schema, Validierung | `lib/caseFileJsonl.ts` |
+| Sortieren, Deduplizieren | `lib/caseFileTidy.ts` → `prepareCaseFileContent()` |
+| Block-Workflow (öffnen/schließen) | `lib/caseFileOps.ts` |
+| **Alle GPT-Prompts** | `lib/prompts/registry.ts` |
+| Re-Export für API-Routes | `lib/analyzePrompts.ts` |
+
+## Regeln bei Änderungen
+
+1. **Prompts** nur in `lib/prompts/registry.ts` bearbeiten — nicht in API-Routes duplizieren.
+2. **`PROMPT_VERSION`** in registry.ts erhöhen bei jeder Prompt-Änderung.
+3. **JSONL nach jeder KI-Antwort** durch `prepareCaseFileContent()` laufen lassen (passiert automatisch in API + `saveCaseFileContent`).
+4. **Keine Duplikate**: meta/kontext konsolidieren; block/schritt/dokument/person/frist/offen/aktion per Schlüssel deduplizieren (siehe `caseFileTidy.ts`).
+5. **Kanonische Reihenfolge**: meta → kontext → block → dokument → person → frist → schritt → offen → aktion.
+
+## JSONL-Vollständigkeit
+
+Pflicht pro Fall:
+- 1× meta (name, fall, aktualisiert, phase)
+- 1× kontext (Gesamtzusammenfassung)
+- mindestens 1× block + dokument beim ersten Scan
+- schritt/frist für erkennbare Handlungen und Termine
+
+Warnungen (nicht blockierend) werden in `CaseFileTidyReport.warnings` geloggt.
+
+## Prompt-Optimierung
+
+- Schema-Regeln in `JSONL_SCHEMA_RULES` — von Analyze und Assess gemeinsam genutzt
+- Intent-spezifische Anweisungen in `INTENT_INSTRUCTIONS` (registry.ts)
+- Retry-Hinweis bei ungültiger JSONL: `buildJsonlRetryHint()`

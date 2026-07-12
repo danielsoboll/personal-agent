@@ -18,7 +18,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-App: [http://localhost:3000](http://localhost:3000)
+App: [http://localhost:3002](http://localhost:3002)
 
 ## Umgebungsvariablen
 

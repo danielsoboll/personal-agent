@@ -1,38 +1,63 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
-import { clearDraftCaseTitle, getDraftCaseTitle } from '@/lib/draftCase'
+import OnboardingShell, {
+  FormStickyFooter,
+  PrimaryButton,
+  PrivacyNote,
+  formBottomSpacerClass,
+} from '@/components/onboarding/OnboardingShell'
+import {
+  clearDraftCaseTitle,
+  getDraftCaseTitle,
+  getDraftFromUrl,
+  setDraftCaseTitle,
+} from '@/lib/draftCase'
 import { createCase } from '@/lib/localCases'
 import { getStoredProfileName, setStoredProfileName } from '@/lib/localProfile'
 
+function readNameFromForm(form: HTMLFormElement): string {
+  const fromFormData = String(new FormData(form).get('name') ?? '').trim()
+  if (fromFormData) return fromFormData
+
+  const input = form.elements.namedItem('name')
+  if (input instanceof HTMLInputElement) return input.value.trim()
+
+  return ''
+}
+
 export default function NamePage() {
   const router = useRouter()
-  const [name, setName] = useState('')
+  const formRef = useRef<HTMLFormElement>(null)
   const [caseTitle, setCaseTitle] = useState('')
-  const [mounted, setMounted] = useState(false)
+  const [defaultName, setDefaultName] = useState('')
+  const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
-    const draftTitle = getDraftCaseTitle()
+    const fromUrl = getDraftFromUrl()
+    const draftTitle = fromUrl || getDraftCaseTitle()
+
     if (!draftTitle) {
       router.replace('/fall/neu')
       return
     }
 
+    setDraftCaseTitle(draftTitle)
     setCaseTitle(draftTitle)
-    setName(getStoredProfileName())
-    setMounted(true)
+    setDefaultName(getStoredProfileName())
+    setReady(true)
   }, [router])
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const trimmed = name.trim()
+  async function submitNameForm(form: HTMLFormElement) {
+    if (submitting) return
+
+    const trimmed = readNameFromForm(form)
     const title = caseTitle.trim()
-    if (!trimmed || !title || submitting) return
+    if (!trimmed || !title) return
 
     setError('')
     setSubmitting(true)
@@ -41,47 +66,60 @@ export default function NamePage() {
       setStoredProfileName(trimmed)
       await createCase(title, trimmed)
       clearDraftCaseTitle()
-      router.push('/scan')
+      window.location.assign('/scan')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Fall konnte nicht angelegt werden.')
       setSubmitting(false)
     }
   }
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    void submitNameForm(event.currentTarget)
+  }
+
+  function handleContinueClick() {
+    const form = formRef.current
+    if (!form) return
+    void submitNameForm(form)
+  }
+
+  if (!ready) {
+    return (
+      <OnboardingShell title="Dein Vorname" subtitle="Behördenpost">
+        <p className="text-sm text-muted">Wird geladen …</p>
+      </OnboardingShell>
+    )
+  }
+
   return (
-    <OnboardingShell
-      title="Dein Name"
-      subtitle={caseTitle || 'Behördenpost'}
-      footer={
-        <PrimaryButton
-          type="submit"
-          form="profile-name-form"
-          disabled={!mounted || !name.trim() || submitting}
-        >
-          Weiter
-        </PrimaryButton>
-      }
-    >
-      <form id="profile-name-form" className="flex flex-1 flex-col gap-8" onSubmit={(event) => void handleSubmit(event)}>
+    <OnboardingShell title="Dein Vorname" subtitle={caseTitle}>
+      <form
+        ref={formRef}
+        className={`flex flex-1 flex-col gap-8 ${formBottomSpacerClass}`}
+        onSubmit={handleSubmit}
+      >
         <section className="space-y-4">
-          <h2 className="text-2xl font-semibold tracking-tight">Bitte gib deinen Namen ein</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Wie ist dein Vorname?</h2>
           <p className="leading-7 text-muted">
-            Fall „{caseTitle || '…'}“ — wir nutzen deinen Namen nur lokal, damit Erklärungen und
+            Fall „{caseTitle}“ — wir nutzen deinen Vornamen nur lokal, damit Erklärungen und
             Antworten zu deiner Situation passen.
           </p>
         </section>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium text-muted">Vor- und Nachname</span>
+          <span className="text-sm font-medium text-muted">Vorname</span>
           <input
             type="text"
             name="name"
-            autoComplete="name"
-            enterKeyHint="next"
-            placeholder="z. B. Maria Schmidt"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base outline-none ring-accent focus:ring-2"
+            required
+            defaultValue={defaultName}
+            autoComplete="given-name"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="go"
+            placeholder="z. B. Lukas"
+            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2 [font-size:16px]"
           />
         </label>
 
@@ -92,6 +130,12 @@ export default function NamePage() {
             {error}
           </p>
         ) : null}
+
+        <FormStickyFooter>
+          <PrimaryButton type="button" inactive={submitting} onClick={handleContinueClick}>
+            {submitting ? 'Wird angelegt …' : 'Weiter'}
+          </PrimaryButton>
+        </FormStickyFooter>
       </form>
     </OnboardingShell>
   )

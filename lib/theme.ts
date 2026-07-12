@@ -25,32 +25,37 @@ function writeThemeCookie(value: ThemePreference): void {
   document.cookie = `${THEME_COOKIE_KEY}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 24 * 400}; SameSite=Lax${secure}`
 }
 
-export function getStoredTheme(): ThemePreference | null {
-  if (typeof window === 'undefined') return null
+export function setStoredTheme(mode: ThemePreference): void {
+  if (typeof window === 'undefined') return
+  writeThemeCookie(mode)
   try {
-    const fromStorage = window.localStorage.getItem(THEME_STORAGE_KEY)
-    if (fromStorage === 'light' || fromStorage === 'dark') return fromStorage
-
-    const fromCookie = readThemeCookie()
-    if (fromCookie === 'light' || fromCookie === 'dark') {
-      window.localStorage.setItem(THEME_STORAGE_KEY, fromCookie)
-      return fromCookie
-    }
-
-    return null
+    window.localStorage.setItem(THEME_STORAGE_KEY, mode)
   } catch {
-    return null
+    /* Cookie reicht als Fallback (wichtig für iOS / HTTP) */
   }
 }
 
-export function setStoredTheme(mode: ThemePreference): void {
-  if (typeof window === 'undefined') return
-  try {
-    window.localStorage.setItem(THEME_STORAGE_KEY, mode)
-    writeThemeCookie(mode)
-  } catch {
-    /* ignore */
+export function getStoredTheme(): ThemePreference | null {
+  if (typeof window === 'undefined') return null
+
+  const fromCookie = readThemeCookie()
+  if (fromCookie === 'light' || fromCookie === 'dark') {
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, fromCookie)
+    } catch {
+      /* ignore */
+    }
+    return fromCookie
   }
+
+  try {
+    const fromStorage = window.localStorage.getItem(THEME_STORAGE_KEY)
+    if (fromStorage === 'light' || fromStorage === 'dark') return fromStorage
+  } catch {
+    return null
+  }
+
+  return null
 }
 
 export function applyDarkClass(dark: boolean): void {
@@ -73,18 +78,18 @@ export const themeInitScript = `
 (function () {
   try {
     var k = ${JSON.stringify(THEME_STORAGE_KEY)};
-    var t = localStorage.getItem(k);
-    if (t !== "dark" && t !== "light") {
-      var p = ${JSON.stringify(THEME_COOKIE_KEY)} + "=";
-      var c = document.cookie.split(";");
-      for (var i = 0; i < c.length; i++) {
-        var part = c[i].trim();
-        if (part.indexOf(p) === 0) {
-          t = decodeURIComponent(part.slice(p.length));
-          if (t === "dark" || t === "light") localStorage.setItem(k, t);
-          break;
-        }
+    var t = null;
+    var p = ${JSON.stringify(THEME_COOKIE_KEY)} + "=";
+    var c = document.cookie.split(";");
+    for (var i = 0; i < c.length; i++) {
+      var part = c[i].trim();
+      if (part.indexOf(p) === 0) {
+        t = decodeURIComponent(part.slice(p.length));
+        break;
       }
+    }
+    if (t !== "dark" && t !== "light") {
+      try { t = localStorage.getItem(k); } catch (e) {}
     }
     var dark = false;
     if (t === "dark") dark = true;

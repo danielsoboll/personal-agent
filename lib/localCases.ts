@@ -1,5 +1,6 @@
 import type { AnalyzeResult } from '@/lib/analyzeTypes'
-import { CASE_FILE_FORMAT, normalizeCaseFileJsonl, validateCaseFileJsonl } from '@/lib/caseFileJsonl'
+import { CASE_FILE_FORMAT, prepareCaseFileContent, validateCaseFileJsonl } from '@/lib/caseFileJsonl'
+import { createId } from '@/lib/createId'
 import { LOCAL_STORES, runLocalTransaction } from '@/lib/localDb'
 import { getStoredProfileName } from '@/lib/localProfile'
 
@@ -86,11 +87,11 @@ export async function createCase(title: string, userName: string): Promise<Store
   const trimmedUserName = userName.trim()
 
   if (!trimmedTitle) throw new Error('Bitte gib einen Fallnamen ein.')
-  if (!trimmedUserName) throw new Error('Bitte gib deinen Namen ein.')
+  if (!trimmedUserName) throw new Error('Bitte gib deinen Vornamen ein.')
 
   const now = Date.now()
   const record: StoredCase = {
-    id: crypto.randomUUID(),
+    id: createId(),
     title: trimmedTitle,
     userName: trimmedUserName,
     caseFileContent: null,
@@ -109,7 +110,7 @@ export async function saveCaseFileContent(caseId: string, content: string): Prom
   const existing = await getCase(caseId)
   if (!existing) throw new Error('Fall nicht gefunden.')
 
-  const normalized = normalizeCaseFileJsonl(content)
+  const { content: normalized } = prepareCaseFileContent(content)
   const validationError = validateCaseFileJsonl(normalized)
   if (validationError) throw new Error(validationError)
 
@@ -178,7 +179,7 @@ async function migrateLegacySingleCaseIfNeeded(): Promise<void> {
 
   const now = Date.now()
   const migrated: StoredCase = {
-    id: crypto.randomUUID(),
+    id: createId(),
     title: 'Mein Fall',
     userName: getStoredProfileName() || 'Nutzer',
     caseFileContent: legacyCase?.content ?? null,

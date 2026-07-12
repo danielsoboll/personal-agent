@@ -18,8 +18,11 @@ function caseStatus(caseItem: CaseSummary): { label: string; tone: 'open' | 'don
   if (!caseItem.latestReview) {
     return { label: 'Neu', tone: 'new' }
   }
-  if (caseItem.latestReview.isComplete) {
-    return { label: 'Abgeschlossen', tone: 'done' }
+  if (caseItem.latestReview.phase === 'final' || caseItem.latestReview.isComplete) {
+    return { label: 'Bewertet', tone: 'done' }
+  }
+  if (caseItem.latestReview.readyForFinalAssessment) {
+    return { label: 'Bereit zur Bewertung', tone: 'open' }
   }
   return { label: 'In Bearbeitung', tone: 'open' }
 }
@@ -27,12 +30,12 @@ function caseStatus(caseItem: CaseSummary): { label: string; tone: 'open' | 'don
 export default function HomeClient() {
   const router = useRouter()
   const [cases, setCases] = useState<CaseSummary[]>([])
-  const [loading, setLoading] = useState(true)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
     async function loadCases() {
       setCases(await listCases())
-      setLoading(false)
+      setReady(true)
     }
 
     void loadCases()
@@ -47,11 +50,19 @@ export default function HomeClient() {
     router.push('/scan')
   }
 
-  const hasCases = cases.length > 0
+  const hasCases = ready && cases.length > 0
 
   return (
     <OnboardingShell
       title="Behördenpost"
+      headerAction={
+        <Link
+          href="/bibliothek"
+          className="shrink-0 rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+        >
+          Bibliothek
+        </Link>
+      }
       footer={<PrimaryButton href="/fall/neu">Neuen Fall anlegen</PrimaryButton>}
     >
       <section className="flex flex-1 flex-col gap-8">
@@ -71,7 +82,7 @@ export default function HomeClient() {
 
         <PrivacyNote variant="storage" />
 
-        {loading ? (
+        {!ready ? (
           <p className="text-sm text-muted">Fälle werden geladen …</p>
         ) : hasCases ? (
           <ul className="space-y-3">
@@ -120,16 +131,14 @@ export default function HomeClient() {
             <p>So geht&apos;s beim ersten Fall:</p>
             <ol className="list-decimal space-y-2 pl-5">
               <li>Fall benennen (z. B. „Unterhalt Neuberechnung“)</li>
-              <li>Deinen Namen eingeben</li>
+              <li>Deinen Vornamen eingeben</li>
               <li>Dokument fotografieren und prüfen lassen</li>
             </ol>
-            <p>
-              Später findest du hier alle Fälle wieder — klar getrennt voneinander.
-            </p>
+            <p>Später findest du hier alle Fälle wieder — klar getrennt voneinander.</p>
           </div>
         )}
 
-        {!hasCases ? (
+        {ready && !hasCases ? (
           <p className="text-sm text-muted">
             Bereit?{' '}
             <Link href="/fall/neu" className="font-medium text-accent underline-offset-4 hover:underline">

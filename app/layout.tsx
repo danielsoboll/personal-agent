@@ -2,10 +2,8 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
 import { APP_ICON_PATHS, APP_NAME } from '@/lib/appIcon'
-import {
-  THEME_FALLBACK_BG_LIGHT,
-  themeInitScript,
-} from '@/lib/theme'
+import ThemeHydration from '@/components/ThemeHydration'
+import { THEME_FALLBACK_BG_LIGHT, themeInitScript } from '@/lib/theme'
 
 import './globals.css'
 
@@ -53,14 +51,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html
-      lang="de"
-      suppressHydrationWarning
-      style={{ backgroundColor: THEME_FALLBACK_BG_LIGHT }}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+    <html lang="de" suppressHydrationWarning style={{ backgroundColor: THEME_FALLBACK_BG_LIGHT }}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} min-h-full antialiased bg-background text-foreground`}
+      >
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <ThemeHydration />
         {children}
       </body>
     </html>

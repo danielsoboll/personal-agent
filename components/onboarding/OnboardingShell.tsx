@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
@@ -7,7 +9,8 @@ type OnboardingShellProps = {
   title: string
   subtitle?: string
   children: ReactNode
-  footer: ReactNode
+  footer?: ReactNode
+  headerAction?: ReactNode
 }
 
 export default function OnboardingShell({
@@ -15,6 +18,7 @@ export default function OnboardingShell({
   subtitle,
   children,
   footer,
+  headerAction,
 }: OnboardingShellProps) {
   return (
     <div className="flex min-h-dvh flex-col">
@@ -29,40 +33,52 @@ export default function OnboardingShell({
             ) : null}
             <h1 className="truncate text-lg font-semibold tracking-tight">{title}</h1>
           </div>
+          {headerAction}
           <ThemeToggle />
         </div>
       </header>
 
       <main className="mx-auto flex w-full max-w-lg flex-1 flex-col px-5 py-8">{children}</main>
 
-      <footer className="sticky bottom-0 border-t border-border bg-surface/95 px-5 py-4 backdrop-blur">
-        <div className="mx-auto w-full max-w-lg">{footer}</div>
-      </footer>
+      {footer ? (
+        <footer className="sticky bottom-0 border-t border-border bg-surface/95 px-5 py-4 backdrop-blur">
+          <div className="mx-auto w-full max-w-lg">{footer}</div>
+        </footer>
+      ) : null}
+    </div>
+  )
+}
+
+/** Fixierter Formular-Fuß — Button liegt im <form>, funktioniert zuverlässig auf iOS. */
+export function FormStickyFooter({ children }: { children: ReactNode }) {
+  return (
+    <div className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur">
+      <div className="mx-auto w-full max-w-lg">{children}</div>
     </div>
   )
 }
 
 type PrimaryButtonProps = {
   children: ReactNode
-  disabled?: boolean
+  /** Nur Optik — kein natives disabled (iOS-Safari hakt da oft). */
+  inactive?: boolean
   href?: string
-  form?: string
   onClick?: () => void
   type?: 'button' | 'submit'
 }
 
 export function PrimaryButton({
   children,
-  disabled,
+  inactive,
   href,
-  form,
   onClick,
   type = 'button',
 }: PrimaryButtonProps) {
-  const className =
-    'flex h-14 w-full items-center justify-center rounded-2xl bg-accent text-base font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-45'
+  const className = inactive
+    ? 'lifexp-flat-button flex h-14 w-full cursor-not-allowed items-center justify-center rounded-2xl bg-border text-base font-semibold text-muted opacity-70'
+    : 'lifexp-flat-button flex h-14 w-full items-center justify-center rounded-2xl bg-accent text-base font-semibold text-white transition-transform active:scale-[0.99]'
 
-  if (href && !disabled) {
+  if (href && !inactive) {
     return (
       <Link href={href} className={className}>
         {children}
@@ -71,7 +87,12 @@ export function PrimaryButton({
   }
 
   return (
-    <button type={type} form={form} className={className} disabled={disabled} onClick={onClick}>
+    <button
+      type={type}
+      className={className}
+      aria-disabled={inactive || undefined}
+      onClick={onClick}
+    >
       {children}
     </button>
   )
@@ -89,3 +110,5 @@ export function PrivacyNote({ variant = 'storage' }: { variant?: 'storage' | 'an
     </p>
   )
 }
+
+export const formBottomSpacerClass = 'pb-28'
