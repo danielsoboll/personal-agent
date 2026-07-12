@@ -2,8 +2,8 @@ import Link from 'next/link'
 
 /** Nur Formulierungen, die zum tatsächlichen App-Verhalten passen. */
 const TRUST_POINTS = [
-  'Deine Fälle, Briefe und Bewertungen bleiben auf deinem Handy gespeichert',
-  'Fotos werden nur zur Auswertung übermittelt — nicht dauerhaft bei uns abgelegt',
+  'Deine Fälle und Bewertungen bleiben auf deinem Handy gespeichert',
+  'Daten werden nur zur KI-Auswertung übermittelt — nicht dauerhaft bei uns abgelegt',
   'Verarbeitete Fotos werden nach der Prüfung vom Gerät gelöscht',
   'Wir verkaufen deine Daten nicht',
 ] as const

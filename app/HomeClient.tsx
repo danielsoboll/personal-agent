@@ -5,12 +5,16 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
 import { statusBadgeClassName } from '@/lib/caseStatus'
+import { buttonStyles } from '@/lib/buttonStyles'
+import { isLocalDevClient } from '@/lib/clientDev'
 import {
   type CaseListItem,
   listCasesForHome,
   setActiveCaseId,
   toggleCaseDone,
 } from '@/lib/localCases'
+import FreeTrialCallout from '@/components/home/FreeTrialCallout'
+import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import PrivacyTrustPoints from '@/components/onboarding/PrivacyTrustPoints'
 import LegalFooterNav from '@/components/legal/LegalFooterNav'
@@ -21,8 +25,10 @@ function formatCaseDateShort(timestamp: number): string {
 
 export default function HomeClient() {
   const router = useRouter()
+  const plus = usePlusDiscoverHeader()
   const [cases, setCases] = useState<CaseListItem[]>([])
   const [ready, setReady] = useState(false)
+  const [showAdmin, setShowAdmin] = useState(false)
 
   const loadCases = useCallback(async () => {
     setCases(await listCasesForHome())
@@ -32,6 +38,10 @@ export default function HomeClient() {
   useEffect(() => {
     void loadCases()
   }, [loadCases])
+
+  useEffect(() => {
+    setShowAdmin(isLocalDevClient())
+  }, [])
 
   function openCase(caseItem: CaseListItem) {
     setActiveCaseId(caseItem.id)
@@ -54,12 +64,12 @@ export default function HomeClient() {
     <OnboardingShell
       title="Behördenpost"
       headerAction={
-        <Link
-          href="/bibliothek"
-          className="shrink-0 rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
-        >
-          Bibliothek
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link href="/bibliothek" className={buttonStyles.header}>
+            Bibliothek
+          </Link>
+          {plus.headerAction}
+        </div>
       }
       footer={<PrimaryButton href="/fall/neu">Neuen Fall anlegen</PrimaryButton>}
     >
@@ -77,6 +87,8 @@ export default function HomeClient() {
               : 'Behördenpost und wichtige Schreiben verstehen — mit klaren nächsten Schritten, direkt auf dem Handy.'}
           </p>
         </div>
+
+        {!hasCases && ready ? <FreeTrialCallout /> : null}
 
         {!hasCases && ready ? <PrivacyTrustPoints /> : null}
 
@@ -117,7 +129,7 @@ export default function HomeClient() {
                       : 'Als vorerst erledigt markieren'
                   }
                   onClick={(event) => void handleToggleDone(caseItem, event)}
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-sm transition-colors ${
+                  className={`${buttonStyles.caseDoneToggle} ${
                     caseItem.userStatus === 'vorerst_erledigt'
                       ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
                       : 'border-border text-muted hover:border-accent hover:text-accent'
@@ -148,8 +160,16 @@ export default function HomeClient() {
           </p>
         ) : null}
 
-        <LegalFooterNav className="pt-2" />
+        <div className={`flex flex-col items-center pt-4 ${showAdmin ? 'gap-6' : 'gap-0'}`}>
+          {showAdmin ? (
+            <Link href="/admin" className={buttonStyles.admin}>
+              Admin
+            </Link>
+          ) : null}
+          <LegalFooterNav />
+        </div>
       </section>
+      {plus.portals}
     </OnboardingShell>
   )
 }

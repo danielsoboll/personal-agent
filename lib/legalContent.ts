@@ -14,7 +14,7 @@ export const LEGAL_PLUS_CHECKOUT_NOTICE =
   'PLUS ist ein digitaler Dienst und wird nach Zahlung sofort freigeschaltet. Mit Abschluss des Checkouts stimmen Sie zu, dass wir vor Ablauf der 14-tägigen Widerrufsfrist beginnen; Ihr Widerrufsrecht erlischt mit Bereitstellung (AGB § 7 und 8).'
 
 export const LEGAL_PLUS_CHECKOUT_PREFIX =
-  'Mit Fortfahren zu Stripe schließen Sie ein monatliches PLUS-Abo ab (4,99 €/Monat, jederzeit kündbar). ' +
+  'Mit Fortfahren zu Stripe schließen Sie ein monatliches PLUS-Abo ab (9,99 €/Monat, jederzeit kündbar). ' +
   LEGAL_PLUS_CHECKOUT_NOTICE +
   ' Es gelten unsere'
 
@@ -123,6 +123,7 @@ export const DATENSCHUTZ_SECTIONS: LegalSection[] = [
       'Generierte Word-Dokumente in der Bibliothek (lokal auf dem Gerät)',
       'Technische Einstellungen (Theme, Entwürfe, aktiver Fall) in localStorage',
       'Bei PLUS-Abschluss (geplant): Stripe-Kunden- und Abo-Kennungen, Zahlungsstatus (keine vollständigen Kartendaten bei uns)',
+      'Bei aktivem PLUS optional: verschlüsselte Falldaten in der Cloud (DSGVO-konform, EU-Hosting — nur bei expliziter Aktivierung; Wiederherstellung auf dem Gerät)',
       'Technische Zugriffsdaten (z. B. IP-Adresse, Zeitstempel) beim Hosting der App und API-Routen',
     ],
   },
@@ -169,7 +170,7 @@ export const DATENSCHUTZ_SECTIONS: LegalSection[] = [
     title: '8. Hosting und Server',
     paragraphs: [
       'Die App wird über Hosting-Dienstleister (z. B. Vercel) ausgeliefert. API-Routen zur KI-Anbindung laufen auf unserer Server-Infrastruktur; dabei werden Anfrageninhalte zur Weiterleitung an OpenAI verarbeitet, ohne dass wir Fallakten dauerhaft auf dem Server speichern, sofern nicht ausdrücklich anders beschrieben.',
-      'Für optionale Kontofunktionen kann Supabase als Auftragsverarbeiter nach Art. 28 DSGVO eingesetzt werden. Derzeit liegt der Schwerpunkt auf lokaler Speicherung auf dem Gerät.',
+      'Für optionale Kontofunktionen und PLUS kann Supabase als Auftragsverarbeiter nach Art. 28 DSGVO eingesetzt werden. Derzeit liegt der Schwerpunkt auf lokaler Speicherung auf dem Gerät; optionaler Cloud-Speicher für PLUS wird nur nach Ihrer aktiven Einwilligung bzw. Buchung genutzt.',
       'Technische Zugriffsdaten werden vom Hosting-Anbieter verarbeitet, soweit dies für Auslieferung, Sicherheit und Fehleranalyse erforderlich ist.',
     ],
   },
@@ -313,14 +314,27 @@ export const AGB_SECTIONS: LegalSection[] = [
     title: '2. Leistungsgegenstand',
     paragraphs: [
       `${LEGAL_APP_NAME} ermöglicht es, Fälle anzulegen, Dokumente zu fotografieren, automatisierte Einordnungen und nächste Schritte zu erhalten sowie — im finalen Workflow — Word-Schreiben vorzubereiten.`,
-      `Der kostenlose Tarif umfasst den jeweils freigeschalteten Basisfunktionsumfang. Der kostenpflichtige Tarif „${LEGAL_PLUS_NAME}“ erweitert den Umfang um zusätzliche Funktionen (z. B. erweiterte Auswertungen, höhere Nutzungslimits, zusätzliche Export- oder Organisationsfunktionen). Der konkrete PLUS-Umfang ergibt sich aus der App-Beschreibung zum Zeitpunkt der Buchung; einzelne Funktionen können schrittweise freigeschaltet werden.`,
+      `Der kostenlose Tarif umfasst den Basisfunktionsumfang (derzeit: ein Fall prüfen, lokale Speicherung auf dem Gerät). Der kostenpflichtige Tarif „${LEGAL_PLUS_NAME}“ erweitert den Umfang unter anderem um:`,
+    ],
+    listItems: [
+      'Behördenpost als dauerhaften KI-Agenten mit Fall-Historie',
+      'Bis zu 10 Fälle parallel',
+      'Optional externe, DSGVO-konforme Datenspeicherung mit Wiederherstellung auf dem Gerät',
+      '100 KI-Anfragen pro Monat und 500 Seiten Text',
+      'Dauerhafte Speicherung und Nutzung der verfügbaren Historie',
+    ],
+  },
+  {
+    title: '2a. Leistungsgegenstand — Hinweise',
+    paragraphs: [
+      'Einzelne PLUS-Funktionen (z. B. Cloud-Speicher, erweiterte Kontofunktionen) können schrittweise freigeschaltet werden. Der konkrete Umfang ergibt sich aus der App-Beschreibung zum Zeitpunkt der Buchung.',
       'Es besteht kein Anspruch auf ununterbrochene Verfügbarkeit. Wartung, Updates und Weiterentwicklung können die Nutzung vorübergehend einschränken. Die App ersetzt keine Rechts- oder Steuerberatung (siehe Haftung).',
     ],
   },
   {
     title: '3. Nutzung, Fälle und Gerätespeicher',
     paragraphs: [
-      'Zur Nutzung legen Sie Fälle an und geben einen Vornamen ein, damit Erklärungen personalisiert formuliert werden können. Fälle, Fallakten und Bewertungen werden primär lokal auf Ihrem Gerät gespeichert.',
+      'Zur Nutzung legen Sie Fälle an. Fälle, Fallakten und Bewertungen werden primär lokal auf Ihrem Gerät gespeichert; Daten werden nur zur KI-Auswertung übermittelt.',
       'Sie sind dafür verantwortlich, Ihr Gerät zu schützen und Falldaten bei Weitergabe des Geräts zu löschen, soweit erforderlich.',
       'Für PLUS und optional künftige Kontofunktionen kann ein Nutzerkonto erforderlich werden; hierauf weisen wir bei Einführung gesondert hin.',
     ],
@@ -337,7 +351,7 @@ export const AGB_SECTIONS: LegalSection[] = [
   {
     title: '5. Preise und Zahlung',
     paragraphs: [
-      `Der Preis für ${LEGAL_PLUS_NAME} beträgt derzeit 4,99 € pro Monat. Alle Preise verstehen sich in Euro und enthalten die gesetzliche Umsatzsteuer, sofern anwendbar.`,
+      `Der Preis für ${LEGAL_PLUS_NAME} beträgt derzeit 9,99 € pro Monat. Alle Preise verstehen sich in Euro und enthalten die gesetzliche Umsatzsteuer, sofern anwendbar.`,
       'Die Zahlung erfolgt monatlich im Voraus über Stripe (Kreditkarte, Debitkarte oder andere von Stripe angebotene Zahlungsarten).',
       'Bei Zahlungsverzug oder fehlgeschlagenen Abbuchungen können wir PLUS vorübergehend sperren, bis der ausstehende Betrag beglichen ist.',
     ],

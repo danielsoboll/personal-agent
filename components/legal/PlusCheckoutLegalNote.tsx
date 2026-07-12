@@ -11,13 +11,13 @@ type PlusCheckoutLegalNoteProps = {
 /** Hinweis vor Stripe-Checkout — für künftige PLUS-Einführung. */
 export default function PlusCheckoutLegalNote({ className = '' }: PlusCheckoutLegalNoteProps) {
   return (
-    <p className={`text-xs leading-6 text-muted ${className}`}>
+    <p className={`text-center text-[11px] leading-relaxed text-muted ${className}`}>
       {LEGAL_PLUS_CHECKOUT_PREFIX}{' '}
-      <Link href="/agb" className={linkClass}>
+      <Link href="/agb" className={`${linkClass} underline`}>
         AGB
       </Link>{' '}
       und{' '}
-      <Link href="/datenschutz" className={linkClass}>
+      <Link href="/datenschutz" className={`${linkClass} underline`}>
         Datenschutzhinweise
       </Link>
       .

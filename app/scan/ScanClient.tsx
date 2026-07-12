@@ -6,6 +6,7 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import { buttonStyles } from '@/lib/buttonStyles'
 import { analyzeCurrentPhotos } from '@/lib/analyzeClient'
 import type { AnalyzeIntent } from '@/lib/analyzeTypes'
 import {
@@ -192,7 +193,7 @@ export default function ScanClient() {
       }
       setPhotos([])
 
-      router.push('/pruefen')
+      router.push('/pruefen?from=scan')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Prüfung fehlgeschlagen.')
     } finally {
@@ -229,7 +230,7 @@ export default function ScanClient() {
                 type="button"
                 disabled={isInteractionLocked}
                 onClick={() => openCamera(inputRef.current)}
-                className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground transition-colors hover:border-accent disabled:opacity-50"
+                className={buttonStyles.secondary}
               >
                 {photos.length === 0 ? 'Foto aufnehmen' : 'Weiteres Foto'}
               </button>
@@ -284,7 +285,7 @@ export default function ScanClient() {
                 <button
                   type="button"
                   onClick={() => openCamera(inputRef.current)}
-                  className="mt-4 inline-flex h-12 items-center justify-center rounded-2xl border border-accent bg-accent-soft px-6 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-white"
+                  className={buttonStyles.accentSoft}
                 >
                   Foto aufnehmen
                 </button>

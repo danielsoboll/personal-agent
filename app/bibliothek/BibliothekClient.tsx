@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 
 import OnboardingShell, { PageIntro } from '@/components/onboarding/OnboardingShell'
+import { buttonStyles } from '@/lib/buttonStyles'
 import { downloadBlob } from '@/lib/analyzeClient'
 import {
   formatLibraryDate,
@@ -72,7 +73,7 @@ export default function BibliothekClient() {
                   type="button"
                   onClick={() => void openDocument(doc.id)}
                   disabled={openingId === doc.id}
-                  className="w-full rounded-2xl border border-border bg-surface px-4 py-4 text-left transition-colors hover:border-accent disabled:opacity-60"
+                  className={buttonStyles.libraryItem}
                 >
                   <p className="text-base font-semibold">{doc.title}</p>
                   <p className="mt-1 text-sm text-muted">{doc.caseTitle}</p>

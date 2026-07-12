@@ -2,6 +2,8 @@
 
 import { FormEvent, useRef, useState } from 'react'
 
+import AutofillSafeTextInput from '@/components/AutofillSafeTextInput'
+import IosContactAutofillDecoy from '@/components/IosContactAutofillDecoy'
 import OnboardingShell, {
   FormStickyFooter,
   PageIntro,
@@ -9,14 +11,15 @@ import OnboardingShell, {
   PrivacyNote,
   formBottomSpacerClass,
 } from '@/components/onboarding/OnboardingShell'
+import { CASE_TITLE_FIELD_NAME, caseTitleInputProps } from '@/lib/formInputAutofill'
 import { createCase } from '@/lib/localCases'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 function readTitleFromForm(form: HTMLFormElement): string {
-  const fromFormData = String(new FormData(form).get('title') ?? '').trim()
+  const fromFormData = String(new FormData(form).get(CASE_TITLE_FIELD_NAME) ?? '').trim()
   if (fromFormData) return fromFormData
 
-  const input = form.elements.namedItem('title')
+  const input = form.elements.namedItem(CASE_TITLE_FIELD_NAME)
   if (input instanceof HTMLInputElement) return input.value.trim()
 
   return ''
@@ -74,18 +77,16 @@ export default function FallNeuClient() {
           description="Gib deinem Fall einen Namen, damit du ihn später wiederfindest — zum Beispiel nach dem Thema oder Absender."
         />
 
-        <label className="block space-y-2">
+        <label className="relative block space-y-2">
+          <IosContactAutofillDecoy />
           <span className="text-sm font-medium text-muted">Fallname</span>
-          <input
-            type="text"
-            name="title"
+          <AutofillSafeTextInput
+            id="behoerdenpost-case-title"
             required
-            autoComplete="off"
-            autoCorrect="off"
-            spellCheck={false}
             enterKeyHint="go"
             placeholder="z. B. Unterhalt Neuberechnung"
-            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2 [font-size:16px]"
+            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2"
+            autofillProps={caseTitleInputProps()}
           />
         </label>
 

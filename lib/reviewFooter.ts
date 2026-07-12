@@ -1,0 +1,64 @@
+import type { AnalyzeResult, DocumentsStatus } from '@/lib/analyzeTypes'
+
+export type ReviewFooterState = {
+  openedFromScan: boolean
+  showDeleteCase: boolean
+  showDocumentChoice: boolean
+  showCurrentMoreButton: boolean
+  showHistoricalButton: boolean
+  showAllCapturedButton: boolean
+  showFinalButton: boolean
+  newCaseAsPrimary: boolean
+}
+
+export function reviewNeedsMoreDocuments(status: DocumentsStatus): boolean {
+  return status !== 'not_needed'
+}
+
+export function reviewFooterState(
+  review: AnalyzeResult | null,
+  openedFromScan: boolean,
+): ReviewFooterState {
+  if (!review) {
+    return {
+      openedFromScan,
+      showDeleteCase: !openedFromScan,
+      showDocumentChoice: false,
+      showCurrentMoreButton: false,
+      showHistoricalButton: false,
+      showAllCapturedButton: false,
+      showFinalButton: false,
+      newCaseAsPrimary: false,
+    }
+  }
+
+  const needsMoreDocuments = reviewNeedsMoreDocuments(review.documentsStatus)
+  const showDocumentChoice =
+    review.phase === 'interim' && !review.readyForFinalAssessment && needsMoreDocuments
+  const showAllCapturedButton = showDocumentChoice && review.intent !== 'initial'
+  const showFinalButton = review.readyForFinalAssessment && review.phase !== 'final'
+  const hasOtherPrimaryActions = showDocumentChoice || showFinalButton
+
+  return {
+    openedFromScan,
+    showDeleteCase: !openedFromScan,
+    showDocumentChoice,
+    showCurrentMoreButton: showDocumentChoice,
+    showHistoricalButton: showDocumentChoice,
+    showAllCapturedButton,
+    showFinalButton,
+    newCaseAsPrimary: !hasOtherPrimaryActions,
+  }
+}
+
+export function documentChoiceHint(review: AnalyzeResult, showAllCapturedButton: boolean): string {
+  if (showAllCapturedButton) {
+    return 'Wähle, wie es weitergeht: Ergänzungsfotos zum aktuellen Schreiben, ältere Unterlagen für den Hintergrund — oder signalisiere, dass alle relevanten Dokumente erfasst sind.'
+  }
+
+  if (review.intent === 'initial') {
+    return 'Du kannst ergänzende Fotos zum aktuellen Schreiben hochladen oder ältere Unterlagen für den Hintergrund erfassen.'
+  }
+
+  return 'Du kannst weitere Fotos zum aktuellen Schreiben oder ältere Unterlagen hinzufügen.'
+}

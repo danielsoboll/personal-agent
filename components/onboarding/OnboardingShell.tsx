@@ -5,6 +5,7 @@ import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import ThemeToggle from '@/components/ThemeToggle'
+import { buttonStyles } from '@/lib/buttonStyles'
 import { PRIVACY_ANALYSIS_SHORT, PRIVACY_STORAGE_SHORT } from '@/lib/privacyCopy'
 
 type OnboardingShellProps = {
@@ -108,9 +109,7 @@ export function PrimaryButton({
   onClick,
   type = 'button',
 }: PrimaryButtonProps) {
-  const className = inactive
-    ? 'lifexp-flat-button flex h-14 w-full cursor-not-allowed items-center justify-center rounded-2xl bg-border text-base font-semibold text-muted opacity-70'
-    : 'lifexp-flat-button flex h-14 w-full items-center justify-center rounded-2xl bg-accent text-base font-semibold text-white transition-transform active:scale-[0.99]'
+  const className = inactive ? buttonStyles.primaryInactive : buttonStyles.primaryActive
 
   if (href && !inactive) {
     return (

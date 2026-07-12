@@ -20,6 +20,7 @@ const allowedDevOrigins = getAllowedDevOrigins()
 
 const nextConfig: NextConfig = {
   allowedDevOrigins,
+  devIndicators: false,
 }
 
 export default nextConfig

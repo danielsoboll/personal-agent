@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
 import DeleteCaseSection from '@/components/review/DeleteCaseSection'
+import { buttonStyles } from '@/lib/buttonStyles'
 import {
   base64ToBlob,
   downloadBlob,
@@ -23,6 +24,7 @@ import {
   openHistorischBlock,
 } from '@/lib/caseFileOps'
 import { displaySummary, shouldShowSummary } from '@/lib/reviewDisplay'
+import { documentChoiceHint, reviewFooterState } from '@/lib/reviewFooter'
 import {
   getActiveCase,
   saveCaseFileContent,
@@ -30,6 +32,7 @@ import {
   type StoredCase,
 } from '@/lib/localCases'
 import { saveLibraryDocument } from '@/lib/localLibrary'
+import { recordFinalAssessmentCompleted, recordWordDocumentCreated } from '@/lib/plusEngagement'
 
 function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeResult {
   const legacyIntent =
@@ -42,7 +45,10 @@ function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeRes
     ...review,
     summary: review.summary?.trim() ?? '',
     structuredSteps: review.structuredSteps ?? [],
-    documentChoiceRequired: review.documentChoiceRequired ?? legacyIntent === 'initial',
+    documentChoiceRequired:
+      docs.documentsStatus === 'not_needed'
+        ? false
+        : (review.documentChoiceRequired ?? legacyIntent === 'initial'),
     readyForFinalAssessment: review.readyForFinalAssessment ?? false,
     phase: review.phase ?? (review.isComplete ? 'final' : 'interim'),
     intent: legacyIntent,
@@ -59,6 +65,8 @@ function priorityLabel(priority?: string): string | null {
 
 export default function ReviewClient() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const openedFromScan = searchParams.get('from') === 'scan'
   const [activeCase, setActiveCase] = useState<StoredCase | null>(null)
   const [review, setReview] = useState<AnalyzeResult | null>(null)
   const [loading, setLoading] = useState(true)
@@ -166,6 +174,7 @@ export default function ReviewClient() {
 
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
       await persistReview(nextReview)
+      recordFinalAssessmentCompleted()
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Bewertung fehlgeschlagen.')
     } finally {
@@ -196,6 +205,7 @@ export default function ReviewClient() {
       })
 
       downloadBlob(blob, result.fileName)
+      recordWordDocumentCreated()
       setPreparedPreview({
         title: result.title,
         text: result.previewText,
@@ -208,8 +218,9 @@ export default function ReviewClient() {
     }
   }
 
-  const showDocumentChoice = review?.phase === 'interim' && !review?.readyForFinalAssessment
-  const showFinalButton = review?.readyForFinalAssessment && review.phase !== 'final'
+  const footer = reviewFooterState(review, openedFromScan)
+  const showDocumentChoice = footer.showDocumentChoice
+  const showFinalButton = footer.showFinalButton
   const steps: StructuredStep[] = review?.structuredSteps?.length
     ? review.structuredSteps
     : review?.nextSteps
@@ -229,7 +240,7 @@ export default function ReviewClient() {
         headerAction={
           <Link
             href="/bibliothek"
-            className="shrink-0 rounded-xl border border-border px-3 py-2 text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent"
+            className={buttonStyles.header}
           >
             Bibliothek
           </Link>
@@ -239,48 +250,55 @@ export default function ReviewClient() {
             <div className="space-y-3">
               {review ? (
                 <>
-                  {showDocumentChoice ? (
+                  {footer.showDocumentChoice ? (
                     <>
-                      <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                        Weitere Fotos zum aktuellen Schreiben
-                      </PrimaryButton>
-                      <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                        Ältere Dokumente erfassen
-                      </PrimaryButton>
-                      <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
-                        Alle relevanten Dokumente erfasst
-                      </PrimaryButton>
+                      {footer.showCurrentMoreButton ? (
+                        <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
+                          Weitere Fotos zum aktuellen Schreiben
+                        </PrimaryButton>
+                      ) : null}
+                      {footer.showHistoricalButton ? (
+                        <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
+                          Ältere Dokumente erfassen
+                        </PrimaryButton>
+                      ) : null}
+                      {footer.showAllCapturedButton ? (
+                        <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
+                          Alle relevanten Dokumente erfasst
+                        </PrimaryButton>
+                      ) : null}
                     </>
-                  ) : showFinalButton ? (
+                  ) : null}
+                  {footer.showFinalButton ? (
                     <PrimaryButton inactive={busy} onClick={() => void handleFinalAssessment()}>
                       Bewertung einholen
                     </PrimaryButton>
                   ) : null}
-                  <Link
-                    href="/fall/neu"
-                    className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent"
-                  >
-                    Neuen Fall anlegen
-                  </Link>
+                  {footer.newCaseAsPrimary ? (
+                    <PrimaryButton href="/fall/neu">Neuen Fall anlegen</PrimaryButton>
+                  ) : (
+                    <Link href="/fall/neu" className={buttonStyles.secondary}>
+                      Neuen Fall anlegen
+                    </Link>
+                  )}
                 </>
               ) : (
                 <>
                   <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
-                  <Link
-                    href="/fall/neu"
-                    className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent"
-                  >
+                  <Link href="/fall/neu" className={buttonStyles.secondary}>
                     Neuen Fall anlegen
                   </Link>
                 </>
               )}
-              <DeleteCaseSection
-                caseId={activeCase.id}
-                caseTitle={activeCase.title}
-                disabled={busy || busyStepId !== null}
-                onDeleted={() => router.replace('/')}
-                onError={setError}
-              />
+              {footer.showDeleteCase ? (
+                <DeleteCaseSection
+                  caseId={activeCase.id}
+                  caseTitle={activeCase.title}
+                  disabled={busy || busyStepId !== null}
+                  onDeleted={() => router.replace('/')}
+                  onError={setError}
+                />
+              ) : null}
             </div>
           ) : null
         }
@@ -352,7 +370,7 @@ export default function ReviewClient() {
                                   type="button"
                                   disabled={busyStepId === step.id}
                                   onClick={() => void handlePrepareStep(step)}
-                                  className="mt-3 rounded-xl border border-accent bg-accent-soft px-3 py-2 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-white disabled:opacity-50"
+                                  className={buttonStyles.stepPrepare}
                                 >
                                   {busyStepId === step.id ? 'Wird vorbereitet …' : 'Schritt vorbereiten'}
                                 </button>
@@ -371,10 +389,9 @@ export default function ReviewClient() {
                 </div>
               )}
 
-              {showDocumentChoice ? (
+              {showDocumentChoice && review ? (
                 <p className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm leading-7 text-muted">
-                  Wähle, wie es weitergeht: Ergänzungsfotos zum aktuellen Schreiben, ältere Unterlagen für den
-                  Hintergrund — oder signalisiere, dass alle relevanten Dokumente erfasst sind.
+                  {documentChoiceHint(review, footer.showAllCapturedButton)}
                 </p>
               ) : null}
 

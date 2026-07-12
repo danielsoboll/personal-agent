@@ -1,0 +1,94 @@
+import { APP_NAME } from '@/lib/appIcon'
+
+export type PlusFeature = {
+  id: string
+  emoji: string
+  title: string
+  description: string
+}
+
+export const PLUS_PRODUCT_NAME = `${APP_NAME} PLUS`
+
+/** Schloss-Button: Einladung, kein Blocker — wie LifeXP Family. */
+export const PLUS_DISCOVER_LABEL =
+  'Behördenpost als dauerhafter KI-Agent — mit Historie statt jedes Mal neu im Chatbot anfangen.'
+
+export const PLUS_TAGLINE = PLUS_DISCOVER_LABEL
+
+export const PLUS_PRICE_AMOUNT = '9,99 €'
+export const PLUS_PRICE_PERIOD = 'pro Monat'
+export const PLUS_PRICE_TAGLINE = 'Ein Preis — alle PLUS-Funktionen inklusive.'
+
+export const PLUS_ABO_SLOGAN = 'Dein dauerhafter Helfer für Behördenpost.'
+export const PLUS_CANCEL_NOTE = 'Jederzeit kündbar (monatlich).'
+
+export const PLUS_CTA_LABEL = 'PLUS entdecken!'
+export const PLUS_CHECKOUT_UNAVAILABLE =
+  'PLUS-Checkout startet in Kürze. Stripe ist noch nicht angebunden — wir informieren hier, sobald das Abo buchbar ist.'
+
+export const PLUS_MOTIVATION_TITLE = 'Weniger Aufwand bei Behördenpost'
+export const PLUS_MOTIVATION_INTRO =
+  'Mit Historie, mehr Fällen und optionaler Cloud-Sicherung — statt jedes Mal bei null anfangen wie in einem nackten Chatbot.'
+
+export const PLUS_SHEET = {
+  titleFree: PLUS_MOTIVATION_TITLE,
+  titleActive: 'PLUS ist aktiv — dein dauerhafter Helfer',
+  introFree: PLUS_MOTIVATION_INTRO,
+  introActive: `${PLUS_MOTIVATION_INTRO} Diese Extras gehören zu deinem Abo (einzelne Funktionen kommen noch Schritt für Schritt).`,
+} as const
+
+export const PLUS_ACTIVE_WELCOME = {
+  headline: '🎉 Willkommen bei Behördenpost PLUS!',
+  body: [
+    'Dein Abo ist jetzt aktiv.',
+    'Alle freigeschalteten PLUS-Funktionen stehen dir zur Verfügung — wir erweitern sie kontinuierlich.',
+  ],
+  availableHeading: 'Heute bereits verfügbar',
+  availableItems: [
+    { emoji: '📁', label: 'Mehr Fälle & Historie' },
+    { emoji: '⚡', label: 'Monatslimits für KI-Anfragen' },
+    { emoji: '☁️', label: 'Optionale Cloud-Sicherung (folgt)' },
+  ],
+} as const
+
+export const PLUS_FEATURES: PlusFeature[] = [
+  {
+    id: 'agent',
+    emoji: '🤖',
+    title: 'Dauerhafter KI-Agent',
+    description:
+      'Behördenpost merkt sich deine Fälle, Fallakten und Verlauf — du startest nicht bei jeder Frage bei null wie in einem nackten Chatbot.',
+  },
+  {
+    id: 'cases',
+    emoji: '📁',
+    title: 'Bis zu 10 Fälle',
+    description: 'Mehrere Themen parallel organisieren — Unterhalt, Steuer, Versicherung, Wohnung und mehr.',
+  },
+  {
+    id: 'cloud',
+    emoji: '☁️',
+    title: 'Optional: Cloud-Speicher (DSGVO-konform)',
+    description:
+      'Externe, DSGVO-konforme Persistenz optional — mit Wiederherstellung auf diesem Gerät, wenn du das Handy wechselst oder Daten verlierst.',
+  },
+  {
+    id: 'limits',
+    emoji: '⚡',
+    title: '100 KI-Anfragen · 500 Seiten Text pro Monat',
+    description: 'Großzügige Monatslimits für Analyse, Bewertung und Schreiben — fair kalkuliert für echte Alltagsfälle.',
+  },
+  {
+    id: 'history',
+    emoji: '📚',
+    title: 'Dauerhafte Historie',
+    description:
+      'Auswertungen, Schritte und Kontext bleiben verfügbar — massive Zeitersparnis gegenüber wiederholten Chatbot-Anfragen ohne Gedächtnis.',
+  },
+]
+
+export const PLUS_LIMITS_SUMMARY =
+  'Bis zu 10 Fälle · 100 KI-Anfragen/Monat · 500 Seiten Text · optionale Cloud-Sicherung'
+
+export const PLUS_TARIF_LINE_FREE = 'Kostenloser Tarif: ein Fall prüfen, lokal auf dem Gerät.'
+export const PLUS_TARIF_LINE_PLUS = `${PLUS_PRODUCT_NAME} · ${PLUS_PRICE_AMOUNT} ${PLUS_PRICE_PERIOD}`

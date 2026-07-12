@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 
 import { APP_ICON_PATHS, APP_NAME } from '@/lib/appIcon'
 import { APP_DESCRIPTION } from '@/lib/privacyCopy'
+import KeyboardViewportRoot from '@/components/KeyboardViewportRoot'
 import ThemeHydration from '@/components/ThemeHydration'
 import { THEME_FALLBACK_BG_LIGHT, themeInitScript } from '@/lib/theme'
 
@@ -44,6 +45,7 @@ export const viewport: Viewport = {
   ],
   width: 'device-width',
   initialScale: 1,
+  interactiveWidget: 'resizes-content',
 }
 
 export default function RootLayout({
@@ -58,6 +60,7 @@ export default function RootLayout({
       >
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeHydration />
+        <KeyboardViewportRoot />
         {children}
       </body>
     </html>
