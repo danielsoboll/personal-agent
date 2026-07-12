@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server'
 import { buildPrepareStepUserPrompt, PREPARE_STEP_SYSTEM_PROMPT } from '@/lib/analyzePrompts'
 import { PREPARE_STEP_SCHEMA, type PreparedDocumentContent } from '@/lib/analyzeSchema'
 import type { PrepareStepRequestBody, PrepareStepResponseBody } from '@/lib/analyzeTypes'
+import { callOpenAiChatCompletion } from '@/lib/openaiChat'
+import { resolveOpenAiModel } from '@/lib/openaiModel'
 
 export const maxDuration = 60
 
@@ -67,7 +69,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Fallakte und Schritt sind erforderlich.' }, { status: 400 })
   }
 
-  const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
+  const model = resolveOpenAiModel()
   const userText = buildPrepareStepUserPrompt({
     userName: body.userName,
     caseTitle: body.caseTitle,
@@ -76,44 +78,26 @@ export async function POST(request: Request) {
     stepDeadline: body.step.deadline,
   })
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+  const completion = await callOpenAiChatCompletion({
+    apiKey,
+    model,
+    temperature: 0.2,
+    jsonSchema: {
+      name: 'behoerdenpost_prepare_step',
+      schema: PREPARE_STEP_SCHEMA,
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.2,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'behoerdenpost_prepare_step',
-          strict: true,
-          schema: PREPARE_STEP_SCHEMA,
-        },
-      },
-      messages: [
-        { role: 'system', content: PREPARE_STEP_SYSTEM_PROMPT },
-        { role: 'user', content: userText },
-      ],
-    }),
+    messages: [
+      { role: 'system', content: PREPARE_STEP_SYSTEM_PROMPT },
+      { role: 'user', content: userText },
+    ],
   })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error('OpenAI prepare-step failed:', response.status, errorText)
+  if (!completion.ok) {
+    console.error('OpenAI prepare-step failed:', completion.error)
     return NextResponse.json({ error: 'Schritt konnte nicht vorbereitet werden.' }, { status: 502 })
   }
 
-  const completion = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
-  }
-
-  const content = completion.choices?.[0]?.message?.content
-  if (!content) {
-    return NextResponse.json({ error: 'Leere KI-Antwort erhalten.' }, { status: 502 })
-  }
+  const content = completion.content
 
   let prepared: PreparedDocumentContent
   try {

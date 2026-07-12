@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
-import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
+import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import {
   base64ToBlob,
   downloadBlob,
@@ -21,6 +22,7 @@ import {
   openAktuellBlock,
   openHistorischBlock,
 } from '@/lib/caseFileOps'
+import { displaySummary, shouldShowSummary } from '@/lib/reviewDisplay'
 import {
   getActiveCase,
   saveCaseFileContent,
@@ -38,7 +40,7 @@ function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeRes
 
   return {
     ...review,
-    summary: review.summary || review.assessment?.slice(0, 180) || '',
+    summary: review.summary?.trim() ?? '',
     structuredSteps: review.structuredSteps ?? [],
     documentChoiceRequired: review.documentChoiceRequired ?? legacyIntent === 'initial',
     readyForFinalAssessment: review.readyForFinalAssessment ?? false,
@@ -223,6 +225,7 @@ export default function ReviewClient() {
       <OnboardingShell
         title="Auswertung"
         subtitle={activeCase?.title ?? 'Behördenpost'}
+        backNav={{ href: '/', label: 'Zurück zur Fallübersicht' }}
         headerAction={
           <Link
             href="/bibliothek"
@@ -232,39 +235,54 @@ export default function ReviewClient() {
           </Link>
         }
         footer={
-          review ? (
+          !loading && activeCase ? (
             <div className="space-y-3">
-              {showDocumentChoice ? (
+              {review ? (
                 <>
-                  <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                    Weitere Fotos zum aktuellen Schreiben
-                  </PrimaryButton>
-                  <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                    Ältere Dokumente erfassen
-                  </PrimaryButton>
-                  <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
-                    Alle relevanten Dokumente erfasst
-                  </PrimaryButton>
+                  {showDocumentChoice ? (
+                    <>
+                      <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
+                        Weitere Fotos zum aktuellen Schreiben
+                      </PrimaryButton>
+                      <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
+                        Ältere Dokumente erfassen
+                      </PrimaryButton>
+                      <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
+                        Alle relevanten Dokumente erfasst
+                      </PrimaryButton>
+                    </>
+                  ) : showFinalButton ? (
+                    <PrimaryButton inactive={busy} onClick={() => void handleFinalAssessment()}>
+                      Bewertung einholen
+                    </PrimaryButton>
+                  ) : null}
+                  <Link
+                    href="/fall/neu"
+                    className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent"
+                  >
+                    Neuen Fall anlegen
+                  </Link>
                 </>
-              ) : showFinalButton ? (
-                <PrimaryButton inactive={busy} onClick={() => void handleFinalAssessment()}>
-                  Bewertung einholen
-                </PrimaryButton>
-              ) : review.phase === 'final' ? (
-                <PrimaryButton href="/">Zur Fallübersicht</PrimaryButton>
               ) : (
-                <PrimaryButton href="/">Zur Fallübersicht</PrimaryButton>
+                <>
+                  <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
+                  <Link
+                    href="/fall/neu"
+                    className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground transition-colors hover:border-accent hover:text-accent"
+                  >
+                    Neuen Fall anlegen
+                  </Link>
+                </>
               )}
-              <Link
-                href="/fall/neu"
-                className="flex h-12 w-full items-center justify-center text-sm font-medium text-muted"
-              >
-                Neuen Fall anlegen
-              </Link>
+              <DeleteCaseSection
+                caseId={activeCase.id}
+                caseTitle={activeCase.title}
+                disabled={busy || busyStepId !== null}
+                onDeleted={() => router.replace('/')}
+                onError={setError}
+              />
             </div>
-          ) : (
-            <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
-          )
+          ) : null
         }
       >
         <section className="flex flex-1 flex-col gap-6">
@@ -272,14 +290,24 @@ export default function ReviewClient() {
             <p className="text-sm text-muted">Auswertung wird geladen …</p>
           ) : review ? (
             <>
-              <div className="rounded-2xl border border-accent/25 bg-accent-soft p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Zusammenfassung</p>
-                <p className="mt-3 text-base leading-7 text-foreground">{review.summary || review.assessment}</p>
-              </div>
+              <PageIntro
+                icon="review"
+                title={review.phase === 'final' ? 'Auswertung' : 'Erste Einordnung'}
+                description="Übersicht, Unterlagen-Einschätzung und nächste Schritte für deinen Fall."
+              />
+
+              {shouldShowSummary(review.summary, review.assessment) ? (
+                <div className="rounded-2xl border border-accent/25 bg-accent-soft p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Zusammenfassung</p>
+                  <p className="mt-3 whitespace-pre-line text-base leading-7 text-foreground">
+                    {displaySummary(review.summary)}
+                  </p>
+                </div>
+              ) : null}
 
               <div className="space-y-3">
                 <h2 className="text-xl font-semibold tracking-tight">
-                  {review.phase === 'final' ? 'Bewertung' : 'Erste Einordnung'}
+                  {review.phase === 'final' ? 'Bewertung im Detail' : 'Was das Schreiben bedeutet'}
                 </h2>
                 <p className="leading-8 text-foreground">{review.assessment}</p>
               </div>
@@ -389,13 +417,16 @@ export default function ReviewClient() {
             </>
           ) : (
             <>
-              <div className="space-y-3">
-                <h2 className="text-2xl font-semibold tracking-tight">Noch keine Auswertung</h2>
-                <p className="leading-7 text-muted">
-                  Fotografiere zuerst ein Schreiben und tippe auf Prüfen. Danach siehst du hier die Bewertung und
-                  nächsten Schritte für „{activeCase?.title}“.
-                </p>
-              </div>
+              <PageIntro
+                icon="review"
+                title="Noch keine Auswertung"
+                description={
+                  <>
+                    Fotografiere zuerst ein Schreiben und tippe auf Prüfen. Danach siehst du hier die Bewertung
+                    und nächsten Schritte für „{activeCase?.title}“.
+                  </>
+                }
+              />
               <PrivacyNote variant="analysis" />
             </>
           )}

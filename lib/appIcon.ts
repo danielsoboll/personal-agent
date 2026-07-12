@@ -1,6 +1,6 @@
 export const APP_NAME = 'Behördenpost'
 
-export const APP_ICON_VERSION = 'behoerdenpost-1'
+export const APP_ICON_VERSION = 'behoerdenpost-2'
 
 const APP_ICON_FILES = {
   180: '/icon-180.png',

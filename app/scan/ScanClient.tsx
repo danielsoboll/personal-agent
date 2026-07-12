@@ -1,12 +1,11 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
-import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import { analyzeCurrentPhotos } from '@/lib/analyzeClient'
 import type { AnalyzeIntent } from '@/lib/analyzeTypes'
 import {
@@ -31,19 +30,14 @@ type PhotoPreview = StoredPhoto & {
   previewUrl: string
 }
 
-type PendingPhoto = {
-  blob: Blob
-  previewUrl: string
-}
-
 function parseIntent(value: string | null): AnalyzeIntent {
   if (value === 'current_more' || value === 'historical') return value
   return 'initial'
 }
 
-function triggerCameraInput(input: HTMLInputElement | null) {
+function openCamera(input: HTMLInputElement | null) {
   if (!input) return
-  window.setTimeout(() => input.click(), 120)
+  window.setTimeout(() => input.click(), 150)
 }
 
 export default function ScanClient() {
@@ -51,7 +45,6 @@ export default function ScanClient() {
   const searchParams = useSearchParams()
   const inputRef = useRef<HTMLInputElement>(null)
   const [photos, setPhotos] = useState<PhotoPreview[]>([])
-  const [pendingPhoto, setPendingPhoto] = useState<PendingPhoto | null>(null)
   const [activeCase, setActiveCase] = useState<StoredCase | null>(null)
   const [profileName, setProfileName] = useState('')
   const [error, setError] = useState('')
@@ -61,15 +54,14 @@ export default function ScanClient() {
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
-  const inPreview = pendingPhoto !== null
-  const canTakeNextAfterAccept = photos.length < maxPhotos - 1
+  const canAddMore = photos.length < maxPhotos
 
   const copy = useMemo(() => {
     if (intent === 'current_more') {
       return {
         title: 'Weitere Fotos zum aktuellen Schreiben',
         heading: 'Ergänze das aktuelle Schreiben',
-        hint: `Du kannst bis zu ${MAX_FOLLOWUP_PHOTOS} weitere Fotos aufnehmen — z. B. fehlende Seiten oder Anlagen.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Fotos. Tippe auf „Foto aufnehmen“ — danach siehst du alle Aufnahmen in der Übersicht.`,
       }
     }
 
@@ -77,14 +69,14 @@ export default function ScanClient() {
       return {
         title: 'Ältere Dokumente erfassen',
         heading: 'Fotografiere ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Fotos — z. B. frühere Schreiben, E-Mails oder Verträge.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Fotos. Nach jedem Foto zurück zur Übersicht — weitere Fotos über „Weiteres Foto“ unten.`,
       }
     }
 
     return {
       title: 'Dokument fotografieren',
       heading: 'Fotografiere das Dokument, den Antrag oder die E-Mail',
-      hint: `Du kannst bis zu ${MAX_INITIAL_PHOTOS} Fotos aufnehmen — zum Beispiel Vorder- und Rückseite oder mehrere Seiten.`,
+      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Fotos. Tippe auf „Foto aufnehmen“, prüfe die Übersicht und füge bei Bedarf weitere Fotos hinzu.`,
     }
   }, [intent])
 
@@ -117,36 +109,22 @@ export default function ScanClient() {
       for (const photo of photos) {
         URL.revokeObjectURL(photo.previewUrl)
       }
-      if (pendingPhoto) {
-        URL.revokeObjectURL(pendingPhoto.previewUrl)
-      }
     }
-  }, [photos, pendingPhoto])
+  }, [photos])
 
-  function discardPending() {
-    if (pendingPhoto) {
-      URL.revokeObjectURL(pendingPhoto.previewUrl)
-      setPendingPhoto(null)
-    }
-  }
-
-  async function commitPendingPhoto(): Promise<{ photo: PhotoPreview; totalCount: number } | null> {
-    if (!pendingPhoto) return null
-
+  async function savePhotoFile(file: File): Promise<boolean> {
     setBusy(true)
     setError('')
 
     try {
-      const saved = await addDocumentPhoto(pendingPhoto.blob, maxPhotos)
+      const saved = await addDocumentPhoto(file, maxPhotos)
       const previewUrl = createPhotoPreviewUrl(saved.blob)
       const committed: PhotoPreview = { ...saved, previewUrl }
-      const totalCount = photos.length + 1
       setPhotos((current) => [...current, committed])
-      setPendingPhoto(null)
-      return { photo: committed, totalCount }
+      return true
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Foto konnte nicht gespeichert werden.')
-      return null
+      return false
     } finally {
       setBusy(false)
     }
@@ -163,15 +141,16 @@ export default function ScanClient() {
       return
     }
 
-    setError('')
-    discardPending()
+    const saved = await savePhotoFile(file)
+    if (!saved) return
 
-    const previewUrl = createPhotoPreviewUrl(file)
-    setPendingPhoto({ blob: file, previewUrl })
+    if (photos.length + 1 >= maxPhotos) {
+      setError(`Maximal ${maxPhotos} Fotos erreicht. Tippe auf Prüfen.`)
+    }
   }
 
   async function handleRemovePhoto(id: string) {
-    if (analyzing || inPreview) return
+    if (analyzing || busy) return
 
     const target = photos.find((photo) => photo.id === id)
     if (target) {
@@ -182,14 +161,8 @@ export default function ScanClient() {
     setPhotos((current) => current.filter((photo) => photo.id !== id))
   }
 
-  async function handleReview(photoCountOverride?: number) {
-    if (analyzing) return
-
-    const photoCount = photoCountOverride ?? photos.length
-    if (photoCount === 0) {
-      setError('Bitte fotografiere mindestens ein Dokument.')
-      return
-    }
+  async function handleReview() {
+    if (analyzing || photos.length === 0) return
 
     const name = (activeCase?.userName || profileName).trim()
     if (!name || !activeCase) {
@@ -202,6 +175,7 @@ export default function ScanClient() {
 
     try {
       const result = await analyzeCurrentPhotos({ intent })
+      const photoCount = photos.length
 
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
       await saveLatestReview(activeCase.id, {
@@ -216,7 +190,6 @@ export default function ScanClient() {
       for (const photo of photos) {
         URL.revokeObjectURL(photo.previewUrl)
       }
-      discardPending()
       setPhotos([])
 
       router.push('/pruefen')
@@ -227,198 +200,102 @@ export default function ScanClient() {
     }
   }
 
-  async function handleAcceptAndNext() {
-    if (!pendingPhoto || analyzing || busy) return
-
-    const result = await commitPendingPhoto()
-    if (!result) return
-
-    if (result.totalCount >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Fotos erreicht. Du kannst jetzt abschließen.`)
-      return
-    }
-
-    triggerCameraInput(inputRef.current)
-  }
-
-  async function handleAcceptAndFinish() {
-    if (!pendingPhoto || analyzing || busy) return
-
-    const result = await commitPendingPhoto()
-    if (!result) return
-
-    await handleReview(result.totalCount)
-  }
-
-  function handleDiscardAndRetake() {
-    if (analyzing || busy) return
-    discardPending()
-    triggerCameraInput(inputRef.current)
-  }
-
-  function handleDiscardAndBack() {
-    if (analyzing || busy) return
-    discardPending()
-    router.back()
-  }
-
-  const canAddMore = photos.length < maxPhotos && !inPreview
   const isInteractionLocked = loading || busy || analyzing
-  const previewPhotoNumber = photos.length + 1
 
   return (
     <>
       {analyzing ? <AnalyzingOverlay /> : null}
 
       <OnboardingShell
-        title={inPreview ? 'Foto prüfen' : copy.title}
-        subtitle={activeCase ? activeCase.title : profileName ? `Hallo ${profileName}` : 'Behördenpost'}
+        title={copy.title}
+        subtitle={activeCase ? activeCase.title : profileName && profileName !== 'Nutzer' ? `Hallo ${profileName}` : 'Behördenpost'}
+        backNav={
+          loading
+            ? undefined
+            : activeCase?.latestReview || intent !== 'initial'
+              ? { href: '/pruefen', label: 'Zurück zur Auswertung' }
+              : { href: '/', label: 'Zurück zur Fallübersicht' }
+        }
         footer={
-          inPreview ? (
-            <div className="space-y-2">
-              {canTakeNextAfterAccept ? (
-                <>
-                  <PrimaryButton inactive={isInteractionLocked} onClick={() => void handleAcceptAndNext()}>
-                    Foto verwenden + nächstes Foto
-                  </PrimaryButton>
-                  <button
-                    type="button"
-                    disabled={isInteractionLocked}
-                    onClick={() => void handleAcceptAndFinish()}
-                    className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground transition-colors hover:border-accent disabled:opacity-50"
-                  >
-                    Foto verwenden + abschließen
-                  </button>
-                </>
-              ) : (
-                <PrimaryButton inactive={isInteractionLocked} onClick={() => void handleAcceptAndFinish()}>
-                  Foto verwenden + abschließen
-                </PrimaryButton>
-              )}
-              <button
-                type="button"
-                disabled={isInteractionLocked}
-                onClick={handleDiscardAndRetake}
-                className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground transition-colors hover:border-accent disabled:opacity-50"
-              >
-                Verwerfen + neues Foto
-              </button>
-              <button
-                type="button"
-                disabled={isInteractionLocked}
-                onClick={handleDiscardAndBack}
-                className="flex h-12 w-full items-center justify-center text-sm font-medium text-muted disabled:opacity-50"
-              >
-                Verwerfen + zurück
-              </button>
-            </div>
-          ) : (
+          <div className="space-y-2">
             <PrimaryButton
               inactive={isInteractionLocked || photos.length === 0}
               onClick={() => void handleReview()}
             >
-              Prüfen
+              Prüfen{photos.length > 0 ? ` (${photos.length} Foto${photos.length === 1 ? '' : 's'})` : ''}
             </PrimaryButton>
-          )
+            {canAddMore ? (
+              <button
+                type="button"
+                disabled={isInteractionLocked}
+                onClick={() => openCamera(inputRef.current)}
+                className="flex h-12 w-full items-center justify-center rounded-2xl border border-border bg-surface text-sm font-semibold text-foreground transition-colors hover:border-accent disabled:opacity-50"
+              >
+                {photos.length === 0 ? 'Foto aufnehmen' : 'Weiteres Foto'}
+              </button>
+            ) : null}
+          </div>
         }
       >
         <section className="flex flex-1 flex-col gap-6">
-          {inPreview && pendingPhoto ? (
-            <>
-              <div className="space-y-3">
-                <h2 className="text-2xl font-semibold tracking-tight">Passt das Foto?</h2>
-                <p className="leading-7 text-muted">
-                  Foto {previewPhotoNumber} von {maxPhotos}. Prüfe, ob alles lesbar ist — danach kannst du
-                  weitermachen oder abschließen.
-                </p>
-              </div>
+          <PageIntro icon="scan" title={copy.heading} description={copy.hint} />
 
-              <figure className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-                <Image
-                  src={pendingPhoto.previewUrl}
-                  alt="Aufgenommenes Dokumentfoto"
-                  width={480}
-                  height={640}
-                  unoptimized
-                  className="aspect-[3/4] w-full object-cover"
-                />
-              </figure>
+          <PrivacyNote variant="analysis" />
 
-              {photos.length > 0 ? (
-                <p className="text-sm text-muted">
-                  {photos.length} Foto{photos.length === 1 ? '' : 's'} bereits übernommen.
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <>
-              <div className="space-y-3">
-                <h2 className="text-2xl font-semibold tracking-tight">{copy.heading}</h2>
-                <p className="leading-7 text-muted">{copy.hint}</p>
-              </div>
-
-              <PrivacyNote variant="analysis" />
-
-              <div
-                className={`grid grid-cols-2 gap-3 sm:grid-cols-3 ${analyzing ? 'pointer-events-none opacity-60' : ''}`}
-              >
-                {photos.map((photo, index) => (
-                  <figure
-                    key={photo.id}
-                    className="relative overflow-hidden rounded-2xl border border-border bg-surface"
-                  >
-                    <Image
-                      src={photo.previewUrl}
-                      alt={`Dokumentfoto ${index + 1}`}
-                      width={240}
-                      height={320}
-                      unoptimized
-                      className="aspect-[3/4] h-full w-full object-cover"
-                    />
-                    <figcaption className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs font-medium text-white">
-                      {index + 1}
-                    </figcaption>
-                    {!analyzing ? (
-                      <button
-                        type="button"
-                        aria-label={`Foto ${index + 1} entfernen`}
-                        onClick={() => void handleRemovePhoto(photo.id)}
-                        className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs font-medium text-white"
-                      >
-                        Entfernen
-                      </button>
-                    ) : null}
-                  </figure>
-                ))}
-
-                {canAddMore && !analyzing ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => inputRef.current?.click()}
-                    className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface px-3 text-center text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
-                  >
-                    <span className="text-3xl leading-none">+</span>
-                    <span>{photos.length === 0 ? 'Foto aufnehmen' : 'Weiteres Foto'}</span>
-                  </button>
-                ) : null}
-              </div>
-
-              <p className="text-sm text-muted">
-                {photos.length} von {maxPhotos} Fotos
-                {photos.length === 0 ? ' — mindestens 1 Foto für die Prüfung nötig.' : ''}
-              </p>
-
-              {photos.length > 0 ? (
-                <Link
-                  href="/pruefen"
-                  className="text-sm font-medium text-muted underline-offset-4 hover:text-accent hover:underline"
+          {photos.length > 0 ? (
+            <div
+              className={`grid grid-cols-2 gap-3 sm:grid-cols-3 ${analyzing ? 'pointer-events-none opacity-60' : ''}`}
+            >
+              {photos.map((photo, index) => (
+                <figure
+                  key={photo.id}
+                  className="relative overflow-hidden rounded-2xl border border-border bg-surface"
                 >
-                  Zurück zur Auswertung
-                </Link>
+                  <Image
+                    src={photo.previewUrl}
+                    alt={`Dokumentfoto ${index + 1}`}
+                    width={240}
+                    height={320}
+                    unoptimized
+                    className="aspect-[3/4] h-full w-full object-cover"
+                  />
+                  <figcaption className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs font-medium text-white">
+                    {index + 1}
+                  </figcaption>
+                  {!analyzing ? (
+                    <button
+                      type="button"
+                      aria-label={`Foto ${index + 1} entfernen`}
+                      onClick={() => void handleRemovePhoto(photo.id)}
+                      className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs font-medium text-white"
+                    >
+                      Entfernen
+                    </button>
+                  ) : null}
+                </figure>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border bg-surface px-4 py-8 text-center">
+              <p className="text-sm leading-7 text-muted">
+                {busy ? 'Foto wird gespeichert …' : 'Noch keine Fotos — tippe unten auf „Foto aufnehmen“.'}
+              </p>
+              {!busy && !isInteractionLocked ? (
+                <button
+                  type="button"
+                  onClick={() => openCamera(inputRef.current)}
+                  className="mt-4 inline-flex h-12 items-center justify-center rounded-2xl border border-accent bg-accent-soft px-6 text-sm font-semibold text-accent transition-colors hover:bg-accent hover:text-white"
+                >
+                  Foto aufnehmen
+                </button>
               ) : null}
-            </>
+            </div>
           )}
+
+          <p className="text-sm text-muted">
+            {photos.length} von {maxPhotos} Fotos
+            {photos.length === 0 ? ' — mindestens 1 Foto für die Prüfung nötig.' : ''}
+          </p>
 
           <input
             ref={inputRef}

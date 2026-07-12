@@ -1,3 +1,5 @@
+import { PRIVACY_ANALYZING_OVERLAY } from '@/lib/privacyCopy'
+
 type AnalyzingOverlayProps = {
   message?: string
 }
@@ -12,9 +14,7 @@ export default function AnalyzingOverlay({
           ⏳
         </div>
         <p className="mt-4 text-lg font-semibold">{message}</p>
-        <p className="mt-2 text-sm leading-6 text-muted">
-          Die Fotos werden ausgewertet. Dein persönlicher Hintergrund wird dabei nur lokal auf dem Gerät gespeichert.
-        </p>
+        <p className="mt-2 text-sm leading-6 text-muted">{PRIVACY_ANALYZING_OVERLAY}</p>
       </div>
     </div>
   )

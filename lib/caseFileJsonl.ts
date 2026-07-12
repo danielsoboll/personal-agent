@@ -136,11 +136,13 @@ export function todayIsoDate(): string {
 }
 
 /** Beispiel für den KI-Prompt — nicht dem Nutzer anzeigen. */
-export const CASE_FILE_JSONL_EXAMPLE = `{"typ":"meta","name":"Nico","fall":"Unterhalt Neuberechnung","aktualisiert":"2026-07-12","phase":"sammeln","version":2}
-{"typ":"kontext","text":"Anwaltin der Mutter fordert Unterlagen für Unterhaltsneuberechnung."}
-{"typ":"block","id":"blk_aktuell_1","art":"aktuell","status":"offen","titel":"Schreiben Anwältin","eroeffnet":"2026-07-12"}
-{"typ":"dokument","block_id":"blk_aktuell_1","rolle":"aktuell","datum":"2026-06-01","titel":"Schreiben Anwältin","zusammenfassung":"Unterlagen zur Neuberechnung des Unterhalts werden angefordert.","quelle":"scan_r1_foto1","runde":"initial"}
-{"typ":"person","name":"Anwältin Müller","rolle":"Gegenseite"}
-{"typ":"frist","datum":"2026-07-20","beschreibung":"Unterlagen einreichen","quelle":"blk_aktuell_1"}
-{"typ":"offen","frage":"E-Mails und Schriftstücke zur bisherigen Unterhaltszahlung","prioritaet":"hoch"}
-{"typ":"schritt","id":"schritt_1","text":"Unterlagen sammeln und bei Anwältin einreichen","frist":"2026-07-20","prioritaet":"hoch","status":"offen","block_id":"blk_aktuell_1"}`
+export const CASE_FILE_JSONL_EXAMPLE = `{"typ":"meta","name":"Lukas","fall":"Finanzamt Steuerbescheid","aktualisiert":"2026-07-12","phase":"sammeln","version":2}
+{"typ":"kontext","text":"Finanzamt München sendet Steuerbescheid 2023 mit Nachzahlung. Einspruchsfrist läuft."}
+{"typ":"block","id":"blk_aktuell_1","art":"aktuell","status":"offen","titel":"Finanzamt München — Steuerbescheid 2023","eroeffnet":"2026-07-12"}
+{"typ":"dokument","block_id":"blk_aktuell_1","rolle":"aktuell","datum":"2026-06-15","titel":"Steuerbescheid 2023 Seite 1","zusammenfassung":"Finanzamt München, Steuernummer 123/456/78910. Festsetzung Einkommensteuer 2023. Festgesetzte Einkommensteuer: 4.820 EUR, bereits gezahlt 3.580 EUR, Ergebnis Nachzahlung 1.240 EUR. Hinweis auf Einspruch innerhalb eines Monats nach Bekanntgabe.","quelle":"scan_r1_foto1","runde":"initial"}
+{"typ":"dokument","block_id":"blk_aktuell_1","rolle":"aktuell","datum":"2026-06-15","titel":"Steuerbescheid 2023 Seite 2 — Fristen","zusammenfassung":"Bekanntgabe gilt am 20.06.2026 als zugegangen. Zahlung bis 04.07.2026 ohne Säumniszuschlag. Rechtsbehelfsbelehrung: Einspruch binnen eines Monats schriftlich oder elektronisch.","quelle":"scan_r1_foto2","runde":"initial"}
+{"typ":"person","name":"Finanzamt München","rolle":"Behörde"}
+{"typ":"frist","datum":"2026-07-20","beschreibung":"Einspruchsfrist (1 Monat nach Bekanntgabe 20.06.2026)","quelle":"blk_aktuell_1"}
+{"typ":"frist","datum":"2026-07-04","beschreibung":"Zahlung Nachzahlung 1.240 EUR ohne Säumniszuschlag","quelle":"blk_aktuell_1"}
+{"typ":"schritt","id":"schritt_1","text":"Bescheid prüfen: Beträge und Steuernummer mit deiner Erklärung vergleichen","prioritaet":"hoch","status":"offen","block_id":"blk_aktuell_1"}
+{"typ":"schritt","id":"schritt_2","text":"Bei Unstimmigkeit: Einspruch schriftlich/ELSTER einlegen","frist":"2026-07-20","prioritaet":"hoch","status":"offen","block_id":"blk_aktuell_1"}`

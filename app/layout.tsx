@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 
 import { APP_ICON_PATHS, APP_NAME } from '@/lib/appIcon'
+import { APP_DESCRIPTION } from '@/lib/privacyCopy'
 import ThemeHydration from '@/components/ThemeHydration'
 import { THEME_FALLBACK_BG_LIGHT, themeInitScript } from '@/lib/theme'
 
@@ -19,7 +20,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: APP_NAME,
-  description: 'Briefe, Anträge und E-Mails mit persönlichem Hintergrund besser verstehen — alles lokal auf dem Gerät.',
+  description: APP_DESCRIPTION,
   applicationName: APP_NAME,
   appleWebApp: {
     capable: true,

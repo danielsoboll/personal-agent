@@ -79,6 +79,19 @@ export async function deleteLibraryDocument(id: string): Promise<void> {
   await runLocalTransaction(LOCAL_STORES.library, 'readwrite', (store) => store.delete(id))
 }
 
+export async function deleteLibraryDocumentsForCase(caseId: string): Promise<void> {
+  const records = await runLocalTransaction<LibraryDocument[]>(LOCAL_STORES.library, 'readonly', (store) =>
+    store.getAll(),
+  )
+
+  const matching = records.filter((record) => record.caseId === caseId)
+  await Promise.all(
+    matching.map((record) =>
+      runLocalTransaction(LOCAL_STORES.library, 'readwrite', (store) => store.delete(record.id)),
+    ),
+  )
+}
+
 export function formatLibraryDate(timestamp: number): string {
   return new Intl.DateTimeFormat('de-DE', {
     dateStyle: 'medium',

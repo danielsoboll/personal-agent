@@ -8,6 +8,8 @@ import {
 } from '@/lib/analyzeSchema'
 import { ASSESS_SYSTEM_PROMPT, buildAssessUserPrompt } from '@/lib/analyzePrompts'
 import { prepareCaseFileContent, validateCaseFileJsonl } from '@/lib/caseFileJsonl'
+import { callOpenAiChatCompletion } from '@/lib/openaiChat'
+import { resolveOpenAiModel } from '@/lib/openaiModel'
 import type { AssessRequestBody, AssessResponseBody } from '@/lib/analyzeTypes'
 
 export const maxDuration = 60
@@ -37,47 +39,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: validationError }, { status: 400 })
   }
 
-  const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
+  const model = resolveOpenAiModel()
   const userText = buildAssessUserPrompt(body)
 
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
+  const completion = await callOpenAiChatCompletion({
+    apiKey,
+    model,
+    temperature: 0.35,
+    maxTokens: 4096,
+    jsonSchema: {
+      name: 'behoerdenpost_assessment',
+      schema: ANALYZE_RESULT_SCHEMA,
     },
-    body: JSON.stringify({
-      model,
-      temperature: 0.15,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'behoerdenpost_assessment',
-          strict: true,
-          schema: ANALYZE_RESULT_SCHEMA,
-        },
-      },
-      messages: [
-        { role: 'system', content: ASSESS_SYSTEM_PROMPT },
-        { role: 'user', content: userText },
-      ],
-    }),
+    messages: [
+      { role: 'system', content: ASSESS_SYSTEM_PROMPT },
+      { role: 'user', content: userText },
+    ],
   })
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error('OpenAI assess failed:', response.status, errorText)
+  if (!completion.ok) {
+    console.error('OpenAI assess failed:', completion.error)
     return NextResponse.json({ error: 'Bewertung fehlgeschlagen. Bitte später erneut versuchen.' }, { status: 502 })
   }
 
-  const completion = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
-  }
-
-  const content = completion.choices?.[0]?.message?.content
-  if (!content) {
-    return NextResponse.json({ error: 'Leere KI-Antwort erhalten.' }, { status: 502 })
-  }
+  const content = completion.content
 
   let parsed: ParsedAnalyzePayload
   try {

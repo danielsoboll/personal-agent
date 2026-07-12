@@ -10,6 +10,8 @@ export {
   SYSTEM_PROMPT,
   JSONL_SCHEMA_RULES,
   USER_OUTPUT_RULES,
+  CORE_USER_QUESTIONS,
+  READING_RULES,
   buildAnalyzeUserPrompt,
   buildAssessUserPrompt,
   buildPrepareStepUserPrompt,

@@ -87,7 +87,3 @@ export function clearDraftCaseTitle(): void {
     /* ignore */
   }
 }
-
-export function buildNamePageUrl(title: string): string {
-  return `/name?draft=${encodeURIComponent(title.trim())}`
-}

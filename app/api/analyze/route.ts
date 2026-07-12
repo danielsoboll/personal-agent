@@ -8,64 +8,11 @@ import {
 } from '@/lib/analyzeSchema'
 import { buildAnalyzeUserPrompt, ANALYZE_SYSTEM_PROMPT, buildJsonlRetryHint } from '@/lib/analyzePrompts'
 import { prepareCaseFileContent, validateCaseFileJsonl } from '@/lib/caseFileJsonl'
+import { callOpenAiChatCompletion } from '@/lib/openaiChat'
+import { resolveOpenAiModel } from '@/lib/openaiModel'
 import type { AnalyzeRequestBody, AnalyzeResponseBody } from '@/lib/analyzeTypes'
 
 export const maxDuration = 60
-
-async function callOpenAiAnalyze(options: {
-  apiKey: string
-  model: string
-  systemPrompt: string
-  userText: string
-  images: string[]
-}): Promise<string | null> {
-  const imageParts = options.images.map((dataUrl) => ({
-    type: 'image_url' as const,
-    image_url: { url: dataUrl, detail: 'high' as const },
-  }))
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${options.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: options.model,
-      temperature: 0.15,
-      response_format: {
-        type: 'json_schema',
-        json_schema: {
-          name: 'behoerdenpost_analysis',
-          strict: true,
-          schema: ANALYZE_RESULT_SCHEMA,
-        },
-      },
-      messages: [
-        { role: 'system', content: options.systemPrompt },
-        {
-          role: 'user',
-          content:
-            imageParts.length > 0
-              ? [{ type: 'text', text: options.userText }, ...imageParts]
-              : options.userText,
-        },
-      ],
-    }),
-  })
-
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error('OpenAI analyze failed:', response.status, errorText)
-    return null
-  }
-
-  const completion = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string } }>
-  }
-
-  return completion.choices?.[0]?.message?.content ?? null
-}
 
 function parseAndValidate(content: string): { ok: true; result: ParsedAnalyzePayload } | { ok: false; error: string } {
   let parsed: ParsedAnalyzePayload
@@ -94,10 +41,49 @@ function parseAndValidate(content: string): { ok: true; result: ParsedAnalyzePay
       ...parsed,
       caseFileContent: prepared.content,
       structuredSteps: normalizeStructuredSteps(parsed.structuredSteps ?? []),
-      summary: parsed.summary?.trim() || parsed.assessment?.slice(0, 200) || '',
+      summary: parsed.summary?.trim() || '',
       ...documents,
     },
   }
+}
+
+async function runAnalyzeAttempt(options: {
+  apiKey: string
+  model: string
+  userText: string
+  images: string[]
+}): Promise<{ ok: true; content: string } | { ok: false; error: string }> {
+  const imageParts = options.images.map((dataUrl) => ({
+    type: 'image_url' as const,
+    image_url: { url: dataUrl, detail: 'high' as const },
+  }))
+
+  const result = await callOpenAiChatCompletion({
+    apiKey: options.apiKey,
+    model: options.model,
+    temperature: 0.35,
+    maxTokens: 4096,
+    jsonSchema: {
+      name: 'behoerdenpost_analysis',
+      schema: ANALYZE_RESULT_SCHEMA,
+    },
+    messages: [
+      { role: 'system', content: ANALYZE_SYSTEM_PROMPT },
+      {
+        role: 'user',
+        content:
+          imageParts.length > 0
+            ? [{ type: 'text', text: options.userText }, ...imageParts]
+            : options.userText,
+      },
+    ],
+  })
+
+  if (!result.ok) {
+    return { ok: false, error: result.error }
+  }
+
+  return { ok: true, content: result.content }
 }
 
 export async function POST(request: Request) {
@@ -128,7 +114,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Bestehende Fallakte fehlt für diese Ergänzung.' }, { status: 400 })
   }
 
-  const model = process.env.OPENAI_MODEL?.trim() || 'gpt-4o-mini'
+  const model = resolveOpenAiModel()
   const userText = buildAnalyzeUserPrompt({
     userName: body.userName,
     caseTitle: body.caseTitle,
@@ -137,36 +123,40 @@ export async function POST(request: Request) {
     existingCaseFile: body.existingCaseFile,
   })
 
-  let content = await callOpenAiAnalyze({
+  let attempt = await runAnalyzeAttempt({
     apiKey,
     model,
-    systemPrompt: ANALYZE_SYSTEM_PROMPT,
     userText,
     images: body.images,
   })
 
-  if (!content) {
-    return NextResponse.json({ error: 'KI-Analyse fehlgeschlagen. Bitte später erneut versuchen.' }, { status: 502 })
+  if (!attempt.ok) {
+    return NextResponse.json(
+      { error: 'KI-Analyse fehlgeschlagen. Bitte später erneut versuchen.' },
+      { status: 502 },
+    )
   }
 
-  let parsed = parseAndValidate(content)
+  let parsed = parseAndValidate(attempt.content)
 
   if (!parsed.ok) {
     const retryText = `${userText}${buildJsonlRetryHint(parsed.error)}`
 
-    content = await callOpenAiAnalyze({
+    attempt = await runAnalyzeAttempt({
       apiKey,
       model,
-      systemPrompt: ANALYZE_SYSTEM_PROMPT,
       userText: retryText,
       images: body.images,
     })
 
-    if (!content) {
-      return NextResponse.json({ error: 'KI-Analyse fehlgeschlagen. Bitte später erneut versuchen.' }, { status: 502 })
+    if (!attempt.ok) {
+      return NextResponse.json(
+        { error: 'KI-Analyse fehlgeschlagen. Bitte später erneut versuchen.' },
+        { status: 502 },
+      )
     }
 
-    parsed = parseAndValidate(content)
+    parsed = parseAndValidate(attempt.content)
     if (!parsed.ok) {
       return NextResponse.json(
         { error: 'KI-Antwort war intern unvollständig. Bitte erneut prüfen.' },

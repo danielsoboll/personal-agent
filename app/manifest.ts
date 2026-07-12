@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 
 import { APP_ICON_VERSION, APP_NAME } from '@/lib/appIcon'
+import { APP_DESCRIPTION } from '@/lib/privacyCopy'
 
 export default function manifest(): MetadataRoute.Manifest {
   const iconQuery = `?v=${APP_ICON_VERSION}`
@@ -8,7 +9,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: APP_NAME,
     short_name: APP_NAME,
-    description: 'Briefe, Anträge und E-Mails mit persönlichem Hintergrund besser verstehen — alles lokal auf dem Gerät.',
+    description: APP_DESCRIPTION,
     start_url: '/',
     display: 'standalone',
     background_color: '#1e3a5f',

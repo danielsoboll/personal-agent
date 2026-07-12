@@ -1,9 +1,11 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
 import ThemeToggle from '@/components/ThemeToggle'
+import { PRIVACY_ANALYSIS_SHORT, PRIVACY_STORAGE_SHORT } from '@/lib/privacyCopy'
 
 type OnboardingShellProps = {
   title: string
@@ -11,21 +13,50 @@ type OnboardingShellProps = {
   children: ReactNode
   footer?: ReactNode
   headerAction?: ReactNode
+  /** Einheitliche Zurück-Navigation oben im Inhalt */
+  backNav?: {
+    href: string
+    label: string
+  }
 }
 
+export function BackNavLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="-mt-2 mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-accent"
+    >
+      <span aria-hidden className="text-base leading-none">
+        ←
+      </span>
+      {label}
+    </Link>
+  )
+}
+
+export { default as PageIntro } from '@/components/onboarding/PageIntro'
 export default function OnboardingShell({
   title,
   subtitle,
   children,
   footer,
   headerAction,
+  backNav,
 }: OnboardingShellProps) {
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-border bg-surface px-5 py-4">
         <div className="mx-auto flex w-full max-w-lg items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent text-lg font-semibold text-white">
-            B
+          <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-2xl border border-accent/20 shadow-sm">
+            <Image
+              src="/icon-192.png"
+              alt=""
+              width={44}
+              height={44}
+              unoptimized
+              className="h-full w-full object-cover"
+              priority
+            />
           </div>
           <div className="min-w-0 flex-1">
             {subtitle ? (
@@ -38,7 +69,10 @@ export default function OnboardingShell({
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col px-5 py-8">{children}</main>
+      <main className="mx-auto flex w-full max-w-lg flex-1 flex-col px-5 py-8">
+        {backNav ? <BackNavLink href={backNav.href} label={backNav.label} /> : null}
+        {children}
+      </main>
 
       {footer ? (
         <footer className="sticky bottom-0 border-t border-border bg-surface/95 px-5 py-4 backdrop-blur">
@@ -99,14 +133,14 @@ export function PrimaryButton({
 }
 
 export function PrivacyNote({ variant = 'storage' }: { variant?: 'storage' | 'analysis' }) {
-  const text =
-    variant === 'analysis'
-      ? 'Fotos werden zur Auswertung an die KI gesendet. Dein persönlicher Hintergrund bleibt nur auf deinem Handy — verarbeitete Fotos werden danach lokal gelöscht.'
-      : 'Dein persönlicher Hintergrund bleibt nur auf deinem Handy gespeichert. Verarbeitete Fotos werden nach jeder Prüfung gelöscht.'
+  const text = variant === 'analysis' ? PRIVACY_ANALYSIS_SHORT : PRIVACY_STORAGE_SHORT
 
   return (
     <p className="rounded-2xl border border-accent/20 bg-accent-soft px-4 py-3 text-sm leading-6 text-foreground">
-      {text}
+      {text}{' '}
+      <Link href="/datenschutz" className="font-medium text-accent underline-offset-4 hover:underline">
+        Datenschutzerklärung
+      </Link>
     </p>
   )
 }

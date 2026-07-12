@@ -1,9 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
-import OnboardingShell, { PrimaryButton } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro } from '@/components/onboarding/OnboardingShell'
 import { downloadBlob } from '@/lib/analyzeClient'
 import {
   formatLibraryDate,
@@ -49,16 +48,14 @@ export default function BibliothekClient() {
     <OnboardingShell
       title="Bibliothek"
       subtitle="Generierte Schreiben"
-      footer={<PrimaryButton href="/">Zur Fallübersicht</PrimaryButton>}
+      backNav={{ href: '/', label: 'Zurück zur Fallübersicht' }}
     >
       <section className="flex flex-1 flex-col gap-6">
-        <div className="space-y-3">
-          <h2 className="text-2xl font-semibold tracking-tight">Deine Dokumente</h2>
-          <p className="leading-7 text-muted">
-            Hier findest du alle Word-Schreiben, die du mit „Schritt vorbereiten“ erstellt hast. Tippe auf ein
-            Dokument, um es erneut herunterzuladen.
-          </p>
-        </div>
+        <PageIntro
+          icon="library"
+          title="Deine Dokumente"
+          description="Hier findest du alle Word-Schreiben, die du mit „Schritt vorbereiten“ erstellt hast. Tippe auf ein Dokument, um es erneut herunterzuladen."
+        />
 
         {!ready ? (
           <p className="text-sm text-muted">Bibliothek wird geladen …</p>
@@ -97,10 +94,6 @@ export default function BibliothekClient() {
             {error}
           </p>
         ) : null}
-
-        <Link href="/" className="text-sm font-medium text-accent underline-offset-4 hover:underline">
-          Zurück zur Fallübersicht
-        </Link>
       </section>
     </OnboardingShell>
   )

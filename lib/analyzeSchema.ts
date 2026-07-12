@@ -8,7 +8,11 @@ export const ANALYZE_RESULT_SCHEMA = {
       type: 'string' as const,
       description: 'Interne JSONL-Fallakte, eine JSON-Zeile pro Eintrag',
     },
-    summary: { type: 'string' as const },
+    summary: {
+      type: 'string' as const,
+      description:
+        'Kurzer Teaser für die Übersicht: max. 3 Zeilen, nur Kerndaten — darf assessment nicht wiederholen',
+    },
     assessment: { type: 'string' as const },
     nextSteps: { type: 'string' as const },
     structuredSteps: {
@@ -19,10 +23,8 @@ export const ANALYZE_RESULT_SCHEMA = {
         properties: {
           id: { type: 'string' as const },
           text: { type: 'string' as const },
-          deadline: { type: 'string' as const },
-          priority: { type: 'string' as const, enum: ['hoch', 'mittel', 'niedrig'] },
         },
-        required: ['id', 'text', 'deadline', 'priority'],
+        required: ['id', 'text'],
       },
     },
     needsMoreDocuments: { type: 'boolean' as const },
@@ -118,12 +120,16 @@ export function normalizeDocumentsFields(payload: {
 export function normalizeStructuredSteps(steps: StructuredStep[]): StructuredStep[] {
   return steps
     .filter((step) => step.text?.trim())
-    .map((step, index) => ({
-      id: step.id?.trim() || `schritt_${index + 1}`,
-      text: step.text.trim(),
-      deadline: step.deadline?.trim() || undefined,
-      priority: step.priority,
-    }))
+    .map((step, index) => {
+      const normalized: StructuredStep = {
+        id: step.id?.trim() || `schritt_${index + 1}`,
+        text: step.text.trim(),
+      }
+      const deadline = step.deadline?.trim()
+      if (deadline) normalized.deadline = deadline
+      if (step.priority) normalized.priority = step.priority
+      return normalized
+    })
 }
 
 export const PREPARE_STEP_SCHEMA = {
