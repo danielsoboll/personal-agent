@@ -82,6 +82,68 @@ export function IconReview({ size, className, ...props }: IconProps) {
   )
 }
 
+/** KI-Kern — geheimnisvoller Knoten mit Verbindungen */
+export function IconAiMystery({ size, className, ...props }: IconProps) {
+  return (
+    <BaseIcon size={size} className={className} {...props}>
+      <circle cx="12" cy="12" r="3.2" stroke="currentColor" strokeWidth={STROKE} />
+      <circle cx="12" cy="12" r="1.1" fill="currentColor" opacity="0.85" />
+      <path
+        d="M12 4.5v2.2M12 17.3v2.2M4.5 12h2.2M17.3 12h2.2"
+        stroke="currentColor"
+        strokeWidth={1.25}
+        strokeLinecap="round"
+        opacity="0.55"
+      />
+      <path
+        d="M7.1 7.1l1.55 1.55M15.35 15.35l1.55 1.55M16.9 7.1l-1.55 1.55M8.65 15.35l-1.55 1.55"
+        stroke="currentColor"
+        strokeWidth={1.25}
+        strokeLinecap="round"
+        opacity="0.55"
+      />
+      <circle cx="12" cy="4.5" r="1.15" stroke="currentColor" strokeWidth={1.15} />
+      <circle cx="19.5" cy="12" r="1.15" stroke="currentColor" strokeWidth={1.15} />
+      <circle cx="12" cy="19.5" r="1.15" stroke="currentColor" strokeWidth={1.15} />
+      <circle cx="4.5" cy="12" r="1.15" stroke="currentColor" strokeWidth={1.15} />
+      <path
+        d="M12 4.5 12 8.8M19.5 12 15.2 12M12 19.5 12 15.2M4.5 12 8.8 12"
+        stroke="currentColor"
+        strokeWidth={1.1}
+        strokeLinecap="round"
+        opacity="0.45"
+      />
+      <circle cx="12" cy="12" r="8.2" stroke="currentColor" strokeWidth={1} strokeDasharray="2.5 3.5" opacity="0.35" />
+    </BaseIcon>
+  )
+}
+
+/** KI / intelligente Analyse — Funken-Symbol */
+export function IconAi({ size, className, ...props }: IconProps) {
+  return (
+    <BaseIcon size={size} className={className} {...props}>
+      <path
+        d="M12 3 13.15 8.35 18.5 9.5 13.15 10.65 12 16 10.85 10.65 5.5 9.5 10.85 8.35 12 3Z"
+        stroke="currentColor"
+        strokeWidth={STROKE}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M18.75 4.25 19.2 5.95 20.9 6.4 19.2 6.85 18.75 8.55 18.3 6.85 16.6 6.4 18.3 5.95 18.75 4.25Z"
+        stroke="currentColor"
+        strokeWidth={1.25}
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7.25 15.75 7.65 17.2 9.1 17.6 7.65 18 7.25 19.45 6.85 18 5.4 17.6 6.85 17.2 7.25 15.75Z"
+        stroke="currentColor"
+        strokeWidth={1.25}
+        strokeLinejoin="round"
+      />
+    </BaseIcon>
+  )
+}
+
 /** Bibliothek */
 export function IconLibrary({ size, className, ...props }: IconProps) {
   return (

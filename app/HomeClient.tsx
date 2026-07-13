@@ -14,6 +14,7 @@ import {
   toggleCaseDone,
 } from '@/lib/localCases'
 import FreeTrialCallout from '@/components/home/FreeTrialCallout'
+import HomeHeroFlow from '@/components/home/HomeHeroFlow'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import PrivacyTrustPoints from '@/components/onboarding/PrivacyTrustPoints'
@@ -71,22 +72,25 @@ export default function HomeClient() {
           {plus.headerAction}
         </div>
       }
-      footer={<PrimaryButton href="/fall/neu">Neuen Fall anlegen</PrimaryButton>}
+      footer={<PrimaryButton href="/fall/neu">Jetzt Dokument fotografieren</PrimaryButton>}
     >
       <section className="flex flex-1 flex-col gap-8">
         <div className="space-y-4">
           <p className="text-sm font-medium uppercase tracking-[0.18em] text-accent">
             Dein persönlicher Helfer
           </p>
-          <h2 className="text-3xl font-semibold leading-tight tracking-tight text-balance">
+          <h2 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-balance">
             {hasCases ? 'Deine Fälle' : 'Briefe, Anträge und E-Mails besser verstehen'}
           </h2>
-          <p className="text-lg leading-8 text-muted">
-            {hasCases
-              ? 'Wähle einen bestehenden Fall oder lege einen neuen an. Jeder Fall bleibt getrennt auf deinem Handy gespeichert.'
-              : 'Behördenpost und wichtige Schreiben verstehen — mit klaren nächsten Schritten, direkt auf dem Handy.'}
-          </p>
         </div>
+
+        {!hasCases && ready ? <HomeHeroFlow /> : null}
+
+        <p className="text-lg leading-8 text-muted">
+          {hasCases
+            ? 'Wähle einen bestehenden Fall oder lege einen neuen an. Jeder Fall bleibt getrennt auf deinem Handy gespeichert.'
+            : 'Behördenpost und wichtige Schreiben verstehen — mit klaren nächsten Schritten, direkt auf dem Handy.'}
+        </p>
 
         {!hasCases && ready ? <FreeTrialCallout /> : null}
 
@@ -140,22 +144,13 @@ export default function HomeClient() {
               </li>
             ))}
           </ul>
-        ) : (
-          <div className="space-y-3 text-sm leading-6 text-muted">
-            <p>So geht&apos;s beim ersten Fall:</p>
-            <ol className="list-decimal space-y-2 pl-5">
-              <li>Fall benennen (z. B. „Unterhalt Neuberechnung“)</li>
-              <li>Dokument fotografieren und prüfen lassen</li>
-            </ol>
-            <p>Später findest du hier alle Fälle wieder — klar getrennt voneinander.</p>
-          </div>
-        )}
+        ) : null}
 
         {!hasCases && ready ? (
           <p className="text-sm text-muted">
             Bereit?{' '}
             <Link href="/fall/neu" className="font-medium text-accent underline-offset-4 hover:underline">
-              Ersten Fall anlegen
+              Jetzt Dokument fotografieren
             </Link>
           </p>
         ) : null}

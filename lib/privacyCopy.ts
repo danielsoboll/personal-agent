@@ -1,6 +1,6 @@
 /** Kurztexte für die App — technische Details stehen in /datenschutz */
 export const PRIVACY_STORAGE_SHORT =
-  'Deine Fälle und Bewertungen bleiben auf dem Handy. Daten werden nur zur KI-Auswertung übermittelt — Fotos werden nach der Prüfung vom Gerät gelöscht, nicht dauerhaft bei uns abgelegt.'
+  'Deine Fälle und Bewertungen werden nur auf dem Handy gespeichert. Daten werden nur zur KI-Auswertung übermittelt — bei uns nicht dauerhaft gespeichert. Fotos werden nach der Prüfung gelöscht.'
 
 export const PRIVACY_ANALYSIS_SHORT =
   'Fotos werden jetzt zur Auswertung verschickt. Deine Fallakte bleibt auf dem Handy — nach der Prüfung werden die Fotos hier wieder entfernt.'
