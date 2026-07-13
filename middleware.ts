@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
 /**
- * Production: CANONICAL_HOST=behoerdenpost.de
+ * Production: CANONICAL_HOST=post.life-xp.de
  * Leitet z. B. *.vercel.app und www. auf die Hauptdomain um.
  */
 const CANONICAL_HOST = process.env.CANONICAL_HOST?.trim().toLowerCase()
