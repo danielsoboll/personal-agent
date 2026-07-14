@@ -7,9 +7,9 @@ alwaysApply: true
 
 ## Vollmachten
 
-- Commits + Push auf `main` erlaubt, wenn Aufgabe fertig oder Nutzer es wünscht
-- Supabase deployen: `bash scripts/deploy-supabase-billing.sh`
-- Build prüfen: `npm run build`
+- Code ändern und lokal `npm run build` — ok
+- **Kein Push auf `main`** ohne explizite Nutzer-Anfrage (GitHub/Vercel = Bastel-Infrastruktur)
+- Supabase deploy nur auf explizite Anfrage
 
 ## Projekt-Fakten
 
@@ -29,4 +29,4 @@ alwaysApply: true
 
 ## Bei Blockern
 
-Stoppen und dem Nutzer exakt sagen: Tool, URL, Klick — z. B. `npx supabase login`, MCP Stripe auth, fehlende Env-Vars.
+Stoppen — keine Workarounds an Repos/Vercel. GitHub-Login: Token statt Passwort (siehe `~/.cursor/AGENT-SETUP.md`).

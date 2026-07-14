@@ -19,10 +19,10 @@ Teil des Projekts **Persönlicher Agent**.
 
 | | |
 |---|---|
-| Branch | `main` — Push erlaubt wenn Aufgabe fertig |
+| Branch | `main` — **Push nur wenn du es explizit sagst** |
 | Supabase | `nlpwqxytdkubehdwatgc` |
-| Production | post.life-xp.de (Vercel via GitHub) |
-| Deploy | `bash scripts/deploy-supabase-billing.sh` |
+| Production | post.life-xp.de (Vercel nur bei explizitem Push) |
+| Deploy | `bash scripts/deploy-supabase-billing.sh` — nur auf Anfrage |
 | Stripe Webhook | `https://nlpwqxytdkubehdwatgc.supabase.co/functions/v1/stripe-webhook` |
 | PLUS-Billing | `billing_devices.plus_until` — DB-first wie LifeXP Family |
 
