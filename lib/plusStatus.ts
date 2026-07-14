@@ -1,11 +1,10 @@
 import { isPlusDiscoverUnlocked } from '@/lib/plusEngagement'
+import { readPlusBillingState } from '@/lib/plusBillingStorage'
 
-const PLUS_ACTIVE_KEY = 'behoerdenpost.plus.active.v1'
-
-/** Lokaler PLUS-Status — später durch Supabase/Stripe ersetzt. */
+/** PLUS-Status aus lokalem Billing-Snapshot (Stripe-Verify / später Supabase-Sync). */
 export function isPlusActive(): boolean {
   if (typeof window === 'undefined') return false
-  return window.localStorage.getItem(PLUS_ACTIVE_KEY) === '1'
+  return readPlusBillingState().active
 }
 
 export function shouldShowPlusDiscoverHeader(): boolean {

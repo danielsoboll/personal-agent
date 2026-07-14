@@ -1,21 +1,55 @@
 import { NextResponse } from 'next/server'
 
+import type { BillingApiBody, CheckoutSessionResponse } from '@/lib/billingTypes'
+import { resolveBillingSiteOrigin } from '@/lib/billingSiteOrigin'
 import { PLUS_CHECKOUT_UNAVAILABLE } from '@/lib/plusFeatures'
+import { invokeSupabaseEdgeFunction } from '@/lib/supabaseEdgeFunctions'
+import { isSupabaseEnvConfigured } from '@/lib/supabaseEnv'
 
-export async function POST() {
-  const stripeSecret = process.env.STRIPE_SECRET_KEY
-  const stripePriceId = process.env.STRIPE_PRICE_ID
+function resolveStripePriceId(): string | null {
+  return (
+    process.env.NEXT_PUBLIC_STRIPE_PRICE_ID?.trim() ||
+    process.env.STRIPE_PRICE_ID?.trim() ||
+    null
+  )
+}
 
-  if (!stripeSecret || !stripePriceId) {
+export async function POST(request: Request) {
+  const priceId = resolveStripePriceId()
+  if (!isSupabaseEnvConfigured() || !priceId) {
     return NextResponse.json({ error: PLUS_CHECKOUT_UNAVAILABLE }, { status: 503 })
   }
 
-  // Stripe Checkout Session — sobald Produkt & Keys hinterlegt sind.
-  return NextResponse.json(
-    {
-      error:
-        'Stripe-Checkout ist vorbereitet, aber noch nicht implementiert. Bitte STRIPE_SECRET_KEY und STRIPE_PRICE_ID setzen und Edge Function anbinden.',
-    },
-    { status: 501 },
-  )
+  let body: BillingApiBody = {}
+  try {
+    body = (await request.json()) as BillingApiBody
+  } catch {
+    body = {}
+  }
+
+  const siteUrl = resolveBillingSiteOrigin(request, body.site_url)
+  const billingDeviceId = body.billing_device_id?.trim()
+
+  try {
+    const edge = await invokeSupabaseEdgeFunction<CheckoutSessionResponse>('create-checkout-session', {
+      priceId,
+      siteUrl,
+      ...(billingDeviceId
+        ? {
+            clientReferenceId: billingDeviceId,
+            metadata: { billing_device_id: billingDeviceId },
+          }
+        : {}),
+    })
+
+    if (!edge.url) {
+      return NextResponse.json({ error: 'Checkout-URL fehlt.' }, { status: 502 })
+    }
+
+    return NextResponse.json({ url: edge.url, sessionId: edge.id ?? null })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Checkout fehlgeschlagen.'
+    const status = message.includes('Live vs. Test') ? 500 : 502
+    return NextResponse.json({ error: message }, { status })
+  }
 }
