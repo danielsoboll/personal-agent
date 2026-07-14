@@ -6,7 +6,6 @@ import { useCallback, useEffect, useState } from 'react'
 
 import { statusBadgeClassName } from '@/lib/caseStatus'
 import { buttonStyles } from '@/lib/buttonStyles'
-import { isLocalDevClient } from '@/lib/clientDev'
 import {
   type CaseListItem,
   listCasesForHome,
@@ -30,7 +29,6 @@ export default function HomeClient() {
   const plus = usePlusDiscoverHeader()
   const [cases, setCases] = useState<CaseListItem[]>([])
   const [ready, setReady] = useState(false)
-  const [showAdmin, setShowAdmin] = useState(false)
 
   const loadCases = useCallback(async () => {
     const nextCases = await listCasesForHome()
@@ -42,10 +40,6 @@ export default function HomeClient() {
   useEffect(() => {
     void loadCases()
   }, [loadCases])
-
-  useEffect(() => {
-    setShowAdmin(isLocalDevClient())
-  }, [])
 
   function openCase(caseItem: CaseListItem) {
     setActiveCaseId(caseItem.id)
@@ -162,12 +156,10 @@ export default function HomeClient() {
           </p>
         ) : null}
 
-        <div className={`flex flex-col items-center pt-4 ${showAdmin ? 'gap-6' : 'gap-0'}`}>
-          {showAdmin ? (
-            <Link href="/admin" className={buttonStyles.admin}>
-              Admin
-            </Link>
-          ) : null}
+        <div className="flex flex-col items-center gap-6 pt-4">
+          <Link href="/admin" className={buttonStyles.admin}>
+            Admin
+          </Link>
           <LegalFooterNav />
         </div>
       </section>

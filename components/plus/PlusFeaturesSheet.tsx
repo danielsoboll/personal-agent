@@ -10,7 +10,7 @@ import SheetPortal from '@/components/plus/SheetPortal'
 import PlusCheckoutLegalNote from '@/components/legal/PlusCheckoutLegalNote'
 import { isPlusActive } from '@/lib/plusStatus'
 import { PLUS_PRODUCT_NAME, PLUS_SHEET } from '@/lib/plusFeatures'
-import { PLUS_SHEET_SURFACE_CLASS } from '@/lib/plusShell'
+import { PLUS_SHEET_SURFACE_ACTIVE_CLASS, PLUS_SHEET_SURFACE_CLASS } from '@/lib/plusShell'
 
 type PlusFeaturesSheetProps = {
   onClose: () => void
@@ -22,12 +22,12 @@ export default function PlusFeaturesSheet({ onClose }: PlusFeaturesSheetProps) {
   return (
     <SheetPortal>
       <div
-        className="fixed inset-0 z-50 flex flex-col justify-end bg-slate-950/40 dark:bg-black/55"
+        className="fixed inset-0 z-50 flex flex-col justify-end bg-amber-950/25 dark:bg-black/55"
         onClick={onClose}
         role="presentation"
       >
         <div
-          className={`lifexp-bottom-sheet ${PLUS_SHEET_SURFACE_CLASS} flex max-h-[88dvh] min-h-[50dvh] flex-col pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5`}
+          className={`lifexp-bottom-sheet ${plusActive ? PLUS_SHEET_SURFACE_ACTIVE_CLASS : PLUS_SHEET_SURFACE_CLASS} flex max-h-[88dvh] min-h-[50dvh] flex-col pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-5`}
           onClick={(event) => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
@@ -36,7 +36,11 @@ export default function PlusFeaturesSheet({ onClose }: PlusFeaturesSheetProps) {
           <div className="mx-auto mb-4 h-1.5 w-12 shrink-0 rounded-full bg-border" />
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <p className="text-xs font-bold uppercase tracking-wide text-accent">{PLUS_PRODUCT_NAME}</p>
+            <p
+              className={`text-xs font-bold uppercase tracking-wide ${plusActive ? 'text-emerald-700 dark:text-emerald-300' : 'text-amber-700 dark:text-amber-300'}`}
+            >
+              {PLUS_PRODUCT_NAME}
+            </p>
             <h2 id="plus-features-sheet-title" className="mt-1 text-xl font-bold tracking-tight text-foreground">
               {plusActive ? PLUS_SHEET.titleActive : PLUS_SHEET.titleFree}
             </h2>

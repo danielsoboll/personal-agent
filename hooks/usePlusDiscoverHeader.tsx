@@ -6,7 +6,9 @@ import PlusActiveHeaderButton from '@/components/plus/PlusActiveHeaderButton'
 import PlusFeaturesSheet from '@/components/plus/PlusFeaturesSheet'
 import PlusLockHeaderButton from '@/components/plus/PlusLockHeaderButton'
 import { logUserActivity } from '@/lib/activityLog'
+import { PLUS_BILLING_CHANGED_EVENT } from '@/lib/plusBillingStorage'
 import { PLUS_DISCOVER_UNLOCK_CHANGED_EVENT } from '@/lib/plusEngagement'
+import { consumePlusWelcomePending } from '@/lib/plusWelcome'
 import { isPlusActive, shouldShowPlusDiscoverHeader } from '@/lib/plusStatus'
 
 export function usePlusDiscoverHeader() {
@@ -22,8 +24,17 @@ export function usePlusDiscoverHeader() {
   useEffect(() => {
     refresh()
     window.addEventListener(PLUS_DISCOVER_UNLOCK_CHANGED_EVENT, refresh)
-    return () => window.removeEventListener(PLUS_DISCOVER_UNLOCK_CHANGED_EVENT, refresh)
+    window.addEventListener(PLUS_BILLING_CHANGED_EVENT, refresh)
+    return () => {
+      window.removeEventListener(PLUS_DISCOVER_UNLOCK_CHANGED_EVENT, refresh)
+      window.removeEventListener(PLUS_BILLING_CHANGED_EVENT, refresh)
+    }
   }, [refresh])
+
+  useEffect(() => {
+    if (!isPlusActive() || !consumePlusWelcomePending()) return
+    setSheetOpen(true)
+  }, [])
 
   const openPlusDiscover = useCallback(() => {
     logUserActivity('plus_discover_opened')
@@ -32,7 +43,7 @@ export function usePlusDiscoverHeader() {
 
   const headerAction: ReactNode = visible ? (
     plusActive ? (
-      <PlusActiveHeaderButton />
+      <PlusActiveHeaderButton onClick={openPlusDiscover} />
     ) : (
       <PlusLockHeaderButton onClick={openPlusDiscover} />
     )

@@ -4,6 +4,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { APP_ICON_PATHS, APP_NAME } from '@/lib/appIcon'
 import { APP_DESCRIPTION } from '@/lib/privacyCopy'
 import KeyboardViewportRoot from '@/components/KeyboardViewportRoot'
+import PlusBillingSync from '@/components/plus/PlusBillingSync'
 import ThemeHydration from '@/components/ThemeHydration'
 import { THEME_FALLBACK_BG_LIGHT, themeInitScript } from '@/lib/theme'
 
@@ -60,6 +61,7 @@ export default function RootLayout({
       >
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <ThemeHydration />
+        <PlusBillingSync />
         <KeyboardViewportRoot />
         {children}
       </body>

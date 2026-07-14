@@ -1,18 +1,29 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 
+import PlusPurchaseConfirmation from '@/components/plus/PlusPurchaseConfirmation'
 import { buttonStyles } from '@/lib/buttonStyles'
 import { BILLING_CANCEL_PATH } from '@/lib/billingReturn'
-import { activatePlusBilling } from '@/lib/plusBillingStorage'
+import { markPlusWelcomePending } from '@/lib/plusWelcome'
 import { syncPlusBillingFromStripe, verifyPlusCheckoutSession } from '@/lib/stripeBilling'
 
 type VerificationState = 'pending' | 'missing_session' | 'unpaid' | 'paid' | 'error'
 
+async function confirmPlusFromStripe(sessionId: string): Promise<boolean> {
+  const verified = await verifyPlusCheckoutSession(sessionId)
+
+  if (verified.plusActive) {
+    return true
+  }
+
+  const synced = await syncPlusBillingFromStripe()
+  return synced.plusActive
+}
+
 export default function PlusSuccessClient() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const sessionId = searchParams.get('session_id')
   const [verification, setVerification] = useState<VerificationState>('pending')
@@ -31,32 +42,15 @@ export default function PlusSuccessClient() {
       }
 
       try {
-        const result = await verifyPlusCheckoutSession(sessionId.trim())
-
-        if (!result.plusActive) {
-          setVerification(result.sessionStatus === 'open' ? 'unpaid' : 'unpaid')
-          setError('Bei Stripe ist die Zahlung noch nicht abgeschlossen.')
+        const active = await confirmPlusFromStripe(sessionId.trim())
+        if (!active) {
+          setVerification('unpaid')
+          setError('Bei Stripe ist die Zahlung noch nicht abgeschlossen oder PLUS konnte nicht synchronisiert werden.')
           return
         }
 
-        activatePlusBilling({
-          customerId: result.customerId,
-          subscriptionId: result.subscriptionId,
-          paymentStatus: result.paymentStatus,
-          sessionStatus: result.sessionStatus,
-        })
-
-        try {
-          const syncResult = await syncPlusBillingFromStripe()
-          if (!syncResult.plusActive && !result.plusSynced) {
-            /* Stripe paid, DB sync pending — local activation from verify is enough */
-          }
-        } catch {
-          /* Webhook/Sync optional — lokaler PLUS-Status reicht für den Start */
-        }
-
         setVerification('paid')
-        window.setTimeout(() => router.replace('/'), 1400)
+        markPlusWelcomePending()
       } catch (caught) {
         setVerification('error')
         setError(caught instanceof Error ? caught.message : 'Checkout konnte nicht geprüft werden.')
@@ -64,30 +58,27 @@ export default function PlusSuccessClient() {
     }
 
     void verify()
-  }, [router, sessionId])
+  }, [sessionId])
 
   async function handleManualSync() {
     if (syncBusy) return
     setSyncBusy(true)
     setError('')
+
     try {
+      if (sessionId?.trim()) {
+        const active = await confirmPlusFromStripe(sessionId.trim())
+        if (active) {
+          setVerification('paid')
+          markPlusWelcomePending()
+          return
+        }
+      }
+
       const syncResult = await syncPlusBillingFromStripe()
       if (syncResult.plusActive) {
         setVerification('paid')
-        return
-      }
-
-      if (sessionId?.trim()) {
-        const result = await verifyPlusCheckoutSession(sessionId.trim())
-        if (result.plusActive) {
-          activatePlusBilling({
-            customerId: result.customerId,
-            subscriptionId: result.subscriptionId,
-            paymentStatus: result.paymentStatus,
-            sessionStatus: result.sessionStatus,
-          })
-          setVerification('paid')
-        }
+        markPlusWelcomePending()
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Synchronisation fehlgeschlagen.')
@@ -100,18 +91,19 @@ export default function PlusSuccessClient() {
     return (
       <section className="space-y-4">
         <h2 className="text-xl font-semibold tracking-tight">Zahlung wird geprüft …</h2>
-        <p className="text-sm leading-7 text-muted">Einen Moment — wir fragen Stripe ab.</p>
+        <p className="text-sm leading-7 text-muted">
+          Einen Moment — wir schreiben dein PLUS in die Datenbank und fragen Stripe ab.
+        </p>
       </section>
     )
   }
 
   if (verification === 'paid') {
     return (
-      <section className="space-y-4">
-        <h2 className="text-xl font-semibold tracking-tight">Danke — PLUS ist aktiv</h2>
-        <p className="text-sm leading-7 text-muted">Stripe hat die Zahlung bestätigt. Du wirst gleich weitergeleitet.</p>
-        <Link href="/" className={buttonStyles.secondary}>
-          Zur Startseite
+      <section className="space-y-5">
+        <PlusPurchaseConfirmation />
+        <Link href="/" className={buttonStyles.primaryActive}>
+          Gemeinsam starten
         </Link>
       </section>
     )

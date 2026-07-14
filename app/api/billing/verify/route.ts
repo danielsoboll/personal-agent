@@ -42,8 +42,12 @@ export async function POST(request: Request) {
       sessionStatus: edge.sessionStatus ?? null,
       customerId: edge.customerId ?? null,
       subscriptionId: edge.subscriptionId ?? null,
-      plusActive: isPaidCheckout(edge),
       plusSynced: edge.plus_synced === true,
+      plan: edge.plan === 'plus' ? 'plus' : 'free',
+      plusActive: edge.plusActive === true || (edge.plus_synced !== true && isPaidCheckout(edge)),
+      subscriptionStatus: edge.subscriptionStatus ?? null,
+      plusUntil: edge.plusUntil ?? null,
+      cancelAtPeriodEnd: edge.cancelAtPeriodEnd === true,
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Checkout konnte nicht geprüft werden.'

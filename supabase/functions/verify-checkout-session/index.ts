@@ -32,6 +32,9 @@ serve(async (req) => {
     const isComplete = sessionStatus === 'complete'
 
     let plusSynced = false
+    let billingStatus: Awaited<ReturnType<typeof syncBillingDeviceFromCheckoutSession>>['status'] =
+      null
+
     const paid =
       paymentStatus === 'paid' || paymentStatus === 'no_payment_required'
 
@@ -40,6 +43,7 @@ serve(async (req) => {
         const admin = getServiceClient()
         const syncResult = await syncBillingDeviceFromCheckoutSession(admin, session)
         plusSynced = syncResult.synced
+        billingStatus = syncResult.status
       } catch (syncError) {
         console.warn('verify-checkout-session sync failed', syncError)
       }
@@ -53,6 +57,11 @@ serve(async (req) => {
       customerId,
       subscriptionId,
       plus_synced: plusSynced,
+      plan: billingStatus?.plan ?? 'free',
+      plusActive: billingStatus?.plusActive ?? false,
+      subscriptionStatus: billingStatus?.subscriptionStatus ?? null,
+      plusUntil: billingStatus?.plusUntil ?? null,
+      cancelAtPeriodEnd: billingStatus?.cancelAtPeriodEnd ?? false,
     })
   } catch (error) {
     console.error('verify-checkout-session', error)

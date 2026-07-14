@@ -16,7 +16,9 @@ export default function PlusPriceDisplay({ variant = 'hero', className = '' }: P
     return (
       <div className={`${PLUS_PRICE_INLINE_CLASS} ${className}`}>
         <div className="min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-accent">{PLUS_PRODUCT_NAME}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300">
+            {PLUS_PRODUCT_NAME}
+          </p>
           <p className="text-xs font-semibold text-muted">{PLUS_PRICE_TAGLINE}</p>
         </div>
         <div className="shrink-0 text-right">
@@ -31,7 +33,9 @@ export default function PlusPriceDisplay({ variant = 'hero', className = '' }: P
 
   return (
     <div className={`${PLUS_PRICE_HERO_CLASS} ${className}`}>
-      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-accent">{PLUS_PRODUCT_NAME}</p>
+      <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-amber-800 dark:text-amber-300">
+        {PLUS_PRODUCT_NAME}
+      </p>
       <div className="mt-1 flex items-baseline justify-center gap-1">
         <span className="text-[1.75rem] font-extrabold tabular-nums leading-none tracking-tight text-foreground">
           {PLUS_PRICE_AMOUNT}

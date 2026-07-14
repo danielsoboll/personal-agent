@@ -1,17 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import PlusCheckoutLegalNote from '@/components/legal/PlusCheckoutLegalNote'
 import PlusActiveWelcome from '@/components/plus/PlusActiveWelcome'
 import PlusLockHeaderButton, { PLUS_SECONDARY_BUTTON_CLASS } from '@/components/plus/PlusLockHeaderButton'
 import PlusPriceDisplay from '@/components/plus/PlusPriceDisplay'
+import { PLUS_BILLING_CHANGED_EVENT, readPlusBillingState } from '@/lib/plusBillingStorage'
+import { plusTarifLine } from '@/lib/plusEntitlement'
 import { isPlusActive } from '@/lib/plusStatus'
 import {
   PLUS_CHECKOUT_UNAVAILABLE,
   PLUS_TAGLINE,
-  PLUS_TARIF_LINE_FREE,
-  PLUS_TARIF_LINE_PLUS,
 } from '@/lib/plusFeatures'
 import { createPlusCheckoutSession, createPlusPortalSession } from '@/lib/stripeBilling'
 
@@ -30,7 +30,18 @@ export default function PlusBillingControls({
 }: PlusBillingControlsProps) {
   const [busy, setBusy] = useState<'checkout' | 'portal' | null>(null)
   const [error, setError] = useState('')
+  const [tarifLine, setTarifLine] = useState('Dein Tarif: Kostenlos')
   const plusActive = isPlusActive()
+
+  useEffect(() => {
+    function refreshTarif() {
+      setTarifLine(plusTarifLine(readPlusBillingState()))
+    }
+
+    refreshTarif()
+    window.addEventListener(PLUS_BILLING_CHANGED_EVENT, refreshTarif)
+    return () => window.removeEventListener(PLUS_BILLING_CHANGED_EVENT, refreshTarif)
+  }, [])
 
   async function startCheckout() {
     setError('')
@@ -64,9 +75,7 @@ export default function PlusBillingControls({
       {!plusActive && !compact ? (
         <p className="text-sm leading-relaxed text-muted">{PLUS_TAGLINE}</p>
       ) : null}
-      <p className="text-sm font-semibold text-foreground">
-        {plusActive ? PLUS_TARIF_LINE_PLUS : PLUS_TARIF_LINE_FREE}
-      </p>
+      <p className="text-sm font-semibold text-foreground">{tarifLine}</p>
 
       {plusActive ? (
         <button

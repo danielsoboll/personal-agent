@@ -23,25 +23,40 @@ export const PLUS_ABO_SLOGAN = 'Dein dauerhafter Helfer für Behördenpost.'
 export const PLUS_CANCEL_NOTE = 'Jederzeit kündbar (monatlich).'
 
 export const PLUS_CTA_LABEL = 'PLUS entdecken!'
+
+export const PLUS_ACTIVE_HEADER_LABEL = 'PLUS · gemeinsam'
+export const PLUS_ACTIVE_HEADER_HINT =
+  'Du hast PLUS gekauft — ab jetzt arbeiten wir zusammen. Tippe für deine Funktionen.'
+
 export const PLUS_CHECKOUT_UNAVAILABLE =
   'PLUS-Checkout startet in Kürze. Stripe ist noch nicht angebunden — wir informieren hier, sobald das Abo buchbar ist.'
 
-export const PLUS_MOTIVATION_TITLE = 'Weniger Aufwand bei Behördenpost'
+export const PLUS_MOTIVATION_TITLE = 'Dein dauerhafter Helfer — nicht nur für einen Brief'
 export const PLUS_MOTIVATION_INTRO =
-  'Mit Historie, mehr Fällen und optionaler Cloud-Sicherung — statt jedes Mal bei null anfangen wie in einem nackten Chatbot.'
+  'Mit Historie, mehr Fällen und echtem Gedächtnis — damit du nicht jedes Mal bei null anfängst wie in einem nackten Chatbot.'
 
 export const PLUS_SHEET = {
   titleFree: PLUS_MOTIVATION_TITLE,
-  titleActive: 'PLUS ist aktiv — dein dauerhafter Helfer',
+  titleActive: 'Du hast PLUS — ab jetzt arbeiten wir zusammen',
   introFree: PLUS_MOTIVATION_INTRO,
-  introActive: `${PLUS_MOTIVATION_INTRO} Diese Extras gehören zu deinem Abo (einzelne Funktionen kommen noch Schritt für Schritt).`,
+  introActive:
+    'Danke für dein Vertrauen. Ich bin an deiner Seite — mit Historie, mehr Fällen und allen PLUS-Funktionen, die schon freigeschaltet sind.',
+} as const
+
+export const PLUS_PURCHASE_CONFIRMATION = {
+  headline: 'Du hast Behördenpost PLUS gekauft.',
+  subline: 'Ab jetzt arbeiten wir zusammen.',
+  body: [
+    'Ich merke mir deine Fälle und helfe dir dauerhaft — nicht nur für ein einzelnes Schreiben.',
+    'Gemeinsam bringen wir Klarheit in deine Behördenpost.',
+  ],
 } as const
 
 export const PLUS_ACTIVE_WELCOME = {
-  headline: '🎉 Willkommen bei Behördenpost PLUS!',
+  headline: 'Ab jetzt arbeiten wir zusammen.',
   body: [
-    'Dein Abo ist jetzt aktiv.',
-    'Alle freigeschalteten PLUS-Funktionen stehen dir zur Verfügung — wir erweitern sie kontinuierlich.',
+    'Du hast PLUS — ich bin dein dauerhafter Helfer für Behördenpost.',
+    'Deine Fälle, Historie und nächsten Schritte bleiben an einem Ort.',
   ],
   availableHeading: 'Heute bereits verfügbar',
   availableItems: [

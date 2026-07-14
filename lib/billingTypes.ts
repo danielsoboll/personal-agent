@@ -12,6 +12,11 @@ export type VerifiedCheckoutResponse = {
   customerId?: string | null
   subscriptionId?: string | null
   plus_synced?: boolean
+  plan?: 'free' | 'plus'
+  plusActive?: boolean
+  subscriptionStatus?: string | null
+  plusUntil?: string | null
+  cancelAtPeriodEnd?: boolean
 }
 
 export type BillingApiBody = {

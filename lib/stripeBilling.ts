@@ -85,6 +85,24 @@ export type VerifiedPlusCheckout = {
   subscriptionId: string | null
   plusActive: boolean
   plusSynced: boolean
+  plan: 'free' | 'plus'
+  subscriptionStatus: string | null
+  plusUntil: string | null
+  cancelAtPeriodEnd: boolean
+}
+
+function applyVerifiedCheckout(payload: VerifiedPlusCheckout & { error?: string }): void {
+  applyServerBillingState({
+    plusActive: payload.plusActive,
+    plan: payload.plan,
+    customerId: payload.customerId,
+    subscriptionId: payload.subscriptionId,
+    subscriptionStatus: payload.subscriptionStatus,
+    plusUntil: payload.plusUntil,
+    cancelAtPeriodEnd: payload.cancelAtPeriodEnd,
+    paymentStatus: payload.paymentStatus,
+    sessionStatus: payload.sessionStatus,
+  })
 }
 
 export async function verifyPlusCheckoutSession(sessionId: string): Promise<VerifiedPlusCheckout> {
@@ -100,7 +118,26 @@ export async function verifyPlusCheckoutSession(sessionId: string): Promise<Veri
     throw new Error(payload.error ?? 'Checkout konnte nicht geprüft werden.')
   }
 
-  return payload
+  const result: VerifiedPlusCheckout = {
+    ok: payload.ok === true,
+    isComplete: payload.isComplete === true,
+    paymentStatus: payload.paymentStatus ?? null,
+    sessionStatus: payload.sessionStatus ?? null,
+    customerId: payload.customerId ?? null,
+    subscriptionId: payload.subscriptionId ?? null,
+    plusActive: payload.plusActive === true,
+    plusSynced: payload.plusSynced === true,
+    plan: payload.plan === 'plus' ? 'plus' : 'free',
+    subscriptionStatus: payload.subscriptionStatus ?? null,
+    plusUntil: payload.plusUntil ?? null,
+    cancelAtPeriodEnd: payload.cancelAtPeriodEnd === true,
+  }
+
+  if (result.plusActive) {
+    applyVerifiedCheckout(result)
+  }
+
+  return result
 }
 
 export type PlusBillingSyncResult = {
@@ -127,9 +164,12 @@ export async function syncPlusBillingFromStripe(): Promise<PlusBillingSyncResult
   const plusActive = payload.plusActive === true
   applyServerBillingState({
     plusActive,
+    plan: payload.plan === 'plus' ? 'plus' : 'free',
     customerId: payload.customerId ?? null,
     subscriptionId: payload.subscriptionId ?? null,
     subscriptionStatus: payload.subscriptionStatus ?? null,
+    plusUntil: payload.plusUntil ?? null,
+    cancelAtPeriodEnd: payload.cancelAtPeriodEnd === true,
   })
 
   return {
