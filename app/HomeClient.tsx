@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
+import HomeFlowStrip from '@/components/home/HomeFlowStrip'
+import HomePlusTeaser from '@/components/home/HomePlusTeaser'
+import FreeTrialCallout from '@/components/home/FreeTrialCallout'
 import { statusBadgeClassName } from '@/lib/caseStatus'
 import { buttonStyles } from '@/lib/buttonStyles'
 import {
@@ -12,10 +15,9 @@ import {
   setActiveCaseId,
   toggleCaseDone,
 } from '@/lib/localCases'
-import FreeTrialCallout from '@/components/home/FreeTrialCallout'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { ensurePlusDiscoverFromCaseCount } from '@/lib/plusEngagement'
-import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import PrivacyTrustPoints from '@/components/onboarding/PrivacyTrustPoints'
 import LegalFooterNav from '@/components/legal/LegalFooterNav'
 
@@ -77,86 +79,88 @@ export default function HomeClient() {
         </PrimaryButton>
       }
     >
-      <section className="flex flex-1 flex-col gap-8">
-        <div className="space-y-4">
-          <p className="text-sm font-medium uppercase tracking-[0.18em] text-accent">
-            Dein persönlicher Helfer
-          </p>
-          <h2 className="text-[1.75rem] font-semibold leading-tight tracking-tight text-balance">
-            {hasCases ? 'Deine Fälle' : 'Briefe, Anträge und E-Mails besser verstehen'}
-          </h2>
-        </div>
-
-        <p className="text-lg leading-8 text-muted">
-          {hasCases
-            ? 'Wähle einen bestehenden Fall oder lege einen neuen an. Jeder Fall bleibt getrennt auf deinem Handy gespeichert.'
-            : 'Behördenpost und wichtige Schreiben verstehen — mit klaren nächsten Schritten, direkt auf dem Handy.'}
-        </p>
-
-        {!hasCases && ready ? <FreeTrialCallout /> : null}
-
-        {!hasCases && ready ? <PrivacyTrustPoints /> : null}
-
-        {hasCases ? <PrivacyNote variant="storage" /> : null}
-
+      <section className="flex flex-1 flex-col gap-6">
         {!ready ? (
           <p className="text-sm text-muted">Fälle werden geladen …</p>
-        ) : hasCases ? (
-          <ul className="space-y-3">
-            {cases.map((caseItem) => (
-              <li key={caseItem.id} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => openCase(caseItem)}
-                  className={`${buttonStyles.caseListItem} min-w-0 flex-1`}
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold tabular-nums text-accent">
-                    {caseItem.caseNumber}
-                  </span>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-base font-semibold leading-snug">{caseItem.title}</p>
-                    <p className="truncate text-sm text-muted">{formatCaseDateShort(caseItem.updatedAt)}</p>
-                  </div>
-
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClassName(caseItem.displayStatus.tone)}`}
+        ) : !hasCases ? (
+          <>
+            <PageIntro
+              title="Briefe, Anträge und E-Mails besser verstehen"
+              description="Behördenpost und wichtige Schreiben verstehen — mit klaren nächsten Schritten, direkt auf dem Handy."
+            />
+            <HomeFlowStrip />
+            <FreeTrialCallout />
+            {plus.visible && !plus.plusActive ? (
+              <HomePlusTeaser onDiscover={plus.openPlusDiscover} />
+            ) : null}
+            <PrivacyTrustPoints />
+          </>
+        ) : (
+          <>
+            <PageIntro
+              title="Deine Fälle"
+              description="Wähle einen bestehenden Fall oder lege einen neuen an. Jeder Fall bleibt getrennt auf deinem Handy gespeichert."
+            />
+            <PrivacyNote variant="storage" />
+            <ul className="space-y-3">
+              {cases.map((caseItem) => (
+                <li key={caseItem.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => openCase(caseItem)}
+                    className={`${buttonStyles.caseListItem} min-w-0 flex-1`}
                   >
-                    {caseItem.displayStatus.label}
-                  </span>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold tabular-nums text-accent">
+                      {caseItem.caseNumber}
+                    </span>
 
-                  <span className="shrink-0 text-lg text-muted" aria-hidden>
-                    ›
-                  </span>
-                </button>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-base font-semibold leading-snug">{caseItem.title}</p>
+                      <p className="truncate text-sm text-muted">{formatCaseDateShort(caseItem.updatedAt)}</p>
+                    </div>
 
-                <button
-                  type="button"
-                  title={
-                    caseItem.userStatus === 'vorerst_erledigt'
-                      ? 'Vorerst erledigt aufheben'
-                      : 'Als vorerst erledigt markieren'
-                  }
-                  aria-label={
-                    caseItem.userStatus === 'vorerst_erledigt'
-                      ? 'Vorerst erledigt aufheben'
-                      : 'Als vorerst erledigt markieren'
-                  }
-                  onClick={(event) => void handleToggleDone(caseItem, event)}
-                  className={`${buttonStyles.caseDoneToggle} ${
-                    caseItem.userStatus === 'vorerst_erledigt'
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
-                      : 'border-border text-muted hover:border-accent hover:text-accent'
-                  }`}
-                >
-                  {caseItem.userStatus === 'vorerst_erledigt' ? '✓' : '○'}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClassName(caseItem.displayStatus.tone)}`}
+                    >
+                      {caseItem.displayStatus.label}
+                    </span>
 
-        <div className="flex flex-col items-center gap-6 pt-4">
+                    <span className="shrink-0 text-lg text-muted" aria-hidden>
+                      ›
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    title={
+                      caseItem.userStatus === 'vorerst_erledigt'
+                        ? 'Vorerst erledigt aufheben'
+                        : 'Als vorerst erledigt markieren'
+                    }
+                    aria-label={
+                      caseItem.userStatus === 'vorerst_erledigt'
+                        ? 'Vorerst erledigt aufheben'
+                        : 'Als vorerst erledigt markieren'
+                    }
+                    onClick={(event) => void handleToggleDone(caseItem, event)}
+                    className={`${buttonStyles.caseDoneToggle} ${
+                      caseItem.userStatus === 'vorerst_erledigt'
+                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                        : 'border-border text-muted hover:border-accent hover:text-accent'
+                    }`}
+                  >
+                    {caseItem.userStatus === 'vorerst_erledigt' ? '✓' : '○'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+            {plus.visible && !plus.plusActive ? (
+              <HomePlusTeaser onDiscover={plus.openPlusDiscover} />
+            ) : null}
+          </>
+        )}
+
+        <div className="flex flex-col items-center gap-6 pt-2">
           <Link href="/admin" className={buttonStyles.admin}>
             Admin
           </Link>

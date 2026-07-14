@@ -1,8 +1,8 @@
 /** Gemeinsame PLUS-Oberflächen — LifeXP-Layout, dezente Behördenpost-Farben. */
 export const PLUS_PRESSABLE = 'app-btn lifexp-pressable-3d'
 
-/** Header-Schloss & Sheet-CTA — warme Einladung (etwas emotional). */
-export const PLUS_LOCK_BUTTON_BASE = `${PLUS_PRESSABLE} border-2 border-amber-400/60 bg-gradient-to-b from-amber-50 via-orange-50/95 to-amber-100/75 font-bold text-amber-950 shadow-sm ring-1 ring-amber-200/55 hover:border-amber-500/75 dark:border-amber-600/50 dark:from-amber-950/40 dark:via-orange-950/30 dark:to-amber-950/45 dark:text-amber-100 dark:ring-amber-800/40`
+/** Header-Schloss & Sheet-CTA — warme Einladung, dezent emotional. */
+export const PLUS_LOCK_BUTTON_BASE = `${PLUS_PRESSABLE} border-2 border-amber-400/55 bg-gradient-to-b from-amber-50 via-rose-50/40 to-orange-50/90 font-bold text-amber-950 shadow-sm ring-1 ring-amber-200/50 hover:border-amber-500/70 hover:from-amber-50 hover:via-orange-50 hover:to-amber-100/80 dark:border-amber-600/45 dark:from-amber-950/40 dark:via-rose-950/20 dark:to-amber-950/35 dark:text-amber-100 dark:ring-amber-800/35`
 
 /** CTA im Sheet — navy mit warmem Akzent. */
 export const PLUS_CTA_BUTTON_CLASS = `${PLUS_PRESSABLE} w-full rounded-xl border-2 border-amber-700 bg-gradient-to-b from-amber-500 via-orange-500 to-amber-800 px-4 py-3.5 text-base font-bold text-white shadow-sm ring-1 ring-amber-400/30 hover:brightness-105 dark:border-amber-500/70 dark:from-amber-400 dark:via-orange-400 dark:to-amber-700 dark:text-amber-950`
@@ -14,7 +14,7 @@ export const PLUS_PRICE_INLINE_CLASS =
   'flex items-center justify-between gap-3 rounded-xl border-2 border-amber-200/80 bg-gradient-to-r from-amber-50/90 via-orange-50/40 to-surface px-3.5 py-2.5 ring-1 ring-amber-200/35 dark:border-amber-800/45 dark:from-amber-950/30 dark:via-orange-950/15 dark:to-slate-900'
 
 export const PLUS_CALLOUT_CLASS =
-  'rounded-xl border-2 border-amber-200/85 bg-gradient-to-b from-amber-50/95 via-orange-50/45 to-surface px-4 py-3.5 dark:border-amber-800/50 dark:from-amber-950/30 dark:via-orange-950/15 dark:to-slate-950'
+  'rounded-xl border-2 border-amber-200/75 bg-gradient-to-br from-amber-50/95 via-orange-50/40 to-rose-50/25 px-4 py-3.5 dark:border-amber-800/50 dark:from-amber-950/30 dark:via-orange-950/15 dark:to-rose-950/10'
 
 export const PLUS_FEATURE_ITEM_CLASS =
   'flex gap-3 rounded-xl border border-amber-200/65 bg-gradient-to-r from-amber-50/50 to-surface px-3 py-3 dark:border-amber-900/45 dark:from-amber-950/25 dark:to-surface/50'
@@ -27,3 +27,9 @@ export const PLUS_SHEET_SURFACE_ACTIVE_CLASS =
 
 /** Header-Badge wenn PLUS aktiv — Bestätigung statt Platzhalter-Symbol. */
 export const PLUS_ACTIVE_BADGE_CLASS = `${PLUS_PRESSABLE} flex h-12 shrink-0 items-center gap-2 rounded-2xl border-2 border-emerald-400/70 bg-gradient-to-b from-emerald-50 via-emerald-50/90 to-emerald-100/80 px-3 text-sm font-bold text-emerald-900 shadow-sm ring-1 ring-emerald-200/60 hover:border-emerald-500/80 dark:border-emerald-600/55 dark:from-emerald-950/45 dark:via-emerald-950/30 dark:to-emerald-900/35 dark:text-emerald-200 dark:ring-emerald-800/40`
+
+/** Startseite — warmer PLUS-Teaser, dezent. */
+export const PLUS_HOME_TEASER_CLASS =
+  'rounded-2xl border-2 border-amber-200/70 bg-gradient-to-br from-amber-50/90 via-orange-50/50 to-rose-50/30 px-4 py-4 ring-1 ring-amber-200/40 dark:border-amber-800/45 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-rose-950/15 dark:ring-amber-900/30'
+
+export const PLUS_HOME_TEASER_CTA_CLASS = `${PLUS_PRESSABLE} inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-2 border-amber-500/55 bg-gradient-to-b from-amber-100/90 via-orange-50 to-amber-200/70 px-4 text-sm font-bold text-amber-950 shadow-sm ring-1 ring-amber-300/35 hover:border-amber-500/75 dark:border-amber-600/50 dark:from-amber-950/50 dark:via-orange-950/35 dark:to-amber-900/40 dark:text-amber-100 dark:ring-amber-800/35`
