@@ -13,7 +13,6 @@ import {
   toggleCaseDone,
 } from '@/lib/localCases'
 import FreeTrialCallout from '@/components/home/FreeTrialCallout'
-import HomeHeroFlow from '@/components/home/HomeHeroFlow'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { ensurePlusDiscoverFromCaseCount } from '@/lib/plusEngagement'
 import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
@@ -87,8 +86,6 @@ export default function HomeClient() {
             {hasCases ? 'Deine Fälle' : 'Briefe, Anträge und E-Mails besser verstehen'}
           </h2>
         </div>
-
-        {!hasCases && ready ? <HomeHeroFlow /> : null}
 
         <p className="text-lg leading-8 text-muted">
           {hasCases

@@ -61,7 +61,6 @@ export default function OnboardingShell({
       </header>
 
       <main className="relative mx-auto flex w-full max-w-lg flex-1 flex-col overflow-hidden px-5 py-8">
-        <BrandMark variant="watermark" />
         {backNav ? <BackNavLink href={backNav.href} label={backNav.label} /> : null}
         <div className={`relative z-[1] flex flex-1 flex-col ${footer ? formBottomSpacerClass : ''}`}>
           {children}
