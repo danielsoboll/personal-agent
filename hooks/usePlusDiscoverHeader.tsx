@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import PlusActiveHeaderButton from '@/components/plus/PlusActiveHeaderButton'
 import PlusFeaturesSheet from '@/components/plus/PlusFeaturesSheet'
 import PlusLockHeaderButton from '@/components/plus/PlusLockHeaderButton'
+import { logUserActivity } from '@/lib/activityLog'
 import { PLUS_DISCOVER_UNLOCK_CHANGED_EVENT } from '@/lib/plusEngagement'
 import { isPlusActive, shouldShowPlusDiscoverHeader } from '@/lib/plusStatus'
 
@@ -25,6 +26,7 @@ export function usePlusDiscoverHeader() {
   }, [refresh])
 
   const openPlusDiscover = useCallback(() => {
+    logUserActivity('plus_discover_opened')
     setSheetOpen(true)
   }, [])
 

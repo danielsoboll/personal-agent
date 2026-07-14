@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 
 import OnboardingShell, { PageIntro } from '@/components/onboarding/OnboardingShell'
 import { buttonStyles } from '@/lib/buttonStyles'
+import { logUserActivity } from '@/lib/activityLog'
 import { downloadBlob } from '@/lib/analyzeClient'
 import {
   formatLibraryDate,
@@ -38,6 +39,10 @@ export default function BibliothekClient() {
       }
 
       downloadBlob(record.blob, record.fileName)
+      logUserActivity('library_document_opened', {
+        document_id: id,
+        file_name: record.fileName,
+      })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Dokument konnte nicht geöffnet werden.')
     } finally {
@@ -53,7 +58,6 @@ export default function BibliothekClient() {
     >
       <section className="flex flex-1 flex-col gap-6">
         <PageIntro
-          icon="library"
           title="Deine Dokumente"
           description="Hier findest du alle Word-Schreiben, die du mit „Schritt vorbereiten“ erstellt hast. Tippe auf ein Dokument, um es erneut herunterzuladen."
         />

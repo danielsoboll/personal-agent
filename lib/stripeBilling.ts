@@ -1,5 +1,6 @@
 import { prepareBillingExternalRedirect } from '@/lib/billingReturn'
 import { getOrCreateBillingDeviceId } from '@/lib/billingDevice'
+import { logUserActivity } from '@/lib/activityLog'
 import type { BillingSyncResponse } from '@/lib/billingTypes'
 import { applyServerBillingState, readPlusBillingState } from '@/lib/plusBillingStorage'
 import { isSupabaseEnvConfigured } from '@/lib/supabaseEnv'
@@ -41,6 +42,7 @@ async function postBillingApi(path: string, body: Record<string, unknown>): Prom
 
 export async function createPlusCheckoutSession(): Promise<{ url: string }> {
   prepareBillingExternalRedirect('/')
+  logUserActivity('plus_checkout_started')
 
   const payload = await postBillingApi('/api/billing/checkout', {
     billing_device_id: getOrCreateBillingDeviceId(),

@@ -13,7 +13,8 @@ alwaysApply: false
 | JSONL Schema, Validierung | `lib/caseFileJsonl.ts` |
 | Sortieren, Deduplizieren | `lib/caseFileTidy.ts` → `prepareCaseFileContent()` |
 | Block-Workflow (öffnen/schließen) | `lib/caseFileOps.ts` |
-| **Alle GPT-Prompts** | `lib/prompts/registry.ts` |
+| **Alle Prompts** | `lib/prompts/registry.ts`, `lib/prompts/caseFileReorganize.ts` |
+| **Fallakte reorganisieren (intern)** | `lib/caseFileReorganizeServer.ts`, `POST /api/case-file/reorganize` |
 | Re-Export für API-Routes | `lib/analyzePrompts.ts` |
 
 ## Regeln bei Änderungen
@@ -24,9 +25,29 @@ alwaysApply: false
 4. **Keine Duplikate**: meta/kontext konsolidieren; block/schritt/dokument/person/frist/offen/aktion per Schlüssel deduplizieren (siehe `caseFileTidy.ts`).
 5. **Kanonische Reihenfolge**: meta → kontext → block → dokument → person → frist → schritt → offen → aktion.
 
-## JSONL-Vollständigkeit
+## JSONL — 2 Bereiche
 
-Pflicht pro Fall:
+| Bereich | Inhalt | Wann |
+|---------|--------|------|
+| **1. Aktuell** | `anfrage` + `resultat` (block art=aktuell) | Ab erstem Scan |
+| **2. Historie** | `dokument` historisch + `kontext` | Hintergrund-Scans, wächst langfristig |
+
+**Erster Scan:** nur Bereich 1. App-Felder (summary, assessment, steps) = Quelle für `resultat`.
+
+**Historie:** Mehrwert bei vielen Hintergrundseiten — nicht beim ersten Scan vollstopfen.
+
+Kanonische Reihenfolge: meta → block → anfrage → resultat → kontext → dokument → …
+
+## Interne Reorganize-Operationen (Hintergrund, unsichtbar)
+
+| Operation | Wann | Prompt-Kern |
+|-----------|------|-------------|
+| `extend_historie` | Nach historical-Scan | Historie erweitern, kontext aktualisieren |
+| `refresh_aktuell` | Nach current_more-Scan | anfrage + resultat aktualisieren |
+| `rotate_aktuell` | Neues Schreiben, altes in Historie | Vor initial-Scan wenn resultat existiert |
+| `consolidate_historie` | „Alle Dokumente erfasst“ | Historie straffen vor Bewertung |
+
+Pflicht langfristig pro Fall:
 - 1× meta (name, fall, aktualisiert, phase)
 - 1× kontext (Gesamtzusammenfassung)
 - mindestens 1× block + dokument beim ersten Scan

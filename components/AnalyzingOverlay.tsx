@@ -1,3 +1,4 @@
+import BrandMark from '@/components/brand/BrandMark'
 import { PRIVACY_ANALYZING_OVERLAY } from '@/lib/privacyCopy'
 
 type AnalyzingOverlayProps = {
@@ -10,8 +11,8 @@ export default function AnalyzingOverlay({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 px-6 backdrop-blur-sm">
       <div className="w-full max-w-sm rounded-3xl border border-border bg-surface px-6 py-8 text-center shadow-lg">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center text-4xl animate-pulse">
-          ⏳
+        <div className="mx-auto animate-pulse">
+          <BrandMark variant="overlay" />
         </div>
         <p className="mt-4 text-lg font-semibold">{message}</p>
         <p className="mt-2 text-sm leading-6 text-muted">{PRIVACY_ANALYZING_OVERLAY}</p>

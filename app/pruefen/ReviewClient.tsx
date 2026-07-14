@@ -8,7 +8,10 @@ import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
 import DeleteCaseSection from '@/components/review/DeleteCaseSection'
+import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { buttonStyles } from '@/lib/buttonStyles'
+import { logUserActivity } from '@/lib/activityLog'
+import { scheduleCaseFileReorganize } from '@/lib/caseFileReorganizeClient'
 import {
   base64ToBlob,
   downloadBlob,
@@ -65,6 +68,7 @@ function priorityLabel(priority?: string): string | null {
 
 export default function ReviewClient() {
   const router = useRouter()
+  const plus = usePlusDiscoverHeader()
   const searchParams = useSearchParams()
   const openedFromScan = searchParams.get('from') === 'scan'
   const [activeCase, setActiveCase] = useState<StoredCase | null>(null)
@@ -87,6 +91,11 @@ export default function ReviewClient() {
 
       setActiveCase(currentCase)
       setReview(currentCase.latestReview ? normalizeReview(currentCase.latestReview) : null)
+      logUserActivity('review_opened', {
+        case_id: currentCase.id,
+        case_number: currentCase.caseNumber,
+        has_review: Boolean(currentCase.latestReview),
+      })
       setLoading(false)
     }
 
@@ -148,6 +157,7 @@ export default function ReviewClient() {
         documentChoiceRequired: false,
         readyForFinalAssessment: true,
       })
+      scheduleCaseFileReorganize(activeCase.id, 'consolidate_historie')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Aktion fehlgeschlagen.')
     } finally {
@@ -175,6 +185,10 @@ export default function ReviewClient() {
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
       await persistReview(nextReview)
       recordFinalAssessmentCompleted()
+      logUserActivity('final_assessment', {
+        case_id: activeCase.id,
+        case_number: activeCase.caseNumber,
+      })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Bewertung fehlgeschlagen.')
     } finally {
@@ -206,6 +220,11 @@ export default function ReviewClient() {
 
       downloadBlob(blob, result.fileName)
       recordWordDocumentCreated()
+      logUserActivity('word_document_created', {
+        case_id: activeCase.id,
+        step_id: step.id,
+        file_name: result.fileName,
+      })
       setPreparedPreview({
         title: result.title,
         text: result.previewText,
@@ -238,12 +257,12 @@ export default function ReviewClient() {
         subtitle={activeCase?.title ?? 'Behördenpost'}
         backNav={{ href: '/', label: 'Zurück zur Fallübersicht' }}
         headerAction={
-          <Link
-            href="/bibliothek"
-            className={buttonStyles.header}
-          >
-            Bibliothek
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link href="/bibliothek" className={buttonStyles.header}>
+              Bibliothek
+            </Link>
+            {plus.headerAction}
+          </div>
         }
         footer={
           !loading && activeCase ? (
@@ -274,21 +293,12 @@ export default function ReviewClient() {
                       Bewertung einholen
                     </PrimaryButton>
                   ) : null}
-                  {footer.newCaseAsPrimary ? (
-                    <PrimaryButton href="/fall/neu">Neuen Fall anlegen</PrimaryButton>
-                  ) : (
-                    <Link href="/fall/neu" className={buttonStyles.secondary}>
-                      Neuen Fall anlegen
-                    </Link>
-                  )}
+                  {review.phase === 'final' ? (
+                    <PrimaryButton href="/scan">Neues Schreiben fotografieren</PrimaryButton>
+                  ) : null}
                 </>
               ) : (
-                <>
-                  <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
-                  <Link href="/fall/neu" className={buttonStyles.secondary}>
-                    Neuen Fall anlegen
-                  </Link>
-                </>
+                <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
               )}
               {footer.showDeleteCase ? (
                 <DeleteCaseSection
@@ -309,7 +319,6 @@ export default function ReviewClient() {
           ) : review ? (
             <>
               <PageIntro
-                icon="review"
                 title={review.phase === 'final' ? 'Auswertung' : 'Erste Einordnung'}
                 description="Übersicht, Unterlagen-Einschätzung und nächste Schritte für deinen Fall."
               />
@@ -435,7 +444,6 @@ export default function ReviewClient() {
           ) : (
             <>
               <PageIntro
-                icon="review"
                 title="Noch keine Auswertung"
                 description={
                   <>
@@ -449,6 +457,7 @@ export default function ReviewClient() {
           )}
         </section>
       </OnboardingShell>
+      {plus.portals}
     </>
   )
 }

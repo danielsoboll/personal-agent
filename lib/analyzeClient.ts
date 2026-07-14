@@ -9,8 +9,10 @@ import type {
   StructuredStep,
 } from '@/lib/analyzeTypes'
 import { blobToDataUrl, compressImageForAnalysis } from '@/lib/compressImage'
+import { enrichCaseFileForAssessment, hasHistorieRecords } from '@/lib/caseFileJsonl'
 import { getActiveCase, getCaseFileContent } from '@/lib/localCases'
 import { listDocumentPhotos } from '@/lib/localDocuments'
+import { awaitCaseFileReorganizeForAssessment } from '@/lib/caseFileReorganizeClient'
 
 export async function analyzeCurrentPhotos(options: {
   intent: AnalyzeIntent
@@ -25,9 +27,11 @@ export async function analyzeCurrentPhotos(options: {
     throw new Error('Keine Fotos zum Prüfen vorhanden.')
   }
 
-  const existingCaseFile =
-    options.intent !== 'initial' ? await getCaseFileContent(activeCase.id) : null
-  if (options.intent !== 'initial' && !existingCaseFile) {
+  const existingCaseFile = await getCaseFileContent(activeCase.id)
+  const isFollowUp = options.intent !== 'initial'
+  const isNewLetterOnSameCase = options.intent === 'initial' && Boolean(activeCase.latestReview)
+
+  if (isFollowUp && !existingCaseFile) {
     throw new Error('Es gibt noch keinen gespeicherten Hintergrund für die Ergänzung.')
   }
 
@@ -40,9 +44,11 @@ export async function analyzeCurrentPhotos(options: {
   const body: AnalyzeRequestBody = {
     userName: activeCase.userName,
     caseTitle: activeCase.title,
+    caseNumber: activeCase.caseNumber,
     images,
     intent: options.intent,
-    existingCaseFile: existingCaseFile ?? undefined,
+    existingCaseFile:
+      isFollowUp || isNewLetterOnSameCase ? (existingCaseFile ?? undefined) : undefined,
   }
 
   const response = await fetch('/api/analyze', {
@@ -70,14 +76,28 @@ export async function requestFinalAssessment(): Promise<AssessResponseBody['resu
     throw new Error('Kein aktiver Fall ausgewählt.')
   }
 
-  const caseFileContent = await getCaseFileContent(activeCase.id)
-  if (!caseFileContent) {
+  let rawCaseFile = await getCaseFileContent(activeCase.id)
+  if (!rawCaseFile) {
     throw new Error('Es gibt noch keine Fallakte für die Bewertung.')
   }
+
+  if (hasHistorieRecords(rawCaseFile)) {
+    const consolidated = await awaitCaseFileReorganizeForAssessment(activeCase.id)
+    if (consolidated) {
+      rawCaseFile = consolidated
+    }
+  }
+
+  const caseFileContent = enrichCaseFileForAssessment(rawCaseFile, {
+    summary: activeCase.latestReview?.summary,
+    assessment: activeCase.latestReview?.assessment,
+    nextSteps: activeCase.latestReview?.nextSteps,
+  })
 
   const body: AssessRequestBody = {
     userName: activeCase.userName,
     caseTitle: activeCase.title,
+    caseNumber: activeCase.caseNumber,
     caseFileContent,
   }
 
@@ -106,14 +126,21 @@ export async function prepareStepDocument(step: StructuredStep): Promise<Prepare
     throw new Error('Kein aktiver Fall ausgewählt.')
   }
 
-  const caseFileContent = await getCaseFileContent(activeCase.id)
-  if (!caseFileContent) {
+  const rawCaseFile = await getCaseFileContent(activeCase.id)
+  if (!rawCaseFile) {
     throw new Error('Es gibt noch keine Fallakte.')
   }
+
+  const caseFileContent = enrichCaseFileForAssessment(rawCaseFile, {
+    summary: activeCase.latestReview?.summary,
+    assessment: activeCase.latestReview?.assessment,
+    nextSteps: activeCase.latestReview?.nextSteps,
+  })
 
   const body: PrepareStepRequestBody = {
     userName: activeCase.userName,
     caseTitle: activeCase.title,
+    caseNumber: activeCase.caseNumber,
     caseFileContent,
     step,
   }

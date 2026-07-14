@@ -1,3 +1,5 @@
+import { BRAND_MARK_ALT, BRAND_MARK_SRC } from '@/lib/brand'
+
 export type HomeFlowStep = {
   number: 1 | 2 | 3
   emoji?: string
@@ -12,8 +14,8 @@ export const HOME_FLOW_STEPS: HomeFlowStep[] = [
     number: 1,
     emoji: '📷',
     label: 'Foto machen',
-    imageSrc: '/home/home-step-scan.png',
-    imageAlt: 'Behördenbrief mit Kamera und Fragezeichen',
+    imageSrc: BRAND_MARK_SRC,
+    imageAlt: BRAND_MARK_ALT,
   },
   {
     number: 2,

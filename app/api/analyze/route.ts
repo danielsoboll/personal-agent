@@ -7,7 +7,9 @@ import {
   type ParsedAnalyzePayload,
 } from '@/lib/analyzeSchema'
 import { buildAnalyzeUserPrompt, ANALYZE_SYSTEM_PROMPT, buildJsonlRetryHint } from '@/lib/analyzePrompts'
-import { prepareCaseFileContent, validateCaseFileJsonl } from '@/lib/caseFileJsonl'
+import { prepareCaseFileContent, validateCaseFileJsonl, createAktuellSectionCaseFile, mergeAktuellSectionCaseFile, hasHistorieRecords } from '@/lib/caseFileJsonl'
+import { shouldRotateBeforeInitialScan } from '@/lib/caseFileReorganizeOps'
+import { runCaseFileReorganize } from '@/lib/caseFileReorganizeServer'
 import { callOpenAiChatCompletion } from '@/lib/openaiChat'
 import { resolveOpenAiModel } from '@/lib/openaiModel'
 import type { AnalyzeRequestBody, AnalyzeResponseBody } from '@/lib/analyzeTypes'
@@ -52,6 +54,7 @@ async function runAnalyzeAttempt(options: {
   model: string
   userText: string
   images: string[]
+  temperature?: number
 }): Promise<{ ok: true; content: string } | { ok: false; error: string }> {
   const imageParts = options.images.map((dataUrl) => ({
     type: 'image_url' as const,
@@ -61,7 +64,7 @@ async function runAnalyzeAttempt(options: {
   const result = await callOpenAiChatCompletion({
     apiKey: options.apiKey,
     model: options.model,
-    temperature: 0.35,
+    temperature: options.temperature ?? 0.35,
     maxTokens: 4096,
     jsonSchema: {
       name: 'behoerdenpost_analysis',
@@ -118,16 +121,20 @@ export async function POST(request: Request) {
   const userText = buildAnalyzeUserPrompt({
     userName: body.userName,
     caseTitle: body.caseTitle,
+    caseNumber: body.caseNumber,
     imageCount: body.images.length,
     intent: body.intent,
     existingCaseFile: body.existingCaseFile,
   })
+
+  const temperature = body.intent === 'initial' ? 0.5 : 0.35
 
   let attempt = await runAnalyzeAttempt({
     apiKey,
     model,
     userText,
     images: body.images,
+    temperature,
   })
 
   if (!attempt.ok) {
@@ -140,13 +147,14 @@ export async function POST(request: Request) {
   let parsed = parseAndValidate(attempt.content)
 
   if (!parsed.ok) {
-    const retryText = `${userText}${buildJsonlRetryHint(parsed.error)}`
+    const retryText = `${userText}${buildJsonlRetryHint(parsed.error, body.intent)}`
 
     attempt = await runAnalyzeAttempt({
       apiKey,
       model,
       userText: retryText,
       images: body.images,
+      temperature,
     })
 
     if (!attempt.ok) {
@@ -167,9 +175,45 @@ export async function POST(request: Request) {
 
   const result = parsed.result
 
+  const aktuellInput = {
+    name: body.userName,
+    fall: body.caseTitle,
+    anfrage: `${body.images.length} Foto${body.images.length === 1 ? '' : 's'} — erster Scan`,
+    resultat: {
+      summary: result.summary,
+      assessment: result.assessment,
+      nextSteps: result.nextSteps,
+      phase: result.phase,
+    },
+  }
+
+  let caseFileContent = result.caseFileContent
+
+  if (body.intent === 'initial') {
+    let historieBase = body.existingCaseFile?.trim() ?? null
+
+    if (shouldRotateBeforeInitialScan({ intent: body.intent, existingCaseFile: historieBase })) {
+      const rotated = await runCaseFileReorganize({
+        apiKey,
+        model,
+        operation: 'rotate_aktuell',
+        userName: body.userName,
+        caseTitle: body.caseTitle,
+        caseFileContent: historieBase!,
+        review: null,
+      })
+      if (rotated.ok) historieBase = rotated.caseFileContent
+    }
+
+    caseFileContent =
+      historieBase && hasHistorieRecords(historieBase)
+        ? mergeAktuellSectionCaseFile(historieBase, aktuellInput)
+        : createAktuellSectionCaseFile(aktuellInput)
+  }
+
   return NextResponse.json({
     result: {
-      caseFileContent: result.caseFileContent,
+      caseFileContent,
       summary: result.summary,
       assessment: result.assessment,
       nextSteps: result.nextSteps,

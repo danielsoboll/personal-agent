@@ -12,12 +12,14 @@ const TYPE_ORDER: Record<CaseFileRecordType, number> = {
   meta: 0,
   kontext: 1,
   block: 2,
-  dokument: 3,
-  person: 4,
-  frist: 5,
-  schritt: 6,
-  offen: 7,
-  aktion: 8,
+  anfrage: 3,
+  resultat: 4,
+  dokument: 5,
+  person: 6,
+  frist: 7,
+  schritt: 8,
+  offen: 9,
+  aktion: 10,
 }
 
 const RUNDE_ORDER: Record<string, number> = {
@@ -229,6 +231,18 @@ export function tidyCaseFileRecords(records: CaseFileRecord[]): {
   )
   removedDuplicates += blocks.removed
 
+  const anfragen = latestByKey(
+    records.filter((record) => record.typ === 'anfrage'),
+    (record) => (typeof record.block_id === 'string' ? record.block_id : null),
+  )
+  removedDuplicates += anfragen.removed
+
+  const resultate = latestByKey(
+    records.filter((record) => record.typ === 'resultat'),
+    (record) => (typeof record.block_id === 'string' ? record.block_id : null),
+  )
+  removedDuplicates += resultate.removed
+
   const dokumente = latestByKey(
     records.filter((record) => record.typ === 'dokument'),
     (record) => {
@@ -284,8 +298,10 @@ export function tidyCaseFileRecords(records: CaseFileRecord[]): {
 
   const assembled: CaseFileRecord[] = []
   if (meta) assembled.push(meta)
-  if (kontext) assembled.push(kontext)
   assembled.push(...sortByType(blocks.kept))
+  assembled.push(...sortByType(anfragen.kept))
+  assembled.push(...sortByType(resultate.kept))
+  if (kontext) assembled.push(kontext)
   assembled.push(...sortByType(dokumente.kept))
   assembled.push(...sortByType(personen.kept))
   assembled.push(...sortByType(fristen.kept))
@@ -334,5 +350,5 @@ export function getLatestAktuellBlockId(records: CaseFileRecord[]): string | nul
 }
 
 export function blockArtLabel(art: BlockArt): string {
-  return art === 'historisch' ? 'historisch' : 'aktuell'
+  return art === 'historisch' ? 'Historie' : 'Aktuell'
 }

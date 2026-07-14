@@ -1,32 +1,32 @@
 {
   "name": "Behördenpost",
   "short_name": "Behördenpost",
-  "description": "Behördenpost digital verwalten — Briefe, Fristen und Antworten an einem Ort.",
+  "description": "Briefe mit dem Handy scannen und verstehen — persönlich, lokal, klar.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#1e3a5f",
   "theme_color": "#1e3a5f",
   "icons": [
     {
-      "src": "/icon-180.png?v=behoerdenpost-2",
+      "src": "/icon-180.png?v=behoerdenpost-3",
       "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-192.png?v=behoerdenpost-2",
+      "src": "/icon-192.png?v=behoerdenpost-3",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png?v=behoerdenpost-2",
+      "src": "/icon-512.png?v=behoerdenpost-3",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png?v=behoerdenpost-2",
+      "src": "/icon-512.png?v=behoerdenpost-3",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

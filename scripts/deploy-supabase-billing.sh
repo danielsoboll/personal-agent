@@ -24,6 +24,7 @@ npx supabase functions deploy create-customer-portal-session
 npx supabase functions deploy verify-checkout-session
 npx supabase functions deploy sync-family-billing
 npx supabase functions deploy stripe-webhook
+npx supabase functions deploy log-activity
 
 echo "Fertig. Webhook-URL:"
 echo "https://${PROJECT_REF}.supabase.co/functions/v1/stripe-webhook"

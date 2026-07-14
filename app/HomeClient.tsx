@@ -16,6 +16,7 @@ import {
 import FreeTrialCallout from '@/components/home/FreeTrialCallout'
 import HomeHeroFlow from '@/components/home/HomeHeroFlow'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
+import { ensurePlusDiscoverFromCaseCount } from '@/lib/plusEngagement'
 import OnboardingShell, { PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import PrivacyTrustPoints from '@/components/onboarding/PrivacyTrustPoints'
 import LegalFooterNav from '@/components/legal/LegalFooterNav'
@@ -32,7 +33,9 @@ export default function HomeClient() {
   const [showAdmin, setShowAdmin] = useState(false)
 
   const loadCases = useCallback(async () => {
-    setCases(await listCasesForHome())
+    const nextCases = await listCasesForHome()
+    ensurePlusDiscoverFromCaseCount(nextCases.length)
+    setCases(nextCases)
     setReady(true)
   }, [])
 
@@ -72,7 +75,11 @@ export default function HomeClient() {
           {plus.headerAction}
         </div>
       }
-      footer={<PrimaryButton href="/fall/neu">Jetzt Dokument fotografieren</PrimaryButton>}
+      footer={
+        <PrimaryButton href="/fall/neu">
+          {hasCases ? 'Neuen Fall anlegen' : 'Jetzt Dokument fotografieren'}
+        </PrimaryButton>
+      }
     >
       <section className="flex flex-1 flex-col gap-8">
         <div className="space-y-4">

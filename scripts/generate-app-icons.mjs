@@ -14,31 +14,22 @@ const publicDir = path.join(root, 'public')
 const brandDir = path.join(publicDir, 'brand')
 const MASTER_PNG = path.join(brandDir, 'app-icon-master.png')
 const SIZES = [180, 192, 512]
-const ICON_VERSION = 'behoerdenpost-2'
+const ICON_VERSION = 'behoerdenpost-3'
 
-/** Fallback-SVG falls Master-PNG fehlt (CI / frischer Clone). */
+/** Fallback-SVG falls Master-PNG fehlt (CI / frischer Clone). Brief + Handy wie Leitbild. */
 function iconSvg(size) {
   const r = Math.round(size * 0.18)
-  const envW = Math.round(size * 0.44)
-  const envH = Math.round(size * 0.28)
-  const envX = Math.round((size - envW) / 2)
-  const envY = Math.round(size * 0.26)
-  const sealR = Math.round(size * 0.055)
-  const sealCx = Math.round(size * 0.68)
-  const sealCy = Math.round(size * 0.34)
+  const s = size
 
-  return `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#23466f"/>
-      <stop offset="100%" stop-color="#1e3a5f"/>
-    </linearGradient>
-  </defs>
-  <rect width="${size}" height="${size}" rx="${r}" fill="url(#bg)"/>
-  <rect x="${envX}" y="${envY}" width="${envW}" height="${envH}" rx="${Math.round(size * 0.025)}" fill="#f8fafc"/>
-  <path d="M${envX} ${envY + Math.round(envH * 0.32)} L${Math.round(size / 2)} ${envY + Math.round(envH * 0.78)} L${envX + envW} ${envY + Math.round(envH * 0.32)}" fill="none" stroke="#1e3a5f" stroke-width="${Math.max(2, Math.round(size * 0.012))}"/>
-  <circle cx="${sealCx}" cy="${sealCy}" r="${sealR}" fill="#c9a227"/>
-  <circle cx="${sealCx}" cy="${sealCy}" r="${Math.round(sealR * 0.55)}" fill="#1e3a5f" opacity="0.35"/>
+  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" xmlns="http://www.w3.org/2000/svg">
+  <rect width="${s}" height="${s}" rx="${r}" fill="#f8fafc"/>
+  <rect x="${Math.round(s * 0.08)}" y="${Math.round(s * 0.22)}" width="${Math.round(s * 0.36)}" height="${Math.round(s * 0.28)}" rx="${Math.round(s * 0.03)}" fill="#cbd5e1"/>
+  <rect x="${Math.round(s * 0.12)}" y="${Math.round(s * 0.26)}" width="${Math.round(s * 0.28)}" height="${Math.round(s * 0.2)}" rx="${Math.round(s * 0.02)}" fill="#ffffff"/>
+  <rect x="${Math.round(s * 0.52)}" y="${Math.round(s * 0.18)}" width="${Math.round(s * 0.34)}" height="${Math.round(s * 0.58)}" rx="${Math.round(s * 0.05)}" fill="#1e3a5f"/>
+  <rect x="${Math.round(s * 0.56)}" y="${Math.round(s * 0.24)}" width="${Math.round(s * 0.26)}" height="${Math.round(s * 0.38)}" rx="${Math.round(s * 0.02)}" fill="#ffffff"/>
+  <circle cx="${Math.round(s * 0.69)}" cy="${Math.round(s * 0.68)}" r="${Math.round(s * 0.035)}" fill="#ffffff" opacity="0.85"/>
+  <ellipse cx="${Math.round(s * 0.22)}" cy="${Math.round(s * 0.34)}" rx="${Math.round(s * 0.08)}" ry="${Math.round(s * 0.09)}" fill="#94a3b8"/>
+  <text x="${Math.round(s * 0.22)}" y="${Math.round(s * 0.38)}" text-anchor="middle" font-size="${Math.round(s * 0.11)}" fill="#ffffff" font-family="system-ui,sans-serif">?</text>
 </svg>`
 }
 
@@ -52,7 +43,7 @@ function writeManifest() {
   const manifest = {
     name: 'Behördenpost',
     short_name: 'Behördenpost',
-    description: 'Behördenpost digital verwalten — Briefe, Fristen und Antworten an einem Ort.',
+    description: 'Briefe mit dem Handy scannen und verstehen — persönlich, lokal, klar.',
     start_url: '/',
     display: 'standalone',
     background_color: '#1e3a5f',

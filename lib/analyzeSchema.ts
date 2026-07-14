@@ -6,17 +6,23 @@ export const ANALYZE_RESULT_SCHEMA = {
   properties: {
     caseFileContent: {
       type: 'string' as const,
-      description: 'Interne JSONL-Fallakte, eine JSON-Zeile pro Eintrag',
+      description:
+        'Interne JSONL: Bereich 1 anfrage+resultat; Bereich 2 Historie (dokument historisch)',
     },
     summary: {
       type: 'string' as const,
       description:
-        'Kurzer Teaser für die Übersicht: max. 3 Zeilen, nur Kerndaten — darf assessment nicht wiederholen',
+        'Zusammenfassung — Antwort auf „Was ist das?“: 2–3 kurze Zeilen, Absender, Dokumentart, Kerndaten',
     },
-    assessment: { type: 'string' as const },
-    nextSteps: { type: 'string' as const },
+    assessment: {
+      type: 'string' as const,
+      description:
+        'Was das Schreiben bedeutet — Du-Form, ausführliche Einordnung: Absenderwille, Bedeutung, Risiko bei Nicht-Reaktion',
+    },
+    nextSteps: { type: 'string' as const, description: 'Nummerierte Liste der nächsten Schritte' },
     structuredSteps: {
       type: 'array' as const,
+      description: 'Nächste Schritte — Antwort auf „Was sollte ich jetzt tun?“: konkrete Handlungen',
       items: {
         type: 'object' as const,
         additionalProperties: false,

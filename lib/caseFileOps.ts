@@ -107,8 +107,9 @@ export function openHistorischBlock(content: string, titel?: string): string {
     typ: 'block',
     id: blockId,
     art: 'historisch',
+    bereich: 'historie',
     status: 'offen',
-    titel: titel?.trim() || 'Ältere Unterlagen',
+    titel: titel?.trim() || 'Historie',
     eroeffnet: todayIsoDate(),
   }
 
@@ -128,8 +129,9 @@ export function openAktuellBlock(content: string, titel?: string): string {
     typ: 'block',
     id: blockId,
     art: 'aktuell',
+    bereich: 'aktuell',
     status: 'offen',
-    titel: titel?.trim() || 'Aktuelles Schreiben',
+    titel: titel?.trim() || 'Aktuelle Anfrage & Resultat',
     eroeffnet: todayIsoDate(),
   }
 

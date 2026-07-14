@@ -44,6 +44,8 @@ export type AnalyzeResult = {
 export type AnalyzeRequestBody = {
   userName: string
   caseTitle: string
+  /** Lokale Fallnummer — nur zur Prompt-Zuordnung, kein PII. */
+  caseNumber?: number
   images: string[]
   existingCaseFile?: string
   intent: AnalyzeIntent
@@ -56,6 +58,7 @@ export type AnalyzeResponseBody = {
 export type AssessRequestBody = {
   userName: string
   caseTitle: string
+  caseNumber?: number
   caseFileContent: string
 }
 
@@ -66,6 +69,7 @@ export type AssessResponseBody = {
 export type PrepareStepRequestBody = {
   userName: string
   caseTitle: string
+  caseNumber?: number
   caseFileContent: string
   step: StructuredStep
 }

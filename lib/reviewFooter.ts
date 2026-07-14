@@ -8,7 +8,6 @@ export type ReviewFooterState = {
   showHistoricalButton: boolean
   showAllCapturedButton: boolean
   showFinalButton: boolean
-  newCaseAsPrimary: boolean
 }
 
 export function reviewNeedsMoreDocuments(status: DocumentsStatus): boolean {
@@ -28,7 +27,6 @@ export function reviewFooterState(
       showHistoricalButton: false,
       showAllCapturedButton: false,
       showFinalButton: false,
-      newCaseAsPrimary: false,
     }
   }
 
@@ -37,7 +35,6 @@ export function reviewFooterState(
     review.phase === 'interim' && !review.readyForFinalAssessment && needsMoreDocuments
   const showAllCapturedButton = showDocumentChoice && review.intent !== 'initial'
   const showFinalButton = review.readyForFinalAssessment && review.phase !== 'final'
-  const hasOtherPrimaryActions = showDocumentChoice || showFinalButton
 
   return {
     openedFromScan,
@@ -47,7 +44,6 @@ export function reviewFooterState(
     showHistoricalButton: showDocumentChoice,
     showAllCapturedButton,
     showFinalButton,
-    newCaseAsPrimary: !hasOtherPrimaryActions,
   }
 }
 

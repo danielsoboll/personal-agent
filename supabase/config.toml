@@ -12,3 +12,6 @@ verify_jwt = false
 
 [functions.sync-family-billing]
 verify_jwt = false
+
+[functions.log-activity]
+verify_jwt = false

@@ -12,8 +12,10 @@ import OnboardingShell, {
   formBottomSpacerClass,
 } from '@/components/onboarding/OnboardingShell'
 import { CASE_TITLE_FIELD_NAME, caseTitleInputProps } from '@/lib/formInputAutofill'
+import { logUserActivity } from '@/lib/activityLog'
 import { createCase } from '@/lib/localCases'
 import { getStoredProfileName } from '@/lib/localProfile'
+import { recordCaseCreated } from '@/lib/plusEngagement'
 
 function readTitleFromForm(form: HTMLFormElement): string {
   const fromFormData = String(new FormData(form).get(CASE_TITLE_FIELD_NAME) ?? '').trim()
@@ -41,7 +43,13 @@ export default function FallNeuClient() {
 
     try {
       const userName = getStoredProfileName() || 'Nutzer'
-      await createCase(title, userName)
+      const created = await createCase(title, userName)
+      recordCaseCreated()
+      logUserActivity('case_created', {
+        case_id: created.id,
+        case_number: created.caseNumber,
+        case_title: created.title,
+      })
       window.location.assign('/scan')
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Fall konnte nicht angelegt werden.')
@@ -72,7 +80,6 @@ export default function FallNeuClient() {
         onSubmit={handleSubmit}
       >
         <PageIntro
-          icon="case"
           title="Wie soll der Fall heißen?"
           description="Gib deinem Fall einen Namen, damit du ihn später wiederfindest — zum Beispiel nach dem Thema oder Absender."
         />
