@@ -1,0 +1,32 @@
+---
+description: Agent-Vollmachten, Deploy und Blocker-Handling (Behördenpost)
+alwaysApply: true
+---
+
+# Agent — Behördenpost
+
+## Vollmachten
+
+- Commits + Push auf `main` erlaubt, wenn Aufgabe fertig oder Nutzer es wünscht
+- Supabase deployen: `bash scripts/deploy-supabase-billing.sh`
+- Build prüfen: `npm run build`
+
+## Projekt-Fakten
+
+| | |
+|---|---|
+| Repo | personal-agent (Behördenpost) |
+| Domain | post.life-xp.de |
+| Supabase | `nlpwqxytdkubehdwatgc` |
+| Stripe Webhook | `https://nlpwqxytdkubehdwatgc.supabase.co/functions/v1/stripe-webhook` |
+| Billing | `billing_devices.plus_until` — wie LifeXP Family |
+
+## Konventionen
+
+- UI: Deutsch · Zeitzone: `Europe/Berlin`
+- Secrets: `.env.example` — nie committen
+- Minimaler Scope; bestehende Patterns wiederverwenden
+
+## Bei Blockern
+
+Stoppen und dem Nutzer exakt sagen: Tool, URL, Klick — z. B. `npx supabase login`, MCP Stripe auth, fehlende Env-Vars.
