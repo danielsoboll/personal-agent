@@ -237,7 +237,7 @@ export default function ScanClient() {
                 type="button"
                 disabled={isInteractionLocked}
                 onClick={() => openCamera(inputRef.current)}
-                className={buttonStyles.primaryActive}
+                className={buttonStyles.secondary}
               >
                 Neues Foto
               </button>
@@ -249,8 +249,8 @@ export default function ScanClient() {
               onClick={() => void handleReview()}
               className={
                 isInteractionLocked || photos.length === 0
-                  ? buttonStyles.primaryOrangeInactive
-                  : buttonStyles.primaryOrange
+                  ? buttonStyles.primaryInactive
+                  : buttonStyles.primaryActive
               }
             >
               Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Foto${photos.length === 1 ? '' : 's'})` : ''}
@@ -287,9 +287,9 @@ export default function ScanClient() {
                     type="button"
                     aria-label={`Foto ${index + 1} entfernen`}
                     onClick={() => void handleRemovePhoto(photo.id)}
-                    className="absolute right-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs font-medium text-white"
+                    className={`absolute right-2 top-2 ${buttonStyles.photoRemove}`}
                   >
-                    Entfernen
+                    ✕
                   </button>
                 ) : null}
               </figure>
@@ -300,7 +300,7 @@ export default function ScanClient() {
                 type="button"
                 disabled={isInteractionLocked}
                 onClick={() => openCamera(inputRef.current)}
-                className="flex aspect-[3/4] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border bg-surface px-3 text-center text-sm font-medium text-muted transition-colors hover:border-accent hover:text-accent disabled:opacity-50"
+                className={buttonStyles.photoCaptureTile}
               >
                 <span className="text-3xl leading-none" aria-hidden>
                   +

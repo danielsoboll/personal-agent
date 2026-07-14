@@ -64,7 +64,10 @@ export default function HomeClient() {
       headerAction={
         <div className="flex shrink-0 items-center gap-2">
           <Link href="/bibliothek" className={buttonStyles.header}>
-            Bibliothek
+            <span className="sm:hidden" aria-label="Bibliothek">
+              📄
+            </span>
+            <span className="hidden sm:inline">Bibliothek</span>
           </Link>
           {plus.headerAction}
         </div>
@@ -102,13 +105,13 @@ export default function HomeClient() {
         {!ready ? (
           <p className="text-sm text-muted">Fälle werden geladen …</p>
         ) : hasCases ? (
-          <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
+          <ul className="space-y-3">
             {cases.map((caseItem) => (
-              <li key={caseItem.id} className="flex items-center gap-2.5 px-4 py-4">
+              <li key={caseItem.id} className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => openCase(caseItem)}
-                  className="flex min-w-0 flex-1 items-center gap-3.5 text-left transition-colors hover:opacity-80"
+                  className={`${buttonStyles.caseListItem} min-w-0 flex-1`}
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold tabular-nums text-accent">
                     {caseItem.caseNumber}
@@ -124,10 +127,19 @@ export default function HomeClient() {
                   >
                     {caseItem.displayStatus.label}
                   </span>
+
+                  <span className="shrink-0 text-lg text-muted" aria-hidden>
+                    ›
+                  </span>
                 </button>
 
                 <button
                   type="button"
+                  title={
+                    caseItem.userStatus === 'vorerst_erledigt'
+                      ? 'Vorerst erledigt aufheben'
+                      : 'Als vorerst erledigt markieren'
+                  }
                   aria-label={
                     caseItem.userStatus === 'vorerst_erledigt'
                       ? 'Vorerst erledigt aufheben'
@@ -145,15 +157,6 @@ export default function HomeClient() {
               </li>
             ))}
           </ul>
-        ) : null}
-
-        {!hasCases && ready ? (
-          <p className="text-sm text-muted">
-            Bereit?{' '}
-            <Link href="/fall/neu" className="font-medium text-accent underline-offset-4 hover:underline">
-              Jetzt Dokument fotografieren
-            </Link>
-          </p>
         ) : null}
 
         <div className="flex flex-col items-center gap-6 pt-4">

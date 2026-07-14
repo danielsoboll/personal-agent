@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
-import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
 import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
@@ -259,7 +259,10 @@ export default function ReviewClient() {
         headerAction={
           <div className="flex shrink-0 items-center gap-2">
             <Link href="/bibliothek" className={buttonStyles.header}>
-              Bibliothek
+              <span className="sm:hidden" aria-label="Bibliothek">
+                📄
+              </span>
+              <span className="hidden sm:inline">Bibliothek</span>
             </Link>
             {plus.headerAction}
           </div>
@@ -271,20 +274,20 @@ export default function ReviewClient() {
                 <>
                   {footer.showDocumentChoice ? (
                     <>
-                      {footer.showCurrentMoreButton ? (
-                        <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                          Weitere Fotos zum aktuellen Schreiben
-                        </PrimaryButton>
-                      ) : null}
-                      {footer.showHistoricalButton ? (
-                        <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                          Ältere Dokumente erfassen
-                        </PrimaryButton>
-                      ) : null}
                       {footer.showAllCapturedButton ? (
                         <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
-                          Alle relevanten Dokumente erfasst
+                          Alle Dokumente erfasst — weiter
                         </PrimaryButton>
+                      ) : null}
+                      {footer.showCurrentMoreButton ? (
+                        <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
+                          Weitere Fotos (aktuell)
+                        </SecondaryButton>
+                      ) : null}
+                      {footer.showHistoricalButton ? (
+                        <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
+                          Ältere Unterlagen
+                        </SecondaryButton>
                       ) : null}
                     </>
                   ) : null}

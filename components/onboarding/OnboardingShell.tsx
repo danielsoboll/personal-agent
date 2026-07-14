@@ -63,11 +63,13 @@ export default function OnboardingShell({
       <main className="relative mx-auto flex w-full max-w-lg flex-1 flex-col overflow-hidden px-5 py-8">
         <BrandMark variant="watermark" />
         {backNav ? <BackNavLink href={backNav.href} label={backNav.label} /> : null}
-        <div className="relative z-[1] flex flex-1 flex-col">{children}</div>
+        <div className={`relative z-[1] flex flex-1 flex-col ${footer ? formBottomSpacerClass : ''}`}>
+          {children}
+        </div>
       </main>
 
       {footer ? (
-        <footer className="sticky bottom-0 border-t border-border bg-surface/95 px-5 py-4 backdrop-blur">
+        <footer className="sticky bottom-0 z-20 border-t border-border bg-surface/95 px-5 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur">
           <div className="mx-auto w-full max-w-lg">{footer}</div>
         </footer>
       ) : null}
@@ -115,7 +117,58 @@ export function PrimaryButton({
       type={type}
       className={className}
       aria-disabled={inactive || undefined}
-      onClick={onClick}
+      onClick={(event) => {
+        if (inactive) {
+          event.preventDefault()
+          return
+        }
+        onClick?.()
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+type SecondaryButtonProps = {
+  children: ReactNode
+  inactive?: boolean
+  href?: string
+  onClick?: () => void
+  type?: 'button' | 'submit'
+}
+
+export function SecondaryButton({
+  children,
+  inactive,
+  href,
+  onClick,
+  type = 'button',
+}: SecondaryButtonProps) {
+  const className = inactive
+    ? `${buttonStyles.secondary} cursor-not-allowed opacity-60`
+    : buttonStyles.secondary
+
+  if (href && !inactive) {
+    return (
+      <Link href={href} className={className}>
+        {children}
+      </Link>
+    )
+  }
+
+  return (
+    <button
+      type={type}
+      className={className}
+      aria-disabled={inactive || undefined}
+      onClick={(event) => {
+        if (inactive) {
+          event.preventDefault()
+          return
+        }
+        onClick?.()
+      }}
     >
       {children}
     </button>

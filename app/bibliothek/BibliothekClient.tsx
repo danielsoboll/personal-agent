@@ -1,8 +1,9 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
-import OnboardingShell, { PageIntro } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro, PrimaryButton } from '@/components/onboarding/OnboardingShell'
 import { buttonStyles } from '@/lib/buttonStyles'
 import { logUserActivity } from '@/lib/activityLog'
 import { downloadBlob } from '@/lib/analyzeClient'
@@ -65,9 +66,16 @@ export default function BibliothekClient() {
         {!ready ? (
           <p className="text-sm text-muted">Bibliothek wird geladen …</p>
         ) : documents.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-surface p-5 text-sm leading-7 text-muted">
-            Noch keine Dokumente. Nach der abschließenden Bewertung kannst du bei jedem Schritt ein Schreiben
-            vorbereiten — es landet dann hier.
+          <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-border bg-gradient-to-b from-surface via-slate-50 to-slate-100/80 px-5 py-8 text-center ring-1 ring-border/25 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
+            <span className="text-4xl" aria-hidden>
+              📄
+            </span>
+            <p className="text-base font-semibold text-foreground">Noch keine Schreiben</p>
+            <p className="max-w-sm text-sm leading-7 text-muted">
+              Nach der abschließenden Bewertung kannst du bei jedem Schritt ein Word-Schreiben vorbereiten — es
+              landet dann hier.
+            </p>
+            <PrimaryButton href="/pruefen">Zur Auswertung</PrimaryButton>
           </div>
         ) : (
           <ul className="space-y-3">
