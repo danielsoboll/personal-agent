@@ -7,6 +7,9 @@ import type {
   AnalyzeIntent,
   ClarifyRequestBody,
   ClarifyResponseBody,
+  DocumentPeekRequestBody,
+  DocumentPeekResponseBody,
+  DocumentPeekResult,
   FollowUpMessage,
   FollowUpWordDocument,
   WordDocumentRequestBody,
@@ -22,6 +25,7 @@ import { awaitCaseFileReorganizeForAssessment } from '@/lib/caseFileReorganizeCl
 
 export async function analyzeCurrentPhotos(options: {
   intent: AnalyzeIntent
+  peekContext?: DocumentPeekResult
 }): Promise<AnalyzeResponseBody['result']> {
   const activeCase = await getActiveCase()
   if (!activeCase) {
@@ -68,6 +72,7 @@ export async function analyzeCurrentPhotos(options: {
     intent: options.intent,
     existingCaseFile:
       isFollowUp || isNewLetterOnSameCase ? (existingCaseFile ?? undefined) : undefined,
+    peekContext: options.peekContext,
   }
 
   const response = await fetch('/api/analyze', {
@@ -87,6 +92,67 @@ export async function analyzeCurrentPhotos(options: {
   }
 
   return payload.result
+}
+
+export async function requestDocumentPeek(options: {
+  intent: AnalyzeIntent
+  photo: {
+    blob: Blob
+    kind: 'image' | 'pdf'
+    fileName?: string
+  }
+}): Promise<DocumentPeekResult> {
+  const activeCase = await getActiveCase()
+  if (!activeCase) {
+    throw new Error('Kein aktiver Fall ausgewählt.')
+  }
+
+  let attachment: AnalyzeAttachment
+  if (options.photo.kind === 'pdf') {
+    attachment = {
+      kind: 'pdf',
+      dataUrl: await blobToDataUrl(options.photo.blob),
+      fileName: options.photo.fileName,
+    }
+  } else {
+    const compressed = await compressImageForAnalysis(options.photo.blob)
+    attachment = {
+      kind: 'image',
+      dataUrl: await blobToDataUrl(compressed),
+      fileName: options.photo.fileName,
+    }
+  }
+
+  const body: DocumentPeekRequestBody = {
+    userName: activeCase.userName,
+    caseTitle: activeCase.title,
+    caseNumber: activeCase.caseNumber,
+    attachment,
+    intent: options.intent,
+  }
+
+  const response = await fetch('/api/peek', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  const payload = (await response.json()) as DocumentPeekResponseBody | { error?: string }
+
+  if (!response.ok) {
+    throw new Error('error' in payload && payload.error ? payload.error : 'Kurzblick fehlgeschlagen.')
+  }
+
+  if (!('quickGuess' in payload) || !('suggestedQuestion' in payload)) {
+    throw new Error('Ungültige Antwort vom Kurzblick-Server.')
+  }
+
+  const result = payload as DocumentPeekResponseBody
+  return {
+    quickGuess: result.quickGuess ?? '',
+    suggestedQuestion: result.suggestedQuestion ?? '',
+    focusHints: result.focusHints ?? [],
+  }
 }
 
 export async function requestFinalAssessment(): Promise<AssessResponseBody['result']> {

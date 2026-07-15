@@ -51,7 +51,32 @@ export default function NameClient() {
 
     setDraftCaseTitle(draftTitle)
     setCaseTitle(draftTitle)
-    setDefaultName(getStoredProfileName())
+
+    const storedName = getStoredProfileName()
+    if (storedName) {
+      void (async () => {
+        try {
+          setSubmitting(true)
+          const created = await createCase(draftTitle, storedName)
+          clearDraftCaseTitle()
+          recordCaseCreated()
+          logUserActivity('case_created', {
+            case_id: created.id,
+            case_number: created.caseNumber,
+            case_title: created.title,
+          })
+          window.location.assign('/scan')
+        } catch (caught) {
+          setDefaultName(storedName)
+          setError(caught instanceof Error ? caught.message : 'Fall konnte nicht angelegt werden.')
+          setSubmitting(false)
+          setReady(true)
+        }
+      })()
+      return
+    }
+
+    setDefaultName('')
     setReady(true)
   }, [router])
 

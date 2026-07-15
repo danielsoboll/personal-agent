@@ -1,4 +1,10 @@
 import type { DocumentsStatus, StructuredStep } from '@/lib/analyzeTypes'
+import {
+  DECISION_OUTPUT_PROPERTIES,
+  DECISION_OUTPUT_REQUIRED,
+  normalizeDecisionFields,
+  normalizePrimaryDeadline,
+} from '@/lib/decisionFields'
 
 export const ANALYZE_RESULT_SCHEMA = {
   type: 'object' as const,
@@ -29,10 +35,13 @@ export const ANALYZE_RESULT_SCHEMA = {
         properties: {
           id: { type: 'string' as const },
           text: { type: 'string' as const },
+          deadline: { type: 'string' as const },
+          priority: { type: 'string' as const, enum: ['hoch', 'mittel', 'niedrig'] },
         },
         required: ['id', 'text'],
       },
     },
+    ...DECISION_OUTPUT_PROPERTIES,
     needsMoreDocuments: { type: 'boolean' as const },
     requestedDocuments: { type: 'string' as const },
     documentsStatus: {
@@ -56,6 +65,7 @@ export const ANALYZE_RESULT_SCHEMA = {
     'assessment',
     'nextSteps',
     'structuredSteps',
+    ...DECISION_OUTPUT_REQUIRED,
     'needsMoreDocuments',
     'requestedDocuments',
     'documentsStatus',
@@ -73,6 +83,11 @@ export type ParsedAnalyzePayload = {
   assessment: string
   nextSteps: string
   structuredSteps: StructuredStep[]
+  documentKind?: import('@/lib/analyzeTypes').DocumentKind
+  primaryDeadline?: string
+  primaryDeadlineLabel?: string
+  keyClaims?: { id: string; text: string }[]
+  contestablePoints?: { id: string; claim: string; why: string; suggestedAction: string }[]
   needsMoreDocuments: boolean
   requestedDocuments: string
   documentsStatus: DocumentsStatus
@@ -131,12 +146,16 @@ export function normalizeStructuredSteps(steps: StructuredStep[]): StructuredSte
         id: step.id?.trim() || `schritt_${index + 1}`,
         text: step.text.trim(),
       }
-      const deadline = step.deadline?.trim()
+      const deadline = normalizePrimaryDeadline(step.deadline)
       if (deadline) normalized.deadline = deadline
-      if (step.priority) normalized.priority = step.priority
+      if (step.priority === 'hoch' || step.priority === 'mittel' || step.priority === 'niedrig') {
+        normalized.priority = step.priority
+      }
       return normalized
     })
 }
+
+export { normalizeDecisionFields }
 
 export const PREPARE_STEP_SCHEMA = {
   type: 'object' as const,
@@ -185,6 +204,11 @@ export const CLARIFY_SCHEMA = {
       type: 'array' as const,
       items: CLARIFY_STEP_SCHEMA,
     },
+    updatedDocumentKind: DECISION_OUTPUT_PROPERTIES.documentKind,
+    updatedPrimaryDeadline: DECISION_OUTPUT_PROPERTIES.primaryDeadline,
+    updatedPrimaryDeadlineLabel: DECISION_OUTPUT_PROPERTIES.primaryDeadlineLabel,
+    updatedKeyClaims: DECISION_OUTPUT_PROPERTIES.keyClaims,
+    updatedContestablePoints: DECISION_OUTPUT_PROPERTIES.contestablePoints,
     wordDocumentRequested: { type: 'boolean' as const },
     wordDocumentTitle: { type: 'string' as const },
     wordDocumentSubject: { type: 'string' as const },
@@ -201,6 +225,11 @@ export const CLARIFY_SCHEMA = {
     'updatedAssessment',
     'updatedNextSteps',
     'updatedStructuredSteps',
+    'updatedDocumentKind',
+    'updatedPrimaryDeadline',
+    'updatedPrimaryDeadlineLabel',
+    'updatedKeyClaims',
+    'updatedContestablePoints',
     'wordDocumentRequested',
     'wordDocumentTitle',
     'wordDocumentSubject',
@@ -216,9 +245,43 @@ export type ClarifyPayload = {
   updatedAssessment: string
   updatedNextSteps: string
   updatedStructuredSteps: StructuredStep[]
+  updatedDocumentKind?: string
+  updatedPrimaryDeadline?: string
+  updatedPrimaryDeadlineLabel?: string
+  updatedKeyClaims?: { id: string; text: string }[]
+  updatedContestablePoints?: { id: string; claim: string; why: string; suggestedAction: string }[]
   wordDocumentRequested: boolean
   wordDocumentTitle: string
   wordDocumentSubject: string
   wordDocumentBodyParagraphs: string[]
   wordDocumentPreviewText: string
 }
+
+export const DOCUMENT_PEEK_SCHEMA = {
+  type: 'object' as const,
+  additionalProperties: false,
+  properties: {
+    quickGuess: {
+      type: 'string' as const,
+      description: '1–2 Sätze: Absender, Dokumentart, Kernthema — nur aus diesem einen Dokument',
+    },
+    suggestedQuestion: {
+      type: 'string' as const,
+      description:
+        'Eine starke Leitfrage für die spätere Vollauswertung, zugeschnitten auf dieses Dokument (wie eine gute ChatGPT-Nachfrage)',
+    },
+    focusHints: {
+      type: 'array' as const,
+      items: { type: 'string' as const },
+      description: '2–4 kurze Hinweise, worauf bei Folgeseiten/der Vollprüfung achten',
+    },
+  },
+  required: ['quickGuess', 'suggestedQuestion', 'focusHints'],
+}
+
+export type DocumentPeekPayload = {
+  quickGuess: string
+  suggestedQuestion: string
+  focusHints: string[]
+}
+

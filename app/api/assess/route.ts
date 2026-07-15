@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import {
   ANALYZE_RESULT_SCHEMA,
+  normalizeDecisionFields,
   normalizeDocumentsFields,
   normalizeStructuredSteps,
   type ParsedAnalyzePayload,
@@ -85,6 +86,7 @@ export async function POST(request: Request) {
     ...parsed,
     documentsStatus: parsed.documentsStatus ?? 'not_needed',
   })
+  const decision = normalizeDecisionFields(parsed)
 
   return NextResponse.json({
     result: {
@@ -94,6 +96,7 @@ export async function POST(request: Request) {
       nextSteps: parsed.nextSteps,
       structuredSteps: normalizeStructuredSteps(parsed.structuredSteps ?? []),
       ...documents,
+      ...decision,
       isComplete: true,
       phase: 'final' as const,
     },

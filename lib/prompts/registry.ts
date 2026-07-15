@@ -14,7 +14,7 @@ import {
 import { CASE_FILE_JSONL_EXAMPLE, CASE_FILE_JSONL_MINIMAL_EXAMPLE } from '@/lib/caseFileJsonl'
 import type { AnalyzeIntent } from '@/lib/analyzeTypes'
 
-export const PROMPT_VERSION = '2026-07-15.1'
+export const PROMPT_VERSION = '2026-07-15.3'
 
 /** Wie eine direkte ChatGPT-Nachricht mit angehängten Fotos. */
 export const CORE_USER_QUESTIONS = `Beantworte zuerst inhaltlich — so gut wie ChatGPT mit denselben Unterlagen:
@@ -22,6 +22,14 @@ export const CORE_USER_QUESTIONS = `Beantworte zuerst inhaltlich — so gut wie 
 1. **Was ist das?** — Absender, Art des Schreibens, worum es geht, wichtige Beträge und Fristen
 2. **Was sollte ich jetzt tun?** — die unmittelbar nächste Handlung und die sinnvollen Folgeschritte
 3. **Bei Streit / Gegenseite:** Welche Behauptungen stehen im Raum — und gegen welche Punkte kann man sinnvoll vorgehen?`
+
+export const DOCUMENT_KIND_PLAYBOOKS = `Dokumenttyp (documentKind) — wähle den passenden und beachte:
+
+- behoerde: Bescheid/Anforderung — Frist, Rechtsbehelf, Betrag, was passiert bei Nicht-Reaktion
+- gericht: Verfügung/Ladung/Schreiben — Termine, Fristen, Parteien, was gefordert wird
+- anwalt: Schreiben der Gegenseite oder des eigenen Anwalts — Behauptungen, Forderungen, Fristen, Gegenargumente
+- versicherung: Leistungsentscheidung/Schreiben — Deckung, Ablehnungsgründe, Widerspruch
+- sonstiges: alles andere — trotzdem Frist und Kernforderung klar machen`
 
 export const READING_RULES = `So liest du die Unterlagen (WICHTIG):
 
@@ -106,6 +114,13 @@ Ordne deine inhaltliche Antwort in die **3 Bereiche der App**:
 - priority: hoch|mittel|niedrig — hoch bei harten Fristen
 - nextSteps: dieselben Schritte als nummerierte Liste (1. 2. 3.)
 
+**4. Entscheidungsfelder für die App (zusätzlich, Pflichtfelder):**
+- documentKind: behoerde|gericht|anwalt|versicherung|sonstiges
+- primaryDeadline: wichtigste Frist als YYYY-MM-DD — oder "" wenn keine
+- primaryDeadlineLabel: z. B. „Einspruchsfrist“, „Gerichtstermin“ — oder ""
+- keyClaims: 0–6 Behauptungen/Forderungen (eigene Worte, kurz). Bei reiner Info-Post ohne Streit: []
+- contestablePoints: 0–6 Punkte mit claim, why (1 Satz), suggestedAction. Nur was aus dem Text folgt — nichts erfinden. Sonst []
+
 Dieselben Inhalte landen in resultat (summary, assessment, next_steps) für Bereich 1 der Fallakte.
 
 **Unterlagen-Einschätzung** (kurz halten):
@@ -139,6 +154,8 @@ ${READING_RULES}
 
 ${ADVERSARIAL_ANALYSIS_RULES}
 
+${DOCUMENT_KIND_PLAYBOOKS}
+
 ${CASE_SCOPE_RULES}
 
 ${HISTORIE_USAGE_RULES}
@@ -171,6 +188,8 @@ ${HISTORIE_USAGE_RULES}
 ${CORE_USER_QUESTIONS}
 
 ${ADVERSARIAL_ANALYSIS_RULES}
+
+${DOCUMENT_KIND_PLAYBOOKS}
 
 Ergänze:
 - Was passiert, wenn ich nicht reagiere oder die Frist verpasse?
@@ -247,8 +266,13 @@ function buildInitialUserPrompt(options: {
   attachmentCount: number
   pdfCount: number
   existingCaseFile?: string
+  peekContext?: {
+    quickGuess: string
+    suggestedQuestion: string
+    focusHints: string[]
+  }
 }): string {
-  const { userName, caseTitle, attachmentCount, pdfCount, existingCaseFile } = options
+  const { userName, caseTitle, attachmentCount, pdfCount, existingCaseFile, peekContext } = options
   const ctx = buildCasePromptContext({
     userName,
     caseTitle,
@@ -272,6 +296,23 @@ function buildInitialUserPrompt(options: {
       '',
       'Das neue Schreiben ist das aktuelle Thema — Historie nur zur Einordnung.',
     )
+  }
+
+  if (peekContext?.quickGuess?.trim() || peekContext?.suggestedQuestion?.trim()) {
+    sections.push('', '=== Vorab-Kurzblick (erstes Dokument, Hintergrund) ===')
+    if (peekContext.quickGuess?.trim()) {
+      sections.push(`Erste Einordnung: ${peekContext.quickGuess.trim()}`)
+    }
+    if (peekContext.suggestedQuestion?.trim()) {
+      sections.push(
+        '',
+        'Leitfrage für diese Auswertung (beantworten und in summary/assessment/Schritten umsetzen):',
+        `„${peekContext.suggestedQuestion.trim()}“`,
+      )
+    }
+    if (peekContext.focusHints?.length) {
+      sections.push('', 'Darauf achten:', ...peekContext.focusHints.map((hint) => `- ${hint}`))
+    }
   }
 
   sections.push(
@@ -311,8 +352,14 @@ function buildFollowUpUserPrompt(options: {
   pdfCount: number
   intent: Exclude<AnalyzeIntent, 'initial'>
   existingCaseFile: string
+  peekContext?: {
+    quickGuess: string
+    suggestedQuestion: string
+    focusHints: string[]
+  }
 }): string {
-  const { userName, caseTitle, attachmentCount, pdfCount, intent, existingCaseFile } = options
+  const { userName, caseTitle, attachmentCount, pdfCount, intent, existingCaseFile, peekContext } =
+    options
   const ctx = buildCasePromptContext({
     userName,
     caseTitle,
@@ -322,6 +369,25 @@ function buildFollowUpUserPrompt(options: {
   const attachmentNote = buildFollowUpAttachmentNote(attachmentCount, pdfCount)
 
   const sections = [`${userName} fragt weiter:`, '', CORE_USER_QUESTIONS, '', attachmentNote, '']
+
+  if (peekContext?.quickGuess?.trim() || peekContext?.suggestedQuestion?.trim()) {
+    sections.push('=== Vorab-Kurzblick (erstes neues Dokument) ===')
+    if (peekContext.quickGuess?.trim()) {
+      sections.push(`Erste Einordnung: ${peekContext.quickGuess.trim()}`)
+    }
+    if (peekContext.suggestedQuestion?.trim()) {
+      sections.push(
+        '',
+        'Leitfrage für diese Ergänzung:',
+        `„${peekContext.suggestedQuestion.trim()}“`,
+      )
+    }
+    if (peekContext.focusHints?.length) {
+      sections.push('', 'Darauf achten:', ...peekContext.focusHints.map((hint) => `- ${hint}`))
+    }
+    sections.push('')
+  }
+
   appendFormattedCaseContext(sections, ctx)
   sections.push('', INTENT_INSTRUCTIONS[intent], '')
   sections.push(
@@ -340,9 +406,22 @@ export function buildAnalyzeUserPrompt(options: {
   pdfCount?: number
   intent: AnalyzeIntent
   existingCaseFile?: string
+  peekContext?: {
+    quickGuess: string
+    suggestedQuestion: string
+    focusHints: string[]
+  }
 }): string {
-  const { userName, caseTitle, caseNumber, attachmentCount, pdfCount = 0, intent, existingCaseFile } =
-    options
+  const {
+    userName,
+    caseTitle,
+    caseNumber,
+    attachmentCount,
+    pdfCount = 0,
+    intent,
+    existingCaseFile,
+    peekContext,
+  } = options
 
   if (intent === 'initial') {
     return buildInitialUserPrompt({
@@ -352,6 +431,7 @@ export function buildAnalyzeUserPrompt(options: {
       attachmentCount,
       pdfCount,
       existingCaseFile,
+      peekContext,
     })
   }
 
@@ -363,7 +443,32 @@ export function buildAnalyzeUserPrompt(options: {
     pdfCount,
     intent: intent as Exclude<AnalyzeIntent, 'initial'>,
     existingCaseFile: existingCaseFile ?? '',
+    peekContext,
   })
+}
+
+export const DOCUMENT_PEEK_SYSTEM_PROMPT = `Du bist Behördenpost — schneller Vorab-Kurzblick auf EIN Dokument.
+Prompt-Version: ${PROMPT_VERSION}
+
+Ziel: Noch bevor der Nutzer alle Seiten prüft, eine kurze Einordnung und eine starke Leitfrage für die spätere Vollauswertung liefern.
+
+Regeln:
+- Nur dieses eine Dokument lesen — nichts erfinden.
+- quickGuess: 1–2 Sätze (Absender/Art/Thema; Betrag/Frist wenn klar).
+- suggestedQuestion: eine konkrete, hilfreiche Frage, die man ChatGPT zum gleichen Dokument stellen würde (z. B. was geprüft werden muss, welche Punkte angreifbar sind, welche Frist/Ansprüche). Auf Deutsch, Du-Form, 1–3 Sätze.
+- focusHints: 2–4 kurze Stichpunkte, worauf bei weiteren Seiten zu achten ist.
+- Keine JSONL, keine Fallakte, kein langes Gutachten.`
+
+export function buildDocumentPeekUserPrompt(options: {
+  userName: string
+  caseTitle: string
+  intent: AnalyzeIntent
+}): string {
+  return [
+    `${options.userName} hat das erste Dokument zu Fall „${options.caseTitle}“ hochgeladen (intent: ${options.intent}).`,
+    '',
+    'Gib einen kurzen Vorab-Kurzblick und eine Leitfrage für die spätere Vollprüfung aller Seiten.',
+  ].join('\n')
 }
 
 export function buildAssessUserPrompt(options: {
@@ -415,8 +520,11 @@ ${CASE_SCOPE_RULES}
 
 ${ADVERSARIAL_ANALYSIS_RULES}
 
+${DOCUMENT_KIND_PLAYBOOKS}
+
 Regeln:
-- Bei JEDER Nachfrage: updatedSummary, updatedAssessment, updatedNextSteps und updatedStructuredSteps vollständig neu liefern — integriere alle bisherigen Infos, den Chat und neue Anhänge.
+- Bei JEDER Nachfrage: updatedSummary, updatedAssessment, updatedNextSteps, updatedStructuredSteps vollständig neu liefern — integriere alle bisherigen Infos, den Chat und neue Anhänge.
+- Zusätzlich immer: updatedDocumentKind, updatedPrimaryDeadline, updatedPrimaryDeadlineLabel, updatedKeyClaims, updatedContestablePoints (vollständig neu; leere Arrays/"" wenn nichts passt).
 - Die Hauptauswertung oben in der App wird nach jeder Nachfrage aus diesen updated-Feldern neu gezeichnet.
 - answer: kurze Chat-Antwort zur konkreten Nachfrage — nur Ergänzungen, die nicht schon in updatedAssessment oder den Schritten stehen.
 - Bei Streit/Gegenseite oder Nachfragen dazu: in answer und updatedAssessment Behauptungen und angreifbare Punkte klar machen; Schritte konkretisieren.
@@ -504,7 +612,7 @@ export function buildClarifyUserPrompt(options: {
 
   sections.push(
     '',
-    'Liefere answer, die vollständig aktualisierten updated-Felder, ggf. wordDocument-Felder und contextSummary.',
+    'Liefere answer, die vollständig aktualisierten updated-Felder (inkl. Frist, Behauptungen, Angriffspunkte), ggf. wordDocument-Felder und contextSummary.',
   )
 
   return sections.join('\n')

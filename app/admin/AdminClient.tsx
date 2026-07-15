@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import DeleteAllSection from '@/components/admin/DeleteAllSection'
+import AdminPwaInstallSection from '@/components/admin/AdminPwaInstallSection'
 import OnboardingShell from '@/components/onboarding/OnboardingShell'
 import { buttonStyles } from '@/lib/buttonStyles'
 import { getStoredProfileName, setStoredProfileName } from '@/lib/localProfile'
@@ -85,6 +86,8 @@ export default function AdminClient() {
             <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Vorname gespeichert.</p>
           ) : null}
         </form>
+
+        <AdminPwaInstallSection />
 
         {error ? (
           <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100">

@@ -6,6 +6,7 @@ export {
   ANALYZE_SYSTEM_PROMPT,
   ASSESS_SYSTEM_PROMPT,
   CLARIFY_SYSTEM_PROMPT,
+  DOCUMENT_PEEK_SYSTEM_PROMPT,
   PREPARE_STEP_SYSTEM_PROMPT,
   PROMPT_VERSION,
   SYSTEM_PROMPT,
@@ -17,6 +18,7 @@ export {
   buildAnalyzeUserPrompt,
   buildAssessUserPrompt,
   buildClarifyUserPrompt,
+  buildDocumentPeekUserPrompt,
   buildPrepareStepUserPrompt,
   buildJsonlRetryHint,
 } from '@/lib/prompts/registry'

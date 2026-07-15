@@ -8,10 +8,10 @@ import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
-import { analyzeCurrentPhotos } from '@/lib/analyzeClient'
+import { analyzeCurrentPhotos, requestDocumentPeek } from '@/lib/analyzeClient'
 import { logUserActivity } from '@/lib/activityLog'
 import { scheduleCaseFileReorganizeAfterAnalyze } from '@/lib/caseFileReorganizeClient'
-import type { AnalyzeIntent } from '@/lib/analyzeTypes'
+import type { AnalyzeIntent, DocumentPeekResult } from '@/lib/analyzeTypes'
 import {
   getActiveCase,
   saveCaseFileContent,
@@ -50,12 +50,16 @@ function openCamera(input: HTMLInputElement | null) {
   window.setTimeout(() => input.click(), 150)
 }
 
+const PEEK_WAIT_MS = 12_000
+
 export default function ScanClient() {
   const router = useRouter()
   const plus = usePlusDiscoverHeader()
   const searchParams = useSearchParams()
   const inputRef = useRef<HTMLInputElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
+  const peekRequestIdRef = useRef(0)
+  const peekPromiseRef = useRef<Promise<DocumentPeekResult | null> | null>(null)
   const [photos, setPhotos] = useState<PhotoPreview[]>([])
   const [activeCase, setActiveCase] = useState<StoredCase | null>(null)
   const [profileName, setProfileName] = useState('')
@@ -63,6 +67,9 @@ export default function ScanClient() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [analyzing, setAnalyzing] = useState(false)
+  const [peekResult, setPeekResult] = useState<DocumentPeekResult | null>(null)
+  const [peekBusy, setPeekBusy] = useState(false)
+  const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
@@ -125,6 +132,75 @@ export default function ScanClient() {
       }
     }
   }, [photos])
+
+  function startDocumentPeek(photo: StoredPhoto) {
+    if (!activeCase) return
+
+    const requestId = peekRequestIdRef.current + 1
+    peekRequestIdRef.current = requestId
+    setPeekBusy(true)
+    setPeekResult(null)
+    setPeekPhotoId(photo.id)
+
+    const promise = requestDocumentPeek({
+      intent,
+      photo: {
+        blob: photo.blob,
+        kind: photo.kind ?? 'image',
+        fileName: photo.fileName,
+      },
+    })
+      .then((result) => {
+        if (peekRequestIdRef.current !== requestId) return null
+        setPeekResult(result)
+        return result
+      })
+      .catch(() => {
+        if (peekRequestIdRef.current !== requestId) return null
+        setPeekResult(null)
+        return null
+      })
+      .finally(() => {
+        if (peekRequestIdRef.current === requestId) {
+          setPeekBusy(false)
+        }
+      })
+
+    peekPromiseRef.current = promise
+  }
+
+  useEffect(() => {
+    const first = photos[0]
+    if (!first || !activeCase || loading) {
+      if (photos.length === 0) {
+        peekRequestIdRef.current += 1
+        peekPromiseRef.current = null
+        setPeekResult(null)
+        setPeekBusy(false)
+        setPeekPhotoId(null)
+      }
+      return
+    }
+
+    if (peekPhotoId === first.id && (peekResult || peekBusy)) return
+
+    startDocumentPeek(first)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- trigger only when first doc identity changes
+  }, [photos[0]?.id, activeCase?.id, loading])
+
+  async function waitForPeekContext(): Promise<DocumentPeekResult | undefined> {
+    if (peekResult) return peekResult
+    if (!peekPromiseRef.current) return undefined
+
+    const raced = await Promise.race([
+      peekPromiseRef.current,
+      new Promise<null>((resolve) => {
+        window.setTimeout(() => resolve(null), PEEK_WAIT_MS)
+      }),
+    ])
+
+    return raced ?? peekResult ?? undefined
+  }
 
   async function saveDocumentBlob(
     blob: Blob,
@@ -243,7 +319,8 @@ export default function ScanClient() {
     setAnalyzing(true)
 
     try {
-      const result = await analyzeCurrentPhotos({ intent })
+      const peekContext = await waitForPeekContext()
+      const result = await analyzeCurrentPhotos({ intent, peekContext })
       const photoCount = photos.length
 
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
@@ -260,7 +337,14 @@ export default function ScanClient() {
         case_id: activeCase.id,
         intent,
         photo_count: photoCount,
+        had_peek: Boolean(peekContext?.suggestedQuestion || peekContext?.quickGuess),
       })
+
+      peekRequestIdRef.current += 1
+      peekPromiseRef.current = null
+      setPeekResult(null)
+      setPeekBusy(false)
+      setPeekPhotoId(null)
 
       for (const photo of photos) {
         if (photo.previewUrl) {

@@ -7,6 +7,9 @@ import { useEffect, useState } from 'react'
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
+import DeadlineBanner from '@/components/review/DeadlineBanner'
+import ClaimsPanel from '@/components/review/ClaimsPanel'
+import ReviewChangesBanner from '@/components/review/ReviewChangesBanner'
 import ChatHistorySheet from '@/components/review/ChatHistorySheet'
 import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
@@ -21,7 +24,7 @@ import {
   requestFinalAssessment,
 } from '@/lib/analyzeClient'
 import type { AnalyzeResult, FollowUpAttachmentMeta, FollowUpMessage, FollowUpWordDocument, StructuredStep } from '@/lib/analyzeTypes'
-import { normalizeDocumentsFields, normalizeStructuredSteps } from '@/lib/analyzeSchema'
+import { normalizeDecisionFields, normalizeDocumentsFields, normalizeStructuredSteps } from '@/lib/analyzeSchema'
 import { buildAttachmentMetaSummary, buildDefaultContextSummary } from '@/lib/chatFollowUp'
 import { upsertAktuellResultatFromReview } from '@/lib/caseFileJsonl'
 import {
@@ -31,6 +34,11 @@ import {
   openHistorischBlock,
 } from '@/lib/caseFileOps'
 import { displaySummary, shouldShowSummary } from '@/lib/reviewDisplay'
+import { formatDeadlineShort } from '@/lib/deadlineDisplay'
+import { downloadDeadlineIcs } from '@/lib/calendarExport'
+import { documentKindLabel } from '@/lib/documentKindLabel'
+import { buildReviewChanges, type ReviewChangeItem } from '@/lib/reviewDiff'
+import { loadDoneStepIds, toggleDoneStepId } from '@/lib/stepProgress'
 import { documentChoiceHint, reviewFooterState } from '@/lib/reviewFooter'
 import {
   getActiveCase,
@@ -48,6 +56,7 @@ function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeRes
     (review.round === 'initial' ? 'initial' : review.round === 'followup' ? 'current_more' : 'initial')
 
   const docs = normalizeDocumentsFields(review)
+  const decision = normalizeDecisionFields(review)
 
   return {
     ...review,
@@ -62,13 +71,14 @@ function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeRes
     intent: legacyIntent,
     followUpMessages: review.followUpMessages ?? [],
     ...docs,
+    ...decision,
   }
 }
 
 function priorityLabel(priority?: string): string | null {
   if (priority === 'hoch') return 'Dringend'
-  if (priority === 'mittel') return 'Mittel'
-  if (priority === 'niedrig') return 'Niedrig'
+  if (priority === 'mittel') return 'Bald erledigen'
+  if (priority === 'niedrig') return 'Kann warten'
   return null
 }
 
@@ -83,6 +93,9 @@ export default function ReviewClient() {
   const [chatOpen, setChatOpen] = useState(false)
   const [wordDocBusyAt, setWordDocBusyAt] = useState<number | null>(null)
   const [error, setError] = useState('')
+  const [reviewChanges, setReviewChanges] = useState<ReviewChangeItem[]>([])
+  const [doneStepIds, setDoneStepIds] = useState<string[]>([])
+  const [replyDraftBusy, setReplyDraftBusy] = useState(false)
 
   useEffect(() => {
     async function loadReview() {
@@ -94,6 +107,7 @@ export default function ReviewClient() {
 
       setActiveCase(currentCase)
       setReview(currentCase.latestReview ? normalizeReview(currentCase.latestReview) : null)
+      setDoneStepIds(loadDoneStepIds(currentCase.id))
       logUserActivity('review_opened', {
         case_id: currentCase.id,
         case_number: currentCase.caseNumber,
@@ -175,19 +189,23 @@ export default function ReviewClient() {
     setBusy(true)
 
     try {
+      const previous = review
       const result = await requestFinalAssessment()
       const nextReview: AnalyzeResult = {
-        ...result,
-        documentChoiceRequired: false,
-        readyForFinalAssessment: false,
-        analyzedAt: Date.now(),
-        intent: 'final',
-        photoCount: review.photoCount,
-        followUpMessages: review.followUpMessages ?? [],
+        ...normalizeReview({
+          ...result,
+          documentChoiceRequired: false,
+          readyForFinalAssessment: false,
+          analyzedAt: Date.now(),
+          intent: 'final',
+          photoCount: review.photoCount,
+          followUpMessages: review.followUpMessages ?? [],
+        }),
       }
 
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
       await persistReview(nextReview)
+      setReviewChanges(buildReviewChanges(previous, nextReview))
       recordFinalAssessmentCompleted()
       logUserActivity('final_assessment', {
         case_id: activeCase.id,
@@ -207,6 +225,7 @@ export default function ReviewClient() {
     setFollowUpBusy(true)
 
     try {
+      const previous = review
       const result = await submitChatMessage(input)
       const now = Date.now()
       const attachmentMeta: FollowUpAttachmentMeta[] = (input.files ?? []).map((file) => {
@@ -246,7 +265,13 @@ export default function ReviewClient() {
         assessment: result.updatedAssessment || review.assessment,
         nextSteps: result.updatedNextSteps || review.nextSteps,
         structuredSteps: updatedSteps.length > 0 ? updatedSteps : review.structuredSteps,
+        documentKind: result.documentKind,
+        primaryDeadline: result.primaryDeadline,
+        primaryDeadlineLabel: result.primaryDeadlineLabel,
+        keyClaims: result.keyClaims,
+        contestablePoints: result.contestablePoints,
         followUpMessages: nextMessages,
+        analyzedAt: now,
       }
 
       const nextCaseFile = upsertAktuellResultatFromReview(review.caseFileContent, {
@@ -257,6 +282,7 @@ export default function ReviewClient() {
       nextReview.caseFileContent = nextCaseFile
       await persistCaseFile(nextCaseFile)
       await persistReview(nextReview)
+      setReviewChanges(buildReviewChanges(previous, nextReview))
       logUserActivity('follow_up_question', {
         case_id: activeCase.id,
         case_number: activeCase.caseNumber,
@@ -268,6 +294,37 @@ export default function ReviewClient() {
       throw caught
     } finally {
       setFollowUpBusy(false)
+    }
+  }
+
+  function handleToggleStepDone(stepId: string) {
+    if (!activeCase) return
+    setDoneStepIds(toggleDoneStepId(activeCase.id, stepId))
+  }
+
+  async function handleRequestReplyDraft() {
+    if (!review?.contestablePoints?.length) return
+
+    const pointsText = review.contestablePoints
+      .map(
+        (point, index) =>
+          `${index + 1}. ${point.claim} — Warum: ${point.why}. Aktion: ${point.suggestedAction}`,
+      )
+      .join('\n')
+
+    const question = [
+      'Bitte erstelle einen höflichen Entwurf eines Antwortschreibens als Word-Dokument.',
+      'Gehe besonders auf diese Prüfpunkte ein:',
+      pointsText,
+      'Sachlich, klar, ohne unnötige Fachsprache.',
+    ].join('\n')
+
+    setReplyDraftBusy(true)
+    setChatOpen(true)
+    try {
+      await handleChatSubmit({ userText: question })
+    } finally {
+      setReplyDraftBusy(false)
     }
   }
 
@@ -406,8 +463,8 @@ export default function ReviewClient() {
           ) : review ? (
             <>
               <PageIntro
-                title={review.phase === 'final' ? 'Auswertung' : 'Erste Einordnung'}
-                description="Übersicht, Unterlagen-Einschätzung und nächste Schritte für deinen Fall."
+                title={review.phase === 'final' ? 'Deine Auswertung' : 'Erste Einordnung'}
+                description="Kurz verstehen, was das Schreiben will — und was du als Nächstes tun kannst."
               />
 
               <div className="flex justify-end -mt-2">
@@ -419,21 +476,45 @@ export default function ReviewClient() {
                 </Link>
               </div>
 
+              <ReviewChangesBanner changes={reviewChanges} onDismiss={() => setReviewChanges([])} />
+
+              <DeadlineBanner
+                deadline={review.primaryDeadline}
+                label={review.primaryDeadlineLabel}
+                caseTitle={activeCase?.title}
+              />
+
+              {documentKindLabel(review.documentKind) ? (
+                <p className="text-sm text-muted">
+                  Art des Schreibens:{' '}
+                  <span className="font-medium text-foreground">{documentKindLabel(review.documentKind)}</span>
+                </p>
+              ) : null}
+
               {shouldShowSummary(review.summary, review.assessment) ? (
                 <div className="rounded-2xl border border-accent/25 bg-accent-soft p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">Zusammenfassung</p>
-                  <p className="mt-3 whitespace-pre-line text-base leading-7 text-foreground">
+                  <p className="text-sm font-semibold text-accent">In wenigen Worten</p>
+                  <p className="mt-2 whitespace-pre-line text-base leading-7 text-foreground">
                     {displaySummary(review.summary)}
                   </p>
                 </div>
               ) : null}
 
-              <div className="space-y-3">
-                <h2 className="text-xl font-semibold tracking-tight">
-                  {review.phase === 'final' ? 'Bewertung im Detail' : 'Was das Schreiben bedeutet'}
-                </h2>
+              <div className="space-y-2">
+                <h2 className="text-xl font-semibold tracking-tight">Was das für dich bedeutet</h2>
                 <p className="leading-8 text-foreground">{review.assessment}</p>
               </div>
+
+              <ClaimsPanel
+                claims={review.keyClaims}
+                points={review.contestablePoints}
+                draftBusy={replyDraftBusy || followUpBusy}
+                onRequestReplyDraft={
+                  (review.contestablePoints?.length ?? 0) > 0
+                    ? () => void handleRequestReplyDraft()
+                    : undefined
+                }
+              />
 
               <DocumentsStatusPanel
                 status={review.documentsStatus}
@@ -443,30 +524,72 @@ export default function ReviewClient() {
 
               {steps.length > 0 ? (
                 <div className="space-y-3">
-                  <h3 className="text-lg font-semibold tracking-tight">Nächste Schritte</h3>
+                  <div>
+                    <h3 className="text-lg font-semibold tracking-tight">Deine nächsten Schritte</h3>
+                    <p className="mt-1 text-sm leading-6 text-muted">
+                      Abhaken, wenn erledigt — speichert nur auf diesem Gerät.
+                    </p>
+                  </div>
                   <ul className="space-y-3">
                     {steps.map((step, index) => {
                       const label = priorityLabel(step.priority)
+                      const done = doneStepIds.includes(step.id)
                       return (
                         <li
                           key={step.id}
-                          className="rounded-2xl border border-border bg-surface p-4 shadow-sm"
+                          className={`rounded-2xl border p-4 shadow-sm ${
+                            done
+                              ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20'
+                              : 'border-border bg-surface'
+                          }`}
                         >
                           <div className="flex items-start gap-3">
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white">
-                              {index + 1}
-                            </span>
+                            <button
+                              type="button"
+                              aria-pressed={done}
+                              aria-label={done ? `Schritt ${index + 1} wieder öffnen` : `Schritt ${index + 1} erledigt`}
+                              disabled={busy || followUpBusy}
+                              onClick={() => handleToggleStepDone(step.id)}
+                              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                                done
+                                  ? 'bg-emerald-600 text-white'
+                                  : 'bg-accent text-white'
+                              }`}
+                            >
+                              {done ? '✓' : index + 1}
+                            </button>
                             <div className="min-w-0 flex-1">
-                              <p className="text-sm leading-7 text-foreground">{step.text}</p>
+                              <p
+                                className={`text-sm leading-7 ${
+                                  done ? 'text-muted line-through' : 'text-foreground'
+                                }`}
+                              >
+                                {step.text}
+                              </p>
                               <div className="mt-2 flex flex-wrap gap-2 text-xs">
                                 {step.deadline ? (
-                                  <span className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-                                    Frist: {step.deadline}
-                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      downloadDeadlineIcs({
+                                        deadline: step.deadline!,
+                                        title: `${step.text.slice(0, 80)}${activeCase?.title ? ` — ${activeCase.title}` : ''}`,
+                                        fileName: `Schritt_${step.deadline}.ics`,
+                                      })
+                                    }
+                                    className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-900 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-200"
+                                  >
+                                    Bis {formatDeadlineShort(step.deadline)} · Kalender
+                                  </button>
                                 ) : null}
                                 {label ? (
                                   <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
                                     {label}
+                                  </span>
+                                ) : null}
+                                {done ? (
+                                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
+                                    Erledigt
                                   </span>
                                 ) : null}
                               </div>
@@ -479,7 +602,7 @@ export default function ReviewClient() {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-border bg-surface p-5">
-                  <h3 className="text-base font-semibold">Nächste Schritte</h3>
+                  <h3 className="text-base font-semibold">Deine nächsten Schritte</h3>
                   <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">{review.nextSteps}</p>
                 </div>
               )}
@@ -492,8 +615,7 @@ export default function ReviewClient() {
 
               {showFinalButton ? (
                 <p className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm leading-7 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
-                  Alle Unterlagen sind erfasst. Mit „Bewertung einholen“ erhältst du eine präzise Gesamtbewertung
-                  mit klaren Fristen aus dem heute relevanten Schreiben.
+                  Unterlagen sind erfasst. Mit „Bewertung einholen“ bekommst du die klare Gesamtübersicht mit Fristen.
                 </p>
               ) : null}
 

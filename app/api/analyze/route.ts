@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import {
   ANALYZE_RESULT_SCHEMA,
+  normalizeDecisionFields,
   normalizeDocumentsFields,
   normalizeStructuredSteps,
   type ParsedAnalyzePayload,
@@ -37,6 +38,7 @@ function parseAndValidate(content: string): { ok: true; result: ParsedAnalyzePay
   }
 
   const documents = normalizeDocumentsFields(parsed)
+  const decision = normalizeDecisionFields(parsed)
 
   return {
     ok: true,
@@ -46,6 +48,7 @@ function parseAndValidate(content: string): { ok: true; result: ParsedAnalyzePay
       structuredSteps: normalizeStructuredSteps(parsed.structuredSteps ?? []),
       summary: parsed.summary?.trim() || '',
       ...documents,
+      ...decision,
     },
   }
 }
@@ -125,6 +128,7 @@ export async function POST(request: Request) {
     pdfCount,
     intent: body.intent,
     existingCaseFile: body.existingCaseFile,
+    peekContext: body.peekContext,
   })
 
   const temperature = body.intent === 'initial' ? 0.5 : 0.35
@@ -218,6 +222,11 @@ export async function POST(request: Request) {
       assessment: result.assessment,
       nextSteps: result.nextSteps,
       structuredSteps: result.structuredSteps,
+      documentKind: result.documentKind,
+      primaryDeadline: result.primaryDeadline,
+      primaryDeadlineLabel: result.primaryDeadlineLabel,
+      keyClaims: result.keyClaims,
+      contestablePoints: result.contestablePoints,
       needsMoreDocuments: result.needsMoreDocuments,
       requestedDocuments: result.requestedDocuments,
       documentsStatus: result.documentsStatus,

@@ -11,8 +11,12 @@ import OnboardingShell, {
   PrivacyNote,
   formBottomSpacerClass,
 } from '@/components/onboarding/OnboardingShell'
+import { logUserActivity } from '@/lib/activityLog'
+import { clearDraftCaseTitle, setDraftCaseTitle } from '@/lib/draftCase'
 import { CASE_TITLE_FIELD_NAME, caseTitleInputProps } from '@/lib/formInputAutofill'
-import { setDraftCaseTitle } from '@/lib/draftCase'
+import { createCase } from '@/lib/localCases'
+import { getStoredProfileName } from '@/lib/localProfile'
+import { recordCaseCreated } from '@/lib/plusEngagement'
 
 function readTitleFromForm(form: HTMLFormElement): string {
   const fromFormData = String(new FormData(form).get(CASE_TITLE_FIELD_NAME) ?? '').trim()
@@ -39,6 +43,20 @@ export default function FallNeuClient() {
     setSubmitting(true)
 
     try {
+      const profileName = getStoredProfileName()
+      if (profileName) {
+        const created = await createCase(title, profileName)
+        clearDraftCaseTitle()
+        recordCaseCreated()
+        logUserActivity('case_created', {
+          case_id: created.id,
+          case_number: created.caseNumber,
+          case_title: created.title,
+        })
+        window.location.assign('/scan')
+        return
+      }
+
       setDraftCaseTitle(title)
       window.location.assign('/name')
     } catch (caught) {
@@ -97,7 +115,7 @@ export default function FallNeuClient() {
 
         <FormStickyFooter>
           <PrimaryButton type="button" inactive={submitting} onClick={handleContinueClick}>
-            {submitting ? 'Wird gespeichert …' : 'Weiter'}
+            {submitting ? 'Wird angelegt …' : 'Weiter'}
           </PrimaryButton>
         </FormStickyFooter>
       </form>

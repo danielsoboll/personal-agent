@@ -10,6 +10,23 @@ export type StructuredStep = {
   priority?: 'hoch' | 'mittel' | 'niedrig'
 }
 
+export type DocumentKind = 'behoerde' | 'gericht' | 'anwalt' | 'versicherung' | 'sonstiges'
+
+export type KeyClaim = {
+  id: string
+  text: string
+}
+
+export type ContestablePoint = {
+  id: string
+  /** Welche Behauptung/Forderung gemeint ist */
+  claim: string
+  /** Warum prüfenswert / angreifbar */
+  why: string
+  /** Konkrete nächste Handlung */
+  suggestedAction: string
+}
+
 export type DocumentsStatus = 'not_needed' | 'recommended' | 'required'
 
 export type ReviewPhase = 'interim' | 'final'
@@ -49,6 +66,16 @@ export type AnalyzeResult = {
   assessment: string
   nextSteps: string
   structuredSteps: StructuredStep[]
+  /** Dokumenttyp für Playbook / UI */
+  documentKind?: DocumentKind
+  /** Wichtigste Frist YYYY-MM-DD */
+  primaryDeadline?: string
+  /** Kurzes Label der Frist */
+  primaryDeadlineLabel?: string
+  /** Behauptungen/Forderungen der Gegenseite bzw. des Absenders */
+  keyClaims?: KeyClaim[]
+  /** Prüf-/Angriffspunkte */
+  contestablePoints?: ContestablePoint[]
   /** @deprecated Ableitung aus documentsStatus — required = true */
   needsMoreDocuments: boolean
   /** Konkrete Vorschläge, wenn recommended oder required */
@@ -84,7 +111,26 @@ export type AnalyzeRequestBody = {
   attachments: AnalyzeAttachment[]
   existingCaseFile?: string
   intent: AnalyzeIntent
+  /** Ergebnis der Hintergrund-Kurzvorschau vom ersten Dokument. */
+  peekContext?: DocumentPeekResult
 }
+
+export type DocumentPeekResult = {
+  quickGuess: string
+  suggestedQuestion: string
+  focusHints: string[]
+}
+
+export type DocumentPeekRequestBody = {
+  userName: string
+  caseTitle: string
+  caseNumber?: number
+  attachment: AnalyzeAttachment
+  intent: AnalyzeIntent
+}
+
+export type DocumentPeekResponseBody = DocumentPeekResult
+
 
 export type AnalyzeResponseBody = {
   result: Omit<AnalyzeResult, 'analyzedAt' | 'intent' | 'photoCount'>
@@ -141,5 +187,10 @@ export type ClarifyResponseBody = {
   updatedAssessment: string
   updatedNextSteps: string
   updatedStructuredSteps: StructuredStep[]
+  documentKind: DocumentKind
+  primaryDeadline?: string
+  primaryDeadlineLabel?: string
+  keyClaims: KeyClaim[]
+  contestablePoints: ContestablePoint[]
   wordDocument?: FollowUpWordDocument
 }

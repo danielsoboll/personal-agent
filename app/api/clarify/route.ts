@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 
-import { CLARIFY_SCHEMA, normalizeStructuredSteps, type ClarifyPayload } from '@/lib/analyzeSchema'
+import { CLARIFY_SCHEMA, normalizeDecisionFields, normalizeStructuredSteps, type ClarifyPayload } from '@/lib/analyzeSchema'
 import { CLARIFY_SYSTEM_PROMPT, buildClarifyUserPrompt } from '@/lib/analyzePrompts'
 import { ATTACHMENTS_ONLY_QUESTION } from '@/lib/chatFollowUp'
 import type { AnalyzeAttachment, ClarifyRequestBody, ClarifyResponseBody, FollowUpWordDocument } from '@/lib/analyzeTypes'
@@ -138,6 +138,14 @@ export async function POST(request: Request) {
     }
   }
 
+  const decision = normalizeDecisionFields({
+    documentKind: parsed.updatedDocumentKind,
+    primaryDeadline: parsed.updatedPrimaryDeadline,
+    primaryDeadlineLabel: parsed.updatedPrimaryDeadlineLabel,
+    keyClaims: parsed.updatedKeyClaims,
+    contestablePoints: parsed.updatedContestablePoints,
+  })
+
   return NextResponse.json({
     answer: answer || 'Die Auswertung wurde anhand deiner Nachfrage aktualisiert.',
     contextSummary: parsed.contextSummary?.trim() || '',
@@ -145,6 +153,11 @@ export async function POST(request: Request) {
     updatedAssessment: updatedAssessment ?? '',
     updatedNextSteps: parsed.updatedNextSteps?.trim() ?? '',
     updatedStructuredSteps: normalizeStructuredSteps(parsed.updatedStructuredSteps ?? []),
+    documentKind: decision.documentKind,
+    primaryDeadline: decision.primaryDeadline,
+    primaryDeadlineLabel: decision.primaryDeadlineLabel,
+    keyClaims: decision.keyClaims,
+    contestablePoints: decision.contestablePoints,
     ...(wordDocument ? { wordDocument } : {}),
   } satisfies ClarifyResponseBody)
 }

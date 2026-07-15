@@ -34,6 +34,21 @@ export async function deleteAllLocalData(): Promise<void> {
     window.localStorage.removeItem(ACTIVE_CASE_ID_KEY)
     window.localStorage.removeItem(PLUS_ENGAGEMENT_KEY)
     window.localStorage.removeItem(PLUS_ACTIVE_KEY)
+    const keysToRemove: string[] = []
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index)
+      if (!key) continue
+      if (
+        key.startsWith('behoerdenpost.steps-done.') ||
+        key.startsWith('behoerdenpost-pwa') ||
+        key.startsWith('behoerdenpost-home-screen')
+      ) {
+        keysToRemove.push(key)
+      }
+    }
+    for (const key of keysToRemove) {
+      window.localStorage.removeItem(key)
+    }
     window.dispatchEvent(new CustomEvent(PLUS_DISCOVER_UNLOCK_CHANGED_EVENT))
   }
 }
