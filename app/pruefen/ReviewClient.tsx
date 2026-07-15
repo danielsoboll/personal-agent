@@ -36,7 +36,6 @@ import {
 import { displaySummary, shouldShowSummary } from '@/lib/reviewDisplay'
 import { formatDeadlineShort } from '@/lib/deadlineDisplay'
 import { downloadDeadlineIcs } from '@/lib/calendarExport'
-import { documentKindLabel } from '@/lib/documentKindLabel'
 import { buildReviewChanges, type ReviewChangeItem } from '@/lib/reviewDiff'
 import { loadDoneStepIds, toggleDoneStepId } from '@/lib/stepProgress'
 import { documentChoiceHint, reviewFooterState } from '@/lib/reviewFooter'
@@ -462,19 +461,9 @@ export default function ReviewClient() {
             <p className="text-sm text-muted">Auswertung wird geladen …</p>
           ) : review ? (
             <>
-              <PageIntro
-                title={review.phase === 'final' ? 'Deine Auswertung' : 'Erste Einordnung'}
-                description="Kurz verstehen, was das Schreiben will — und was du als Nächstes tun kannst."
-              />
-
-              <div className="flex justify-end -mt-2">
-                <Link href="/bibliothek" className={buttonStyles.secondary}>
-                  <span className="sm:hidden" aria-label="Bibliothek">
-                    📄 Bibliothek
-                  </span>
-                  <span className="hidden sm:inline">Zur Bibliothek</span>
-                </Link>
-              </div>
+              <h2 className="text-2xl font-semibold tracking-tight text-balance">
+                {review.phase === 'final' ? 'Deine Auswertung' : 'Erste Einordnung'}
+              </h2>
 
               <ReviewChangesBanner changes={reviewChanges} onDismiss={() => setReviewChanges([])} />
 
@@ -484,16 +473,9 @@ export default function ReviewClient() {
                 caseTitle={activeCase?.title}
               />
 
-              {documentKindLabel(review.documentKind) ? (
-                <p className="text-sm text-muted">
-                  Art des Schreibens:{' '}
-                  <span className="font-medium text-foreground">{documentKindLabel(review.documentKind)}</span>
-                </p>
-              ) : null}
-
               {shouldShowSummary(review.summary, review.assessment) ? (
                 <div className="rounded-2xl border border-accent/25 bg-accent-soft p-5">
-                  <p className="text-sm font-semibold text-accent">In wenigen Worten</p>
+                  <p className="text-sm font-semibold text-accent">Kurze Zusammenfassung</p>
                   <p className="mt-2 whitespace-pre-line text-base leading-7 text-foreground">
                     {displaySummary(review.summary)}
                   </p>
@@ -631,6 +613,10 @@ export default function ReviewClient() {
                   ? ` (${Math.ceil((review.followUpMessages?.length ?? 0) / 2)})`
                   : ''}
               </button>
+
+              <Link href="/bibliothek" className={buttonStyles.secondary}>
+                Zur Bibliothek
+              </Link>
 
               {activeCase ? (
                 <div className="space-y-3 border-t border-border pt-6">
