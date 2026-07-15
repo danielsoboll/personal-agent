@@ -12,7 +12,8 @@ import { shouldRotateBeforeInitialScan } from '@/lib/caseFileReorganizeOps'
 import { runCaseFileReorganize } from '@/lib/caseFileReorganizeServer'
 import { callOpenAiChatCompletion } from '@/lib/openaiChat'
 import { resolveOpenAiModel } from '@/lib/openaiModel'
-import type { AnalyzeRequestBody, AnalyzeResponseBody } from '@/lib/analyzeTypes'
+import type { AnalyzeAttachment, AnalyzeRequestBody, AnalyzeResponseBody } from '@/lib/analyzeTypes'
+import type { UserContentPart } from '@/lib/openaiChat'
 
 export const maxDuration = 60
 
@@ -53,13 +54,25 @@ async function runAnalyzeAttempt(options: {
   apiKey: string
   model: string
   userText: string
-  images: string[]
+  attachments: AnalyzeAttachment[]
   temperature?: number
 }): Promise<{ ok: true; content: string } | { ok: false; error: string }> {
-  const imageParts = options.images.map((dataUrl) => ({
-    type: 'image_url' as const,
-    image_url: { url: dataUrl, detail: 'high' as const },
-  }))
+  const attachmentParts: UserContentPart[] = options.attachments.map((attachment) => {
+    if (attachment.kind === 'pdf') {
+      return {
+        type: 'file',
+        file: {
+          filename: attachment.fileName || 'dokument.pdf',
+          file_data: attachment.dataUrl,
+        },
+      }
+    }
+
+    return {
+      type: 'image_url',
+      image_url: { url: attachment.dataUrl, detail: 'high' },
+    }
+  })
 
   const result = await callOpenAiChatCompletion({
     apiKey: options.apiKey,
@@ -75,8 +88,8 @@ async function runAnalyzeAttempt(options: {
       {
         role: 'user',
         content:
-          imageParts.length > 0
-            ? [{ type: 'text', text: options.userText }, ...imageParts]
+          attachmentParts.length > 0
+            ? [{ type: 'text', text: options.userText }, ...attachmentParts]
             : options.userText,
       },
     ],
@@ -109,8 +122,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Name und Fallname sind erforderlich.' }, { status: 400 })
   }
 
-  if (!Array.isArray(body.images) || body.images.length === 0) {
-    return NextResponse.json({ error: 'Mindestens ein Foto ist erforderlich.' }, { status: 400 })
+  if (!Array.isArray(body.attachments) || body.attachments.length === 0) {
+    return NextResponse.json({ error: 'Mindestens ein Dokument ist erforderlich.' }, { status: 400 })
   }
 
   if (body.intent !== 'initial' && !body.existingCaseFile?.trim()) {
@@ -118,11 +131,13 @@ export async function POST(request: Request) {
   }
 
   const model = resolveOpenAiModel()
+  const pdfCount = body.attachments.filter((attachment) => attachment.kind === 'pdf').length
   const userText = buildAnalyzeUserPrompt({
     userName: body.userName,
     caseTitle: body.caseTitle,
     caseNumber: body.caseNumber,
-    imageCount: body.images.length,
+    attachmentCount: body.attachments.length,
+    pdfCount,
     intent: body.intent,
     existingCaseFile: body.existingCaseFile,
   })
@@ -133,7 +148,7 @@ export async function POST(request: Request) {
     apiKey,
     model,
     userText,
-    images: body.images,
+    attachments: body.attachments,
     temperature,
   })
 
@@ -153,7 +168,7 @@ export async function POST(request: Request) {
       apiKey,
       model,
       userText: retryText,
-      images: body.images,
+      attachments: body.attachments,
       temperature,
     })
 
@@ -178,7 +193,7 @@ export async function POST(request: Request) {
   const aktuellInput = {
     name: body.userName,
     fall: body.caseTitle,
-    anfrage: `${body.images.length} Foto${body.images.length === 1 ? '' : 's'} — erster Scan`,
+    anfrage: `${body.attachments.length} Anhang${body.attachments.length === 1 ? '' : 'e'} — erster Scan`,
     resultat: {
       summary: result.summary,
       assessment: result.assessment,

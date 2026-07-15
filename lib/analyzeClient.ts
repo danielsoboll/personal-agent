@@ -1,4 +1,5 @@
 import type {
+  AnalyzeAttachment,
   AnalyzeRequestBody,
   AnalyzeResponseBody,
   AssessRequestBody,
@@ -38,17 +39,30 @@ export async function analyzeCurrentPhotos(options: {
     throw new Error('Es gibt noch keinen gespeicherten Hintergrund für die Ergänzung.')
   }
 
-  const images: string[] = []
+  const attachments: AnalyzeAttachment[] = []
   for (const photo of photos) {
+    if (photo.kind === 'pdf') {
+      attachments.push({
+        kind: 'pdf',
+        dataUrl: await blobToDataUrl(photo.blob),
+        fileName: photo.fileName,
+      })
+      continue
+    }
+
     const compressed = await compressImageForAnalysis(photo.blob)
-    images.push(await blobToDataUrl(compressed))
+    attachments.push({
+      kind: 'image',
+      dataUrl: await blobToDataUrl(compressed),
+      fileName: photo.fileName,
+    })
   }
 
   const body: AnalyzeRequestBody = {
     userName: activeCase.userName,
     caseTitle: activeCase.title,
     caseNumber: activeCase.caseNumber,
-    images,
+    attachments,
     intent: options.intent,
     existingCaseFile:
       isFollowUp || isNewLetterOnSameCase ? (existingCaseFile ?? undefined) : undefined,

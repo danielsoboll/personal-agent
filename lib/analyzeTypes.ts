@@ -51,12 +51,18 @@ export type AnalyzeResult = {
   followUpMessages?: FollowUpMessage[]
 }
 
+export type AnalyzeAttachment = {
+  kind: 'image' | 'pdf'
+  dataUrl: string
+  fileName?: string
+}
+
 export type AnalyzeRequestBody = {
   userName: string
   caseTitle: string
   /** Lokale Fallnummer — nur zur Prompt-Zuordnung, kein PII. */
   caseNumber?: number
-  images: string[]
+  attachments: AnalyzeAttachment[]
   existingCaseFile?: string
   intent: AnalyzeIntent
 }

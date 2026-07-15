@@ -5,9 +5,16 @@ type JsonSchemaFormat = {
   schema: Record<string, unknown>
 }
 
+type UserContentPart =
+  | { type: 'text'; text: string }
+  | { type: 'image_url'; image_url: { url: string; detail?: string } }
+  | { type: 'file'; file: { filename: string; file_data: string } }
+
 type ChatMessage =
   | { role: 'system' | 'assistant'; content: string }
-  | { role: 'user'; content: string | Array<{ type: 'text'; text: string } | { type: 'image_url'; image_url: { url: string; detail?: string } }> }
+  | { role: 'user'; content: string | UserContentPart[] }
+
+export type { UserContentPart }
 
 export type OpenAiChatResult =
   | { ok: true; content: string; model: string }

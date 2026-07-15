@@ -1,6 +1,6 @@
+export type DocumentKind = 'image' | 'pdf'
+
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024
-const PDF_RENDER_SCALE = 1.75
-const PDF_MAX_EDGE = 1600
 
 export const UPLOAD_ACCEPT =
   'image/jpeg,image/png,image/webp,image/heic,image/heif,application/pdf,.pdf'
@@ -13,12 +13,22 @@ const IMAGE_TYPES = new Set([
   'image/heif',
 ])
 
-function isPdfFile(file: File): boolean {
+export function isPdfMimeType(mimeType: string): boolean {
+  return mimeType === 'application/pdf'
+}
+
+export function isPdfFile(file: File): boolean {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
 }
 
 function isImageFile(file: File): boolean {
   return file.type.startsWith('image/') || IMAGE_TYPES.has(file.type)
+}
+
+export function inferDocumentKind(mimeType: string, fileName?: string): DocumentKind {
+  if (isPdfMimeType(mimeType)) return 'pdf'
+  if (fileName?.toLowerCase().endsWith('.pdf')) return 'pdf'
+  return 'image'
 }
 
 export function validateUploadFile(file: File): void {
@@ -31,60 +41,24 @@ export function validateUploadFile(file: File): void {
   }
 }
 
-async function pdfFileToImageBlobs(file: File): Promise<Blob[]> {
-  if (typeof window === 'undefined') {
-    throw new Error('PDF-Verarbeitung ist nur im Browser verfügbar.')
-  }
-
-  const pdfjs = await import('pdfjs-dist')
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
-
-  const data = new Uint8Array(await file.arrayBuffer())
-  const pdf = await pdfjs.getDocument({ data }).promise
-  const blobs: Blob[] = []
-
-  for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-    const page = await pdf.getPage(pageNumber)
-    const viewport = page.getViewport({ scale: PDF_RENDER_SCALE })
-    const scale = Math.min(1, PDF_MAX_EDGE / Math.max(viewport.width, viewport.height))
-    const scaledViewport = page.getViewport({ scale: PDF_RENDER_SCALE * scale })
-
-    const canvas = document.createElement('canvas')
-    canvas.width = Math.max(1, Math.round(scaledViewport.width))
-    canvas.height = Math.max(1, Math.round(scaledViewport.height))
-
-    const context = canvas.getContext('2d')
-    if (!context) {
-      throw new Error('PDF-Seite konnte nicht gerendert werden.')
-    }
-
-    await page.render({ canvasContext: context, viewport: scaledViewport }).promise
-
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, 'image/jpeg', 0.88)
-    })
-
-    if (!blob) {
-      throw new Error(`PDF-Seite ${pageNumber} konnte nicht gelesen werden.`)
-    }
-
-    blobs.push(blob)
-  }
-
-  return blobs
+export type PreparedUploadFile = {
+  blob: Blob
+  fileName: string
+  mimeType: string
+  kind: DocumentKind
 }
 
-/** Bild oder PDF → eine oder mehrere JPEG-Blobs für die Auswertung. */
-export async function uploadFileToImageBlobs(file: File): Promise<Blob[]> {
+/** Datei validieren und als Blob für lokale Speicherung vorbereiten — PDFs bleiben PDF. */
+export function prepareUploadFile(file: File): PreparedUploadFile {
   validateUploadFile(file)
 
-  if (isPdfFile(file)) {
-    const pages = await pdfFileToImageBlobs(file)
-    if (pages.length === 0) {
-      throw new Error('Die PDF-Datei enthält keine Seiten.')
-    }
-    return pages
-  }
+  const mimeType = file.type || (isPdfFile(file) ? 'application/pdf' : 'image/jpeg')
+  const kind = inferDocumentKind(mimeType, file.name)
 
-  return [file]
+  return {
+    blob: file,
+    fileName: file.name || (kind === 'pdf' ? 'Dokument.pdf' : 'Foto.jpg'),
+    mimeType,
+    kind,
+  }
 }

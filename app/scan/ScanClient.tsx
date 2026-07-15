@@ -6,7 +6,7 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrivacyNote } from '@/components/onboarding/OnboardingShell'
-import { buttonStyles } from '@/lib/buttonStyles'
+import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { analyzeCurrentPhotos } from '@/lib/analyzeClient'
 import { logUserActivity } from '@/lib/activityLog'
@@ -28,11 +28,16 @@ import {
   removeDocumentPhoto,
   type StoredPhoto,
 } from '@/lib/localDocuments'
-import { UPLOAD_ACCEPT, uploadFileToImageBlobs } from '@/lib/documentUpload'
+import { UPLOAD_ACCEPT, prepareUploadFile } from '@/lib/documentUpload'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
-  previewUrl: string
+  previewUrl: string | null
+}
+
+function truncateFileName(name: string, max = 28): string {
+  if (name.length <= max) return name
+  return `${name.slice(0, max - 1)}…`
 }
 
 function parseIntent(value: string | null): AnalyzeIntent {
@@ -68,7 +73,7 @@ export default function ScanClient() {
       return {
         title: 'Weitere Fotos zum aktuellen Schreiben',
         heading: 'Ergänze das aktuelle Schreiben',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Seiten. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
       }
     }
 
@@ -76,14 +81,14 @@ export default function ScanClient() {
       return {
         title: 'Ältere Dokumente erfassen',
         heading: 'Fotografiere ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Seiten. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
       }
     }
 
     return {
       title: 'Dokument erfassen',
       heading: 'Fotografiere oder lade dein Dokument hoch',
-      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Seiten. Foto aufnehmen oder Datei hochladen — auch PDFs mit mehreren Seiten.`,
+      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente. PDFs werden direkt ausgewertet — Fotos und Dateien kannst du vor dem Prüfen antippen, um sie zu entfernen.`,
     }
   }, [intent])
 
@@ -102,7 +107,7 @@ export default function ScanClient() {
       setPhotos(
         storedPhotos.map((photo) => ({
           ...photo,
-          previewUrl: createPhotoPreviewUrl(photo.blob),
+          previewUrl: photo.kind === 'pdf' ? null : createPhotoPreviewUrl(photo.blob),
         })),
       )
       setLoading(false)
@@ -114,18 +119,23 @@ export default function ScanClient() {
   useEffect(() => {
     return () => {
       for (const photo of photos) {
-        URL.revokeObjectURL(photo.previewUrl)
+        if (photo.previewUrl) {
+          URL.revokeObjectURL(photo.previewUrl)
+        }
       }
     }
   }, [photos])
 
-  async function saveDocumentBlob(blob: Blob): Promise<boolean> {
+  async function saveDocumentBlob(
+    blob: Blob,
+    meta?: { fileName?: string; mimeType?: string; kind?: StoredPhoto['kind'] },
+  ): Promise<boolean> {
     setBusy(true)
     setError('')
 
     try {
-      const saved = await addDocumentPhoto(blob, maxPhotos)
-      const previewUrl = createPhotoPreviewUrl(saved.blob)
+      const saved = await addDocumentPhoto(blob, maxPhotos, undefined, meta)
+      const previewUrl = saved.kind === 'pdf' ? null : createPhotoPreviewUrl(saved.blob)
       const committed: PhotoPreview = { ...saved, previewUrl }
       setPhotos((current) => [...current, committed])
       return true
@@ -144,15 +154,19 @@ export default function ScanClient() {
     if (!file || analyzing || busy) return
 
     if (photos.length >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Seiten möglich.`)
+      setError(`Maximal ${maxPhotos} Dokumente möglich.`)
       return
     }
 
-    const saved = await saveDocumentBlob(file)
+    const saved = await saveDocumentBlob(file, {
+      fileName: file.name || 'Foto.jpg',
+      mimeType: file.type || 'image/jpeg',
+      kind: 'image',
+    })
     if (!saved) return
 
     if (photos.length + 1 >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Seiten erreicht. Tippe auf Prüfen.`)
+      setError(`Maximal ${maxPhotos} Dokumente erreicht. Tippe auf Prüfen.`)
     }
   }
 
@@ -172,23 +186,22 @@ export default function ScanClient() {
     try {
       for (const file of files) {
         if (remaining <= 0) {
-          setError(`Maximal ${maxPhotos} Seiten möglich — einige Dateien wurden nicht hinzugefügt.`)
+          setError(`Maximal ${maxPhotos} Dokumente möglich — einige Dateien wurden nicht hinzugefügt.`)
           break
         }
 
-        const blobs = await uploadFileToImageBlobs(file)
-
-        for (const blob of blobs) {
-          if (remaining <= 0) {
-            setError(`Maximal ${maxPhotos} Seiten möglich — einige Seiten wurden nicht hinzugefügt.`)
-            break
-          }
-
-          const saved = await addDocumentPhoto(blob, maxPhotos)
-          newPreviews.push({ ...saved, previewUrl: createPhotoPreviewUrl(saved.blob) })
-          added += 1
-          remaining -= 1
-        }
+        const prepared = prepareUploadFile(file)
+        const saved = await addDocumentPhoto(prepared.blob, maxPhotos, undefined, {
+          fileName: prepared.fileName,
+          mimeType: prepared.mimeType,
+          kind: prepared.kind,
+        })
+        newPreviews.push({
+          ...saved,
+          previewUrl: saved.kind === 'pdf' ? null : createPhotoPreviewUrl(saved.blob),
+        })
+        added += 1
+        remaining -= 1
       }
 
       if (newPreviews.length > 0) {
@@ -196,7 +209,7 @@ export default function ScanClient() {
       }
 
       if (added > 0 && photos.length + added >= maxPhotos) {
-        setError(`Maximal ${maxPhotos} Seiten erreicht. Tippe auf Prüfen.`)
+        setError(`Maximal ${maxPhotos} Dokumente erreicht. Tippe auf Prüfen.`)
       }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Datei konnte nicht verarbeitet werden.')
@@ -209,7 +222,7 @@ export default function ScanClient() {
     if (analyzing || busy) return
 
     const target = photos.find((photo) => photo.id === id)
-    if (target) {
+    if (target?.previewUrl) {
       URL.revokeObjectURL(target.previewUrl)
     }
 
@@ -250,7 +263,9 @@ export default function ScanClient() {
       })
 
       for (const photo of photos) {
-        URL.revokeObjectURL(photo.previewUrl)
+        if (photo.previewUrl) {
+          URL.revokeObjectURL(photo.previewUrl)
+        }
       }
       setPhotos([])
 
@@ -314,7 +329,7 @@ export default function ScanClient() {
                   : buttonStyles.primaryActive
               }
             >
-              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Seite${photos.length === 1 ? '' : 'n'})` : ''}
+              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
             </button>
           </div>
         }
@@ -328,32 +343,43 @@ export default function ScanClient() {
             className={`grid grid-cols-2 gap-3 sm:grid-cols-3 ${analyzing ? 'pointer-events-none opacity-60' : ''}`}
           >
             {photos.map((photo, index) => (
-              <figure
+              <button
                 key={photo.id}
-                className="relative overflow-hidden rounded-2xl border border-border bg-surface"
+                type="button"
+                disabled={isInteractionLocked}
+                aria-label={`${photo.kind === 'pdf' ? 'PDF' : 'Foto'} ${index + 1} entfernen`}
+                onClick={() => void handleRemovePhoto(photo.id)}
+                className={`${PRESSABLE_3D} relative overflow-hidden rounded-2xl border border-border bg-surface text-left transition hover:border-red-300 hover:ring-2 hover:ring-red-200/80 disabled:opacity-60`}
               >
-                <Image
-                  src={photo.previewUrl}
-                  alt={`Dokumentfoto ${index + 1}`}
-                  width={240}
-                  height={320}
-                  unoptimized
-                  className="aspect-[3/4] h-full w-full object-cover"
-                />
-                <figcaption className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs font-medium text-white">
+                {photo.kind === 'pdf' ? (
+                  <div className="flex aspect-[3/4] flex-col items-center justify-center gap-3 px-3 py-6">
+                    <span className="text-4xl leading-none" aria-hidden>
+                      📄
+                    </span>
+                    <span className="line-clamp-4 text-center text-xs font-semibold leading-5 text-foreground">
+                      {truncateFileName(photo.fileName ?? 'Dokument.pdf')}
+                    </span>
+                    <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-accent">
+                      PDF
+                    </span>
+                  </div>
+                ) : (
+                  <Image
+                    src={photo.previewUrl!}
+                    alt={`Dokumentfoto ${index + 1}`}
+                    width={240}
+                    height={320}
+                    unoptimized
+                    className="aspect-[3/4] h-full w-full object-cover"
+                  />
+                )}
+                <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-1 text-xs font-medium text-white">
                   {index + 1}
-                </figcaption>
-                {!analyzing ? (
-                  <button
-                    type="button"
-                    aria-label={`Foto ${index + 1} entfernen`}
-                    onClick={() => void handleRemovePhoto(photo.id)}
-                    className={`absolute right-2 top-2 ${buttonStyles.photoRemove}`}
-                  >
-                    ✕
-                  </button>
-                ) : null}
-              </figure>
+                </span>
+                <span className="absolute inset-x-0 bottom-0 bg-black/70 py-2 text-center text-xs font-semibold text-white">
+                  Entfernen
+                </span>
+              </button>
             ))}
 
             {photos.length === 0 && canAddMore ? (
@@ -385,8 +411,10 @@ export default function ScanClient() {
           </div>
 
           <p className="text-sm text-muted">
-            {photos.length} von {maxPhotos} Seiten
-            {photos.length === 0 ? ' — Foto aufnehmen oder Datei hochladen (JPG, PNG, PDF).' : ''}
+            {photos.length} von {maxPhotos} Dokumenten
+            {photos.length === 0
+              ? ' — Foto aufnehmen oder Datei hochladen (JPG, PNG, PDF).'
+              : ' — tippe auf ein Dokument, um es vor dem Prüfen zu entfernen.'}
           </p>
 
           <input

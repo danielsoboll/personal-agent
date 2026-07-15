@@ -1,4 +1,5 @@
 import { createId } from '@/lib/createId'
+import { inferDocumentKind, type DocumentKind } from '@/lib/documentUpload'
 import { LOCAL_STORES, runLocalTransaction } from '@/lib/localDb'
 import { getActiveCaseId } from '@/lib/localCases'
 
@@ -6,7 +7,20 @@ type StoredPhoto = {
   id: string
   caseId: string
   blob: Blob
+  fileName?: string
+  mimeType?: string
+  kind?: DocumentKind
   createdAt: number
+}
+
+function normalizeStoredPhoto(photo: StoredPhoto): StoredPhoto {
+  const mimeType = photo.mimeType || photo.blob.type || 'image/jpeg'
+  return {
+    ...photo,
+    fileName: photo.fileName || (mimeType === 'application/pdf' ? 'Dokument.pdf' : 'Foto.jpg'),
+    mimeType,
+    kind: photo.kind ?? inferDocumentKind(mimeType, photo.fileName),
+  }
 }
 
 export const MAX_INITIAL_PHOTOS = 8
@@ -26,10 +40,16 @@ export async function listDocumentPhotos(caseId?: string): Promise<StoredPhoto[]
 
   return photos
     .filter((photo) => photo.caseId === activeCaseId)
+    .map(normalizeStoredPhoto)
     .sort((a, b) => a.createdAt - b.createdAt)
 }
 
-export async function addDocumentPhoto(blob: Blob, maxPhotos: number, caseId?: string): Promise<StoredPhoto> {
+export async function addDocumentPhoto(
+  blob: Blob,
+  maxPhotos: number,
+  caseId?: string,
+  meta?: { fileName?: string; mimeType?: string; kind?: DocumentKind },
+): Promise<StoredPhoto> {
   const activeCaseId = caseId ?? requireActiveCaseId()
   const existing = await listDocumentPhotos(activeCaseId)
 
@@ -37,12 +57,16 @@ export async function addDocumentPhoto(blob: Blob, maxPhotos: number, caseId?: s
     throw new Error(`Maximal ${maxPhotos} Fotos möglich.`)
   }
 
-  const photo: StoredPhoto = {
+  const mimeType = meta?.mimeType || blob.type || 'image/jpeg'
+  const photo: StoredPhoto = normalizeStoredPhoto({
     id: createId(),
     caseId: activeCaseId,
     blob,
+    fileName: meta?.fileName,
+    mimeType,
+    kind: meta?.kind,
     createdAt: Date.now(),
-  }
+  })
 
   await runLocalTransaction<IDBValidKey>(LOCAL_STORES.photos, 'readwrite', (store) => store.add(photo))
   return photo

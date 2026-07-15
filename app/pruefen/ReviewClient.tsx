@@ -280,6 +280,7 @@ export default function ReviewClient() {
 
   const footer = reviewFooterState(review)
   const showDocumentChoice = footer.showDocumentChoice
+  const showOptionalDocumentChoice = footer.showOptionalDocumentChoice
   const showFinalButton = footer.showFinalButton
   const steps: StructuredStep[] = review?.structuredSteps?.length
     ? review.structuredSteps
@@ -332,6 +333,25 @@ export default function ReviewClient() {
                       ) : null}
                     </>
                   ) : null}
+                  {footer.showOptionalDocumentChoice ? (
+                    <>
+                      {footer.showProceedToAssessment ? (
+                        <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
+                          Weiter zur Bewertung
+                        </PrimaryButton>
+                      ) : null}
+                      {footer.showCurrentMoreButton ? (
+                        <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
+                          Optional: Weitere Unterlagen
+                        </SecondaryButton>
+                      ) : null}
+                      {footer.showHistoricalButton ? (
+                        <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
+                          Optional: Ältere Unterlagen
+                        </SecondaryButton>
+                      ) : null}
+                    </>
+                  ) : null}
                   {footer.showFinalButton ? (
                     <PrimaryButton inactive={busy} onClick={() => void handleFinalAssessment()}>
                       Bewertung einholen
@@ -357,6 +377,24 @@ export default function ReviewClient() {
                 title={review.phase === 'final' ? 'Auswertung' : 'Erste Einordnung'}
                 description="Übersicht, Unterlagen-Einschätzung und nächste Schritte für deinen Fall."
               />
+
+              {activeCase ? (
+                <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+                  <h3 className="text-sm font-semibold text-foreground">Fall verwalten</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted">
+                    Fallakte, Auswertung und zugehörige Dokumente vom Gerät entfernen.
+                  </p>
+                  <div className="mt-3">
+                    <DeleteCaseSection
+                      caseId={activeCase.id}
+                      caseTitle={activeCase.title}
+                      disabled={busy || busyStepId !== null || followUpBusy}
+                      onDeleted={() => router.replace('/')}
+                      onError={setError}
+                    />
+                  </div>
+                </div>
+              ) : null}
 
               {shouldShowSummary(review.summary, review.assessment) ? (
                 <div className="rounded-2xl border border-accent/25 bg-accent-soft p-5">
@@ -440,9 +478,9 @@ export default function ReviewClient() {
                 onSubmit={handleFollowUpQuestion}
               />
 
-              {showDocumentChoice && review ? (
+              {(showDocumentChoice || showOptionalDocumentChoice) && review ? (
                 <p className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm leading-7 text-muted">
-                  {documentChoiceHint(review, footer.showAllCapturedButton)}
+                  {documentChoiceHint(review, footer.showAllCapturedButton, showOptionalDocumentChoice)}
                 </p>
               ) : null}
 
@@ -472,16 +510,6 @@ export default function ReviewClient() {
 
               <PrivacyNote variant="storage" />
 
-              {footer.showDeleteCase && activeCase ? (
-                <DeleteCaseSection
-                  caseId={activeCase.id}
-                  caseTitle={activeCase.title}
-                  disabled={busy || busyStepId !== null || followUpBusy}
-                  onDeleted={() => router.replace('/')}
-                  onError={setError}
-                />
-              ) : null}
-
               <p className="text-xs leading-6 text-muted">
                 {review.photoCount} Foto{review.photoCount === 1 ? '' : 's'} zuletzt ausgewertet · verarbeitete Fotos
                 wurden vom Gerät gelöscht
@@ -504,16 +532,21 @@ export default function ReviewClient() {
                   </>
                 }
               />
+              <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+                <h3 className="text-sm font-semibold text-foreground">Fall verwalten</h3>
+                <div className="mt-3">
+                  {activeCase ? (
+                    <DeleteCaseSection
+                      caseId={activeCase.id}
+                      caseTitle={activeCase.title}
+                      disabled={busy}
+                      onDeleted={() => router.replace('/')}
+                      onError={setError}
+                    />
+                  ) : null}
+                </div>
+              </div>
               <PrivacyNote variant="analysis" />
-              {activeCase ? (
-                <DeleteCaseSection
-                  caseId={activeCase.id}
-                  caseTitle={activeCase.title}
-                  disabled={busy}
-                  onDeleted={() => router.replace('/')}
-                  onError={setError}
-                />
-              ) : null}
             </>
           )}
         </section>

@@ -178,14 +178,47 @@ const INTENT_INSTRUCTIONS: Record<Exclude<AnalyzeIntent, 'initial'>, string> = {
 - isComplete = true, phase = final`,
 }
 
+function buildAttachmentNote(attachmentCount: number, pdfCount: number): string {
+  const imageCount = attachmentCount - pdfCount
+
+  if (pdfCount > 0 && imageCount === 0) {
+    return pdfCount === 1
+      ? 'Ich habe dir 1 PDF angehängt.'
+      : `Ich habe dir ${pdfCount} PDFs angehängt.`
+  }
+
+  if (pdfCount > 0 && imageCount > 0) {
+    return `Ich habe dir ${imageCount} Foto${imageCount === 1 ? '' : 's'} und ${pdfCount} PDF${pdfCount === 1 ? '' : 's'} angehängt.`
+  }
+
+  return attachmentCount === 1
+    ? 'Ich habe dir 1 Foto meiner Post angehängt.'
+    : `Ich habe dir ${attachmentCount} Fotos angehängt — Seiten desselben Schreibens.`
+}
+
+function buildFollowUpAttachmentNote(attachmentCount: number, pdfCount: number): string {
+  const imageCount = attachmentCount - pdfCount
+
+  if (pdfCount > 0 && imageCount === 0) {
+    return pdfCount === 1 ? 'Anbei 1 weiteres PDF.' : `Anbei ${pdfCount} weitere PDFs.`
+  }
+
+  if (pdfCount > 0 && imageCount > 0) {
+    return `Anbei ${imageCount} weitere Foto${imageCount === 1 ? '' : 's'} und ${pdfCount} PDF${pdfCount === 1 ? '' : 's'}.`
+  }
+
+  return attachmentCount === 1 ? 'Anbei 1 weiteres Foto.' : `Anbei ${attachmentCount} weitere Fotos.`
+}
+
 function buildInitialUserPrompt(options: {
   userName: string
   caseTitle: string
   caseNumber?: number
-  imageCount: number
+  attachmentCount: number
+  pdfCount: number
   existingCaseFile?: string
 }): string {
-  const { userName, caseTitle, imageCount, existingCaseFile } = options
+  const { userName, caseTitle, attachmentCount, pdfCount, existingCaseFile } = options
   const ctx = buildCasePromptContext({
     userName,
     caseTitle,
@@ -193,10 +226,7 @@ function buildInitialUserPrompt(options: {
     caseFileContent: existingCaseFile,
   })
   const isNewLetterOnSameCase = Boolean(existingCaseFile?.trim())
-  const photoNote =
-    imageCount === 1
-      ? 'Ich habe dir 1 Foto meiner Post angehängt.'
-      : `Ich habe dir ${imageCount} Fotos angehängt — Seiten desselben Schreibens.`
+  const attachmentNote = buildAttachmentNote(attachmentCount, pdfCount)
 
   const sections = [
     `${userName} schreibt dir (wie in ChatGPT):`,
@@ -216,14 +246,14 @@ function buildInitialUserPrompt(options: {
 
   sections.push(
     '',
-    photoNote,
+    attachmentNote,
     '',
     '**Was ist das?**',
     '**Was sollte ich jetzt tun?**',
     '',
     CORE_USER_QUESTIONS,
     '',
-    `Intent: initial — ${isNewLetterOnSameCase ? 'neues Schreiben im selben Fall' : 'erster Scan'} (${imageCount} Foto${imageCount === 1 ? '' : 's'}).`,
+    `Intent: initial — ${isNewLetterOnSameCase ? 'neues Schreiben im selben Fall' : 'erster Scan'} (${attachmentCount} Anhang${attachmentCount === 1 ? '' : 'e'}).`,
     '',
     'caseFileContent = meta + block blk_aktuell + anfrage + resultat',
     '- anfrage.text = kurz was eingereicht wurde',
@@ -247,21 +277,21 @@ function buildFollowUpUserPrompt(options: {
   userName: string
   caseTitle: string
   caseNumber?: number
-  imageCount: number
+  attachmentCount: number
+  pdfCount: number
   intent: Exclude<AnalyzeIntent, 'initial'>
   existingCaseFile: string
 }): string {
-  const { userName, caseTitle, imageCount, intent, existingCaseFile } = options
+  const { userName, caseTitle, attachmentCount, pdfCount, intent, existingCaseFile } = options
   const ctx = buildCasePromptContext({
     userName,
     caseTitle,
     caseNumber: options.caseNumber,
     caseFileContent: existingCaseFile,
   })
-  const photoNote =
-    imageCount === 1 ? 'Anbei 1 weiteres Foto.' : `Anbei ${imageCount} weitere Fotos.`
+  const attachmentNote = buildFollowUpAttachmentNote(attachmentCount, pdfCount)
 
-  const sections = [`${userName} fragt weiter:`, '', CORE_USER_QUESTIONS, '', photoNote, '']
+  const sections = [`${userName} fragt weiter:`, '', CORE_USER_QUESTIONS, '', attachmentNote, '']
   appendFormattedCaseContext(sections, ctx)
   sections.push('', INTENT_INSTRUCTIONS[intent], '')
   sections.push(
@@ -276,18 +306,21 @@ export function buildAnalyzeUserPrompt(options: {
   userName: string
   caseTitle: string
   caseNumber?: number
-  imageCount: number
+  attachmentCount: number
+  pdfCount?: number
   intent: AnalyzeIntent
   existingCaseFile?: string
 }): string {
-  const { userName, caseTitle, caseNumber, imageCount, intent, existingCaseFile } = options
+  const { userName, caseTitle, caseNumber, attachmentCount, pdfCount = 0, intent, existingCaseFile } =
+    options
 
   if (intent === 'initial') {
     return buildInitialUserPrompt({
       userName,
       caseTitle,
       caseNumber,
-      imageCount,
+      attachmentCount,
+      pdfCount,
       existingCaseFile,
     })
   }
@@ -296,7 +329,8 @@ export function buildAnalyzeUserPrompt(options: {
     userName,
     caseTitle,
     caseNumber,
-    imageCount,
+    attachmentCount,
+    pdfCount,
     intent: intent as Exclude<AnalyzeIntent, 'initial'>,
     existingCaseFile: existingCaseFile ?? '',
   })
