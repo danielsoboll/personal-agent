@@ -13,7 +13,7 @@ import { runCaseFileReorganize } from '@/lib/caseFileReorganizeServer'
 import { callOpenAiChatCompletion } from '@/lib/openaiChat'
 import { resolveOpenAiModel } from '@/lib/openaiModel'
 import type { AnalyzeAttachment, AnalyzeRequestBody, AnalyzeResponseBody } from '@/lib/analyzeTypes'
-import type { UserContentPart } from '@/lib/openaiChat'
+import { buildOpenAiAttachmentParts } from '@/lib/openaiAttachments'
 
 export const maxDuration = 60
 
@@ -57,22 +57,7 @@ async function runAnalyzeAttempt(options: {
   attachments: AnalyzeAttachment[]
   temperature?: number
 }): Promise<{ ok: true; content: string } | { ok: false; error: string }> {
-  const attachmentParts: UserContentPart[] = options.attachments.map((attachment) => {
-    if (attachment.kind === 'pdf') {
-      return {
-        type: 'file',
-        file: {
-          filename: attachment.fileName || 'dokument.pdf',
-          file_data: attachment.dataUrl,
-        },
-      }
-    }
-
-    return {
-      type: 'image_url',
-      image_url: { url: attachment.dataUrl, detail: 'high' },
-    }
-  })
+  const attachmentParts = buildOpenAiAttachmentParts(options.attachments)
 
   const result = await callOpenAiChatCompletion({
     apiKey: options.apiKey,

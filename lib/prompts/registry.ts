@@ -378,17 +378,19 @@ export function buildAssessUserPrompt(options: {
   return sections.join('\n')
 }
 
-export const CLARIFY_SYSTEM_PROMPT = `Du bist Behördenpost — beantwortest Nachfragen zur bereits gezeigten Auswertung.
+export const CLARIFY_SYSTEM_PROMPT = `Du bist Behördenpost — Chat-Nachfragen zur bereits gezeigten Auswertung.
 Prompt-Version: ${PROMPT_VERSION}
 
 ${CASE_SCOPE_RULES}
 
 Regeln:
-- Die ursprüngliche Auswertung (Zusammenfassung, Einordnung, Schritte) bleibt unverändert — du ergänzt nur.
-- Beantworte die konkrete Nachfrage des Nutzers klar in Du-Form.
-- Nutze Fall-Kontext und die gezeigte Auswertung; nichts erfinden.
-- correctionNote: nur wenn die Nachfrage zeigt, dass in der ursprünglichen Auswertung etwas falsch, unvollständig oder irreführend ist — kurz benennen, was angepasst werden sollte. Sonst leerer String.
-- Keine technischen Begriffe (JSONL, Fallakte, KI). Keine Platzhalter.`
+- Bei JEDER Nachfrage: updatedSummary, updatedAssessment, updatedNextSteps und updatedStructuredSteps vollständig neu liefern — integriere alle bisherigen Infos, den Chat und neue Anhänge.
+- Die Hauptauswertung oben in der App wird nach jeder Nachfrage aus diesen updated-Feldern neu gezeichnet.
+- answer: kurze Chat-Antwort zur konkreten Nachfrage — nur Ergänzungen, die nicht schon in updatedAssessment oder den Schritten stehen.
+- wordDocumentRequested: true NUR wenn der Nutzer ein formales Schreiben braucht (Widerspruch, Antwort an Behörde, Fristverlängerung o. Ä.) und du einen Entwurf liefern sollst. Sonst false und wordDocument-Felder leer ("" bzw. leeres Array).
+- Bei wordDocumentRequested=true: wordDocumentTitle, wordDocumentSubject, wordDocumentBodyParagraphs (Absätze), wordDocumentPreviewText (Kurzvorschau für die App) ausfüllen — sachlich, höflich, Du-Form im Chat, Sie-Form im Schreiben.
+- contextSummary: eine kurze Zeile für die UI, z. B. „Fallakte + 1 PDF“ — kein Prompt-Text.
+- Du-Form im Chat, klar, keine technischen Begriffe (JSONL, Fallakte, KI).`
 
 export function buildClarifyUserPrompt(options: {
   userName: string
@@ -396,6 +398,8 @@ export function buildClarifyUserPrompt(options: {
   caseNumber?: number
   caseFileContent: string
   question: string
+  attachmentCount: number
+  pdfCount: number
   currentReview: {
     summary: string
     assessment: string
@@ -403,7 +407,12 @@ export function buildClarifyUserPrompt(options: {
     structuredSteps: Array<{ id: string; text: string; deadline?: string; priority?: string }>
     phase: string
   }
-  priorMessages?: Array<{ role: 'user' | 'assistant'; content: string }>
+  priorMessages?: Array<{
+    role: 'user' | 'assistant'
+    userText?: string
+    content: string
+    attachments?: Array<{ fileName: string; kind: string }>
+  }>
 }): string {
   const ctx = buildCasePromptContext({
     userName: options.userName,
@@ -435,18 +444,34 @@ export function buildClarifyUserPrompt(options: {
   ]
 
   if (options.priorMessages?.length) {
-    sections.push('=== Bisherige Nachfragen ===')
+    sections.push('=== Bisheriger Chat (Kurzfassung) ===')
     for (const message of options.priorMessages) {
-      const label = message.role === 'user' ? 'Nutzer' : 'Antwort'
-      sections.push(`${label}: ${message.content.trim()}`)
+      if (message.role === 'user') {
+        const parts: string[] = []
+        if (message.userText?.trim()) parts.push(message.userText.trim())
+        if (message.attachments?.length) {
+          parts.push(`[${message.attachments.length} Anhang/Anhänge]`)
+        }
+        if (parts.length) sections.push(`Nutzer: ${parts.join(' ')}`)
+      } else if (message.content.trim()) {
+        sections.push(`Antwort: ${message.content.trim()}`)
+      }
     }
     sections.push('')
   }
 
   appendFormattedCaseContext(sections, ctx)
+
+  if (options.attachmentCount > 0) {
+    sections.push(
+      '',
+      `Anhänge in dieser Nachfrage: ${options.attachmentCount} (${options.pdfCount} PDF${options.pdfCount === 1 ? '' : 's'}, ${options.attachmentCount - options.pdfCount} Foto${options.attachmentCount - options.pdfCount === 1 ? '' : 's'}).`,
+    )
+  }
+
   sections.push(
     '',
-    'Beantworte die Nachfrage in answer. Prüfe, ob correctionNote nötig ist.',
+    'Liefere answer, die vollständig aktualisierten updated-Felder, ggf. wordDocument-Felder und contextSummary.',
   )
 
   return sections.join('\n')

@@ -1,13 +1,18 @@
 import { NextResponse } from 'next/server'
 
-import { CLARIFY_SCHEMA, type ClarifyPayload } from '@/lib/analyzeSchema'
+import { CLARIFY_SCHEMA, normalizeStructuredSteps, type ClarifyPayload } from '@/lib/analyzeSchema'
 import { CLARIFY_SYSTEM_PROMPT, buildClarifyUserPrompt } from '@/lib/analyzePrompts'
-import type { ClarifyRequestBody, ClarifyResponseBody } from '@/lib/analyzeTypes'
+import { ATTACHMENTS_ONLY_QUESTION } from '@/lib/chatFollowUp'
+import type { AnalyzeAttachment, ClarifyRequestBody, ClarifyResponseBody, FollowUpWordDocument } from '@/lib/analyzeTypes'
 import { validateCaseFileJsonl } from '@/lib/caseFileJsonl'
 import { callOpenAiChatCompletion } from '@/lib/openaiChat'
+import { buildOpenAiAttachmentParts } from '@/lib/openaiAttachments'
 import { resolveOpenAiModel } from '@/lib/openaiModel'
+import { isPreparedDocumentContent } from '@/lib/wordDocument'
 
-export const maxDuration = 60
+export const maxDuration = 120
+
+const MAX_CHAT_ATTACHMENTS = 5
 
 export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY
@@ -25,16 +30,32 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Ungültige Anfrage.' }, { status: 400 })
   }
 
-  const question = body.question?.trim()
-  if (!body.userName?.trim() || !body.caseTitle?.trim() || !body.caseFileContent?.trim() || !question) {
+  const userText = body.question?.trim() ?? ''
+  const attachments = body.attachments ?? []
+
+  if (!body.userName?.trim() || !body.caseTitle?.trim() || !body.caseFileContent?.trim()) {
     return NextResponse.json(
-      { error: 'Name, Fallname, Fallakte und Nachfrage sind erforderlich.' },
+      { error: 'Name, Fallname und Fallakte sind erforderlich.' },
       { status: 400 },
     )
   }
 
-  if (question.length > 2000) {
+  if (!userText && attachments.length === 0) {
+    return NextResponse.json(
+      { error: 'Bitte schreib eine Nachfrage oder füge mindestens einen Anhang hinzu.' },
+      { status: 400 },
+    )
+  }
+
+  if (userText.length > 2000) {
     return NextResponse.json({ error: 'Die Nachfrage ist zu lang (max. 2000 Zeichen).' }, { status: 400 })
+  }
+
+  if (attachments.length > MAX_CHAT_ATTACHMENTS) {
+    return NextResponse.json(
+      { error: `Maximal ${MAX_CHAT_ATTACHMENTS} Anhänge pro Nachfrage.` },
+      { status: 400 },
+    )
   }
 
   const validationError = validateCaseFileJsonl(body.caseFileContent)
@@ -42,32 +63,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: validationError }, { status: 400 })
   }
 
+  const pdfCount = attachments.filter((attachment) => attachment.kind === 'pdf').length
+  const effectiveQuestion = userText || ATTACHMENTS_ONLY_QUESTION
+
   const model = resolveOpenAiModel()
-  const userText = buildClarifyUserPrompt({
+  const userTextPrompt = buildClarifyUserPrompt({
     userName: body.userName,
     caseTitle: body.caseTitle,
     caseNumber: body.caseNumber,
     caseFileContent: body.caseFileContent,
-    question,
+    question: effectiveQuestion,
+    attachmentCount: attachments.length,
+    pdfCount,
     currentReview: body.currentReview,
     priorMessages: body.priorMessages?.map((message) => ({
       role: message.role,
+      userText: message.userText,
       content: message.content,
+      attachments: message.attachments,
     })),
   })
+
+  const attachmentParts = buildOpenAiAttachmentParts(attachments)
 
   const completion = await callOpenAiChatCompletion({
     apiKey,
     model,
     temperature: 0.35,
-    maxTokens: 2048,
+    maxTokens: 4096,
     jsonSchema: {
       name: 'behoerdenpost_clarify',
       schema: CLARIFY_SCHEMA,
     },
     messages: [
       { role: 'system', content: CLARIFY_SYSTEM_PROMPT },
-      { role: 'user', content: userText },
+      {
+        role: 'user',
+        content: [{ type: 'text', text: userTextPrompt }, ...attachmentParts],
+      },
     ],
   })
 
@@ -87,12 +120,31 @@ export async function POST(request: Request) {
   }
 
   const answer = parsed.answer?.trim()
-  if (!answer) {
+  const updatedAssessment = parsed.updatedAssessment?.trim()
+  if (!answer && !updatedAssessment) {
     return NextResponse.json({ error: 'KI-Antwort war leer.' }, { status: 502 })
   }
 
+  let wordDocument: FollowUpWordDocument | undefined
+  if (parsed.wordDocumentRequested) {
+    const candidate = {
+      title: parsed.wordDocumentTitle?.trim() ?? '',
+      subject: parsed.wordDocumentSubject?.trim() ?? '',
+      bodyParagraphs: (parsed.wordDocumentBodyParagraphs ?? []).map((paragraph) => paragraph.trim()).filter(Boolean),
+      previewText: parsed.wordDocumentPreviewText?.trim() ?? '',
+    }
+    if (isPreparedDocumentContent(candidate)) {
+      wordDocument = candidate
+    }
+  }
+
   return NextResponse.json({
-    answer,
-    correctionNote: parsed.correctionNote?.trim() ?? '',
+    answer: answer || 'Die Auswertung wurde anhand deiner Nachfrage aktualisiert.',
+    contextSummary: parsed.contextSummary?.trim() || '',
+    updatedSummary: parsed.updatedSummary?.trim() ?? '',
+    updatedAssessment: updatedAssessment ?? '',
+    updatedNextSteps: parsed.updatedNextSteps?.trim() ?? '',
+    updatedStructuredSteps: normalizeStructuredSteps(parsed.updatedStructuredSteps ?? []),
+    ...(wordDocument ? { wordDocument } : {}),
   } satisfies ClarifyResponseBody)
 }

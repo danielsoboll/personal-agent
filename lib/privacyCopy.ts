@@ -5,6 +5,9 @@ export const PRIVACY_STORAGE_SHORT =
 export const PRIVACY_ANALYSIS_SHORT =
   'Fotos und hochgeladene Dateien werden jetzt zur Auswertung verschickt. Deine Fallakte bleibt auf dem Handy — nach der Prüfung werden die Aufnahmen hier wieder entfernt.'
 
+export const PRIVACY_CHAT_LOCAL =
+  'Alles bleibt nur hier auf dem Gerät gespeichert — Chat, Bewertung und Fallakte.'
+
 export const PRIVACY_ANALYZING_OVERLAY =
   'Die Fotos werden ausgewertet. Deine Fallakte bleibt auf dem Handy — die Aufnahmen werden danach lokal gelöscht.'
 

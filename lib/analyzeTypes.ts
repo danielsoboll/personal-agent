@@ -14,11 +14,30 @@ export type DocumentsStatus = 'not_needed' | 'recommended' | 'required'
 
 export type ReviewPhase = 'interim' | 'final'
 
+export type FollowUpAttachmentMeta = {
+  fileName: string
+  kind: 'image' | 'pdf'
+}
+
+export type FollowUpWordDocument = {
+  title: string
+  subject: string
+  bodyParagraphs: string[]
+  previewText: string
+  /** Gesetzt, nachdem das Word in der Bibliothek gespeichert wurde. */
+  savedFileName?: string
+}
+
 export type FollowUpMessage = {
   role: 'user' | 'assistant'
+  /** Nur Nutzertext — leer wenn nur Anhänge. Legacy: content bei alten Einträgen. */
+  userText?: string
   content: string
-  /** Hinweis der KI, ob die ursprüngliche Auswertung korrigiert werden sollte. */
-  correctionNote?: string
+  attachments?: FollowUpAttachmentMeta[]
+  /** Kurzfassung des technischen Kontexts (Fallakte, Anhänge). */
+  contextSummary?: string
+  /** Entwurf für ein formales Schreiben — nur wenn die KI eines vorschlägt. */
+  wordDocument?: FollowUpWordDocument
   at: number
 }
 
@@ -47,7 +66,7 @@ export type AnalyzeResult = {
   analyzedAt: number
   intent: AnalyzeIntent
   photoCount: number
-  /** Nachfragen zur Auswertung — ändert summary/assessment nicht. */
+  /** Nachfragen zur Auswertung — aktualisieren Bewertung und Schritte. */
   followUpMessages?: FollowUpMessage[]
 }
 
@@ -82,18 +101,19 @@ export type AssessResponseBody = {
   result: Omit<AnalyzeResult, 'analyzedAt' | 'intent' | 'photoCount' | 'documentChoiceRequired' | 'readyForFinalAssessment'>
 }
 
-export type PrepareStepRequestBody = {
+export type WordDocumentRequestBody = {
   userName: string
-  caseTitle: string
-  caseNumber?: number
-  caseFileContent: string
-  step: StructuredStep
+  content: {
+    title: string
+    subject: string
+    bodyParagraphs: string[]
+    previewText: string
+  }
 }
 
-export type PrepareStepResponseBody = {
+export type WordDocumentResponseBody = {
   fileName: string
   mimeType: string
-  /** Base64-encoded .docx */
   contentBase64: string
   title: string
   previewText: string
@@ -104,7 +124,9 @@ export type ClarifyRequestBody = {
   caseTitle: string
   caseNumber?: number
   caseFileContent: string
+  /** Leer erlaubt, wenn attachments gesetzt — dann Standardfrage. */
   question: string
+  attachments?: AnalyzeAttachment[]
   currentReview: Pick<
     AnalyzeResult,
     'summary' | 'assessment' | 'nextSteps' | 'structuredSteps' | 'phase'
@@ -114,5 +136,10 @@ export type ClarifyRequestBody = {
 
 export type ClarifyResponseBody = {
   answer: string
-  correctionNote: string
+  contextSummary: string
+  updatedSummary: string
+  updatedAssessment: string
+  updatedNextSteps: string
+  updatedStructuredSteps: StructuredStep[]
+  wordDocument?: FollowUpWordDocument
 }

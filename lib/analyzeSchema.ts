@@ -160,17 +160,65 @@ export type PreparedDocumentContent = {
   previewText: string
 }
 
+export const CLARIFY_STEP_SCHEMA = {
+  type: 'object' as const,
+  additionalProperties: false,
+  properties: {
+    id: { type: 'string' as const },
+    text: { type: 'string' as const },
+    deadline: { type: 'string' as const },
+    priority: { type: 'string' as const, enum: ['hoch', 'mittel', 'niedrig'] },
+  },
+  required: ['id', 'text'],
+}
+
 export const CLARIFY_SCHEMA = {
   type: 'object' as const,
   additionalProperties: false,
   properties: {
     answer: { type: 'string' as const },
-    correctionNote: { type: 'string' as const },
+    contextSummary: { type: 'string' as const },
+    updatedSummary: { type: 'string' as const },
+    updatedAssessment: { type: 'string' as const },
+    updatedNextSteps: { type: 'string' as const },
+    updatedStructuredSteps: {
+      type: 'array' as const,
+      items: CLARIFY_STEP_SCHEMA,
+    },
+    wordDocumentRequested: { type: 'boolean' as const },
+    wordDocumentTitle: { type: 'string' as const },
+    wordDocumentSubject: { type: 'string' as const },
+    wordDocumentBodyParagraphs: {
+      type: 'array' as const,
+      items: { type: 'string' as const },
+    },
+    wordDocumentPreviewText: { type: 'string' as const },
   },
-  required: ['answer', 'correctionNote'],
+  required: [
+    'answer',
+    'contextSummary',
+    'updatedSummary',
+    'updatedAssessment',
+    'updatedNextSteps',
+    'updatedStructuredSteps',
+    'wordDocumentRequested',
+    'wordDocumentTitle',
+    'wordDocumentSubject',
+    'wordDocumentBodyParagraphs',
+    'wordDocumentPreviewText',
+  ],
 }
 
 export type ClarifyPayload = {
   answer: string
-  correctionNote: string
+  contextSummary: string
+  updatedSummary: string
+  updatedAssessment: string
+  updatedNextSteps: string
+  updatedStructuredSteps: StructuredStep[]
+  wordDocumentRequested: boolean
+  wordDocumentTitle: string
+  wordDocumentSubject: string
+  wordDocumentBodyParagraphs: string[]
+  wordDocumentPreviewText: string
 }

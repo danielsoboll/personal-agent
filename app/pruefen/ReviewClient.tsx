@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
-import FollowUpQuestionPanel from '@/components/review/FollowUpQuestionPanel'
+import ChatHistorySheet from '@/components/review/ChatHistorySheet'
 import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { buttonStyles } from '@/lib/buttonStyles'
@@ -15,13 +15,15 @@ import { logUserActivity } from '@/lib/activityLog'
 import { scheduleCaseFileReorganize } from '@/lib/caseFileReorganizeClient'
 import {
   base64ToBlob,
+  buildWordDocument,
   downloadBlob,
-  askFollowUpQuestion,
-  prepareStepDocument,
+  submitChatMessage,
   requestFinalAssessment,
 } from '@/lib/analyzeClient'
-import type { AnalyzeResult, FollowUpMessage, StructuredStep } from '@/lib/analyzeTypes'
-import { normalizeDocumentsFields } from '@/lib/analyzeSchema'
+import type { AnalyzeResult, FollowUpAttachmentMeta, FollowUpMessage, FollowUpWordDocument, StructuredStep } from '@/lib/analyzeTypes'
+import { normalizeDocumentsFields, normalizeStructuredSteps } from '@/lib/analyzeSchema'
+import { buildAttachmentMetaSummary, buildDefaultContextSummary } from '@/lib/chatFollowUp'
+import { upsertAktuellResultatFromReview } from '@/lib/caseFileJsonl'
 import {
   closeOpenAktuellBlock,
   markReadyForAssessment,
@@ -38,6 +40,7 @@ import {
 } from '@/lib/localCases'
 import { saveLibraryDocument } from '@/lib/localLibrary'
 import { recordFinalAssessmentCompleted, recordWordDocumentCreated } from '@/lib/plusEngagement'
+import { PRIVACY_CHAT_LOCAL } from '@/lib/privacyCopy'
 
 function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeResult {
   const legacyIntent =
@@ -77,11 +80,9 @@ export default function ReviewClient() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [followUpBusy, setFollowUpBusy] = useState(false)
-  const [busyStepId, setBusyStepId] = useState<string | null>(null)
+  const [chatOpen, setChatOpen] = useState(false)
+  const [wordDocBusyAt, setWordDocBusyAt] = useState<number | null>(null)
   const [error, setError] = useState('')
-  const [preparedPreview, setPreparedPreview] = useState<{ title: string; text: string; fileName: string } | null>(
-    null,
-  )
 
   useEffect(() => {
     async function loadReview() {
@@ -199,59 +200,92 @@ export default function ReviewClient() {
     }
   }
 
-  async function handleFollowUpQuestion(question: string) {
+  async function handleChatSubmit(input: { userText?: string; files?: File[] }) {
     if (!activeCase || !review) return
 
     setError('')
     setFollowUpBusy(true)
 
     try {
-      const result = await askFollowUpQuestion(question)
+      const result = await submitChatMessage(input)
       const now = Date.now()
+      const attachmentMeta: FollowUpAttachmentMeta[] = (input.files ?? []).map((file) => {
+        const kind = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'
+        return { fileName: file.name || (kind === 'pdf' ? 'Dokument.pdf' : 'Foto.jpg'), kind } as FollowUpAttachmentMeta
+      })
+
+      const pdfCount = attachmentMeta.filter((item) => item.kind === 'pdf').length
+      const contextSummary =
+        result.contextSummary.trim() ||
+        (attachmentMeta.length > 0
+          ? buildDefaultContextSummary(attachmentMeta.length, pdfCount)
+          : 'Fallakte + bisherige Auswertung')
+
       const nextMessages: FollowUpMessage[] = [
         ...(review.followUpMessages ?? []),
-        { role: 'user', content: question, at: now },
+        {
+          role: 'user',
+          userText: input.userText?.trim() || undefined,
+          content: input.userText?.trim() || buildAttachmentMetaSummary(attachmentMeta),
+          attachments: attachmentMeta.length > 0 ? attachmentMeta : undefined,
+          contextSummary,
+          at: now,
+        },
         {
           role: 'assistant',
           content: result.answer,
-          correctionNote: result.correctionNote || undefined,
+          wordDocument: result.wordDocument,
           at: now + 1,
         },
       ]
 
+      const updatedSteps = normalizeStructuredSteps(result.updatedStructuredSteps)
       const nextReview: AnalyzeResult = {
         ...review,
+        summary: result.updatedSummary || review.summary,
+        assessment: result.updatedAssessment || review.assessment,
+        nextSteps: result.updatedNextSteps || review.nextSteps,
+        structuredSteps: updatedSteps.length > 0 ? updatedSteps : review.structuredSteps,
         followUpMessages: nextMessages,
       }
 
+      const nextCaseFile = upsertAktuellResultatFromReview(review.caseFileContent, {
+        summary: nextReview.summary,
+        assessment: nextReview.assessment,
+        nextSteps: nextReview.nextSteps,
+      })
+      nextReview.caseFileContent = nextCaseFile
+      await persistCaseFile(nextCaseFile)
       await persistReview(nextReview)
       logUserActivity('follow_up_question', {
         case_id: activeCase.id,
         case_number: activeCase.caseNumber,
-        has_correction_note: Boolean(result.correctionNote),
+        has_attachments: attachmentMeta.length > 0,
+        has_word_document: Boolean(result.wordDocument),
       })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Nachfrage fehlgeschlagen.')
+      throw caught
     } finally {
       setFollowUpBusy(false)
     }
   }
 
-  async function handlePrepareStep(step: StructuredStep) {
-    if (!activeCase) return
+  async function handleSaveWordDocument(messageAt: number, wordDocument: FollowUpWordDocument) {
+    if (!activeCase || !review) return
 
     setError('')
-    setBusyStepId(step.id)
+    setWordDocBusyAt(messageAt)
 
     try {
-      const result = await prepareStepDocument(step)
+      const result = await buildWordDocument(wordDocument)
       const blob = base64ToBlob(result.contentBase64, result.mimeType)
 
       await saveLibraryDocument({
         caseId: activeCase.id,
         caseTitle: activeCase.title,
-        stepId: step.id,
-        stepText: step.text,
+        stepId: `chat_${messageAt}`,
+        stepText: wordDocument.previewText || wordDocument.title,
         title: result.title,
         previewText: result.previewText,
         fileName: result.fileName,
@@ -263,18 +297,25 @@ export default function ReviewClient() {
       recordWordDocumentCreated()
       logUserActivity('word_document_created', {
         case_id: activeCase.id,
-        step_id: step.id,
+        source: 'chat',
         file_name: result.fileName,
       })
-      setPreparedPreview({
-        title: result.title,
-        text: result.previewText,
-        fileName: result.fileName,
-      })
+
+      const nextMessages = (review.followUpMessages ?? []).map((message) =>
+        message.at === messageAt && message.wordDocument
+          ? {
+              ...message,
+              wordDocument: { ...message.wordDocument, savedFileName: result.fileName },
+            }
+          : message,
+      )
+
+      await persistReview({ ...review, followUpMessages: nextMessages })
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Schritt konnte nicht vorbereitet werden.')
+      setError(caught instanceof Error ? caught.message : 'Word-Schreiben konnte nicht gespeichert werden.')
+      throw caught
     } finally {
-      setBusyStepId(null)
+      setWordDocBusyAt(null)
     }
   }
 
@@ -293,22 +334,13 @@ export default function ReviewClient() {
   return (
     <>
       {busy ? <AnalyzingOverlay message="Wird bearbeitet …" /> : null}
+      {followUpBusy ? <AnalyzingOverlay message="Chat wird beantwortet …" /> : null}
 
       <OnboardingShell
         title="Auswertung"
         subtitle={activeCase?.title ?? 'Behördenpost'}
         backNav={{ href: '/', label: 'Zurück zur Fallübersicht' }}
-        headerAction={
-          <div className="flex shrink-0 items-center gap-2">
-            <Link href="/bibliothek" className={buttonStyles.header}>
-              <span className="sm:hidden" aria-label="Bibliothek">
-                📄
-              </span>
-              <span className="hidden sm:inline">Bibliothek</span>
-            </Link>
-            {plus.headerAction}
-          </div>
-        }
+        headerAction={plus.headerAction}
         footer={
           !loading && activeCase ? (
             <div className="space-y-3">
@@ -378,23 +410,14 @@ export default function ReviewClient() {
                 description="Übersicht, Unterlagen-Einschätzung und nächste Schritte für deinen Fall."
               />
 
-              {activeCase ? (
-                <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-                  <h3 className="text-sm font-semibold text-foreground">Fall verwalten</h3>
-                  <p className="mt-1 text-sm leading-6 text-muted">
-                    Fallakte, Auswertung und zugehörige Dokumente vom Gerät entfernen.
-                  </p>
-                  <div className="mt-3">
-                    <DeleteCaseSection
-                      caseId={activeCase.id}
-                      caseTitle={activeCase.title}
-                      disabled={busy || busyStepId !== null || followUpBusy}
-                      onDeleted={() => router.replace('/')}
-                      onError={setError}
-                    />
-                  </div>
-                </div>
-              ) : null}
+              <div className="flex justify-end -mt-2">
+                <Link href="/bibliothek" className={buttonStyles.secondary}>
+                  <span className="sm:hidden" aria-label="Bibliothek">
+                    📄 Bibliothek
+                  </span>
+                  <span className="hidden sm:inline">Zur Bibliothek</span>
+                </Link>
+              </div>
 
               {shouldShowSummary(review.summary, review.assessment) ? (
                 <div className="rounded-2xl border border-accent/25 bg-accent-soft p-5">
@@ -447,16 +470,6 @@ export default function ReviewClient() {
                                   </span>
                                 ) : null}
                               </div>
-                              {review.phase === 'final' ? (
-                                <button
-                                  type="button"
-                                  disabled={busyStepId === step.id}
-                                  onClick={() => void handlePrepareStep(step)}
-                                  className={buttonStyles.stepPrepare}
-                                >
-                                  {busyStepId === step.id ? 'Wird vorbereitet …' : 'Schritt vorbereiten'}
-                                </button>
-                              ) : null}
                             </div>
                           </div>
                         </li>
@@ -471,13 +484,6 @@ export default function ReviewClient() {
                 </div>
               )}
 
-              <FollowUpQuestionPanel
-                messages={review.followUpMessages ?? []}
-                busy={followUpBusy}
-                disabled={busy || busyStepId !== null}
-                onSubmit={handleFollowUpQuestion}
-              />
-
               {(showDocumentChoice || showOptionalDocumentChoice) && review ? (
                 <p className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm leading-7 text-muted">
                   {documentChoiceHint(review, footer.showAllCapturedButton, showOptionalDocumentChoice)}
@@ -491,24 +497,31 @@ export default function ReviewClient() {
                 </p>
               ) : null}
 
-              {review.phase === 'final' && review.isComplete ? (
-                <p className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm leading-7 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
-                  Bewertung abgeschlossen. Du kannst für jeden Schritt ein Word-Schreiben vorbereiten und in der
-                  Bibliothek wiederfinden.
-                </p>
-              ) : null}
 
-              {preparedPreview ? (
-                <div className="rounded-2xl border border-border bg-surface p-5">
-                  <h3 className="text-base font-semibold">{preparedPreview.title}</h3>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">{preparedPreview.text}</p>
-                  <p className="mt-3 text-xs text-muted">
-                    „{preparedPreview.fileName}“ wurde heruntergeladen und in der Bibliothek gespeichert.
-                  </p>
+              <button
+                type="button"
+                disabled={busy || wordDocBusyAt !== null}
+                onClick={() => setChatOpen(true)}
+                className={`w-full ${buttonStyles.accentSoft}`}
+              >
+                Chatverlauf
+                {(review.followUpMessages?.length ?? 0) > 0
+                  ? ` (${Math.ceil((review.followUpMessages?.length ?? 0) / 2)})`
+                  : ''}
+              </button>
+
+              {activeCase ? (
+                <div className="space-y-3 border-t border-border pt-6">
+                  <DeleteCaseSection
+                    caseId={activeCase.id}
+                    caseTitle={activeCase.title}
+                    disabled={busy || wordDocBusyAt !== null || followUpBusy}
+                    onDeleted={() => router.replace('/')}
+                    onError={setError}
+                  />
+                  <p className="text-sm leading-7 text-muted">{PRIVACY_CHAT_LOCAL}</p>
                 </div>
               ) : null}
-
-              <PrivacyNote variant="storage" />
 
               <p className="text-xs leading-6 text-muted">
                 {review.photoCount} Foto{review.photoCount === 1 ? '' : 's'} zuletzt ausgewertet · verarbeitete Fotos
@@ -532,19 +545,17 @@ export default function ReviewClient() {
                   </>
                 }
               />
-              <div className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
-                <h3 className="text-sm font-semibold text-foreground">Fall verwalten</h3>
-                <div className="mt-3">
-                  {activeCase ? (
-                    <DeleteCaseSection
-                      caseId={activeCase.id}
-                      caseTitle={activeCase.title}
-                      disabled={busy}
-                      onDeleted={() => router.replace('/')}
-                      onError={setError}
-                    />
-                  ) : null}
-                </div>
+              <div className="space-y-3 border-t border-border pt-6">
+                {activeCase ? (
+                  <DeleteCaseSection
+                    caseId={activeCase.id}
+                    caseTitle={activeCase.title}
+                    disabled={busy}
+                    onDeleted={() => router.replace('/')}
+                    onError={setError}
+                  />
+                ) : null}
+                <p className="text-sm leading-7 text-muted">{PRIVACY_CHAT_LOCAL}</p>
               </div>
               <PrivacyNote variant="analysis" />
             </>
@@ -552,6 +563,17 @@ export default function ReviewClient() {
         </section>
       </OnboardingShell>
       {plus.portals}
+      {chatOpen && review ? (
+        <ChatHistorySheet
+          messages={review.followUpMessages ?? []}
+          busy={followUpBusy}
+          disabled={busy || wordDocBusyAt !== null}
+          onClose={() => setChatOpen(false)}
+          onSubmit={handleChatSubmit}
+          onSaveWordDocument={handleSaveWordDocument}
+          wordDocBusyAt={wordDocBusyAt}
+        />
+      ) : null}
     </>
   )
 }

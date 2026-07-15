@@ -8,11 +8,13 @@ import type {
   ClarifyRequestBody,
   ClarifyResponseBody,
   FollowUpMessage,
-  PrepareStepRequestBody,
-  PrepareStepResponseBody,
-  StructuredStep,
+  FollowUpWordDocument,
+  WordDocumentRequestBody,
+  WordDocumentResponseBody,
 } from '@/lib/analyzeTypes'
 import { blobToDataUrl, compressImageForAnalysis } from '@/lib/compressImage'
+import { MAX_CHAT_ATTACHMENTS } from '@/lib/chatFollowUp'
+import { prepareUploadFile } from '@/lib/documentUpload'
 import { enrichCaseFileForAssessment, hasHistorieRecords } from '@/lib/caseFileJsonl'
 import { getActiveCase, getCaseFileContent } from '@/lib/localCases'
 import { listDocumentPhotos } from '@/lib/localDocuments'
@@ -137,41 +139,32 @@ export async function requestFinalAssessment(): Promise<AssessResponseBody['resu
   return payload.result
 }
 
-export async function prepareStepDocument(step: StructuredStep): Promise<PrepareStepResponseBody> {
+export async function buildWordDocument(content: FollowUpWordDocument): Promise<WordDocumentResponseBody> {
   const activeCase = await getActiveCase()
   if (!activeCase) {
     throw new Error('Kein aktiver Fall ausgewählt.')
   }
 
-  const rawCaseFile = await getCaseFileContent(activeCase.id)
-  if (!rawCaseFile) {
-    throw new Error('Es gibt noch keine Fallakte.')
-  }
-
-  const caseFileContent = enrichCaseFileForAssessment(rawCaseFile, {
-    summary: activeCase.latestReview?.summary,
-    assessment: activeCase.latestReview?.assessment,
-    nextSteps: activeCase.latestReview?.nextSteps,
-  })
-
-  const body: PrepareStepRequestBody = {
+  const body: WordDocumentRequestBody = {
     userName: activeCase.userName,
-    caseTitle: activeCase.title,
-    caseNumber: activeCase.caseNumber,
-    caseFileContent,
-    step,
+    content: {
+      title: content.title,
+      subject: content.subject,
+      bodyParagraphs: content.bodyParagraphs,
+      previewText: content.previewText,
+    },
   }
 
-  const response = await fetch('/api/prepare-step', {
+  const response = await fetch('/api/word-document', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
 
-  const payload = (await response.json()) as PrepareStepResponseBody | { error?: string }
+  const payload = (await response.json()) as WordDocumentResponseBody | { error?: string }
 
   if (!response.ok) {
-    throw new Error('error' in payload && payload.error ? payload.error : 'Schritt konnte nicht vorbereitet werden.')
+    throw new Error('error' in payload && payload.error ? payload.error : 'Word-Schreiben konnte nicht erstellt werden.')
   }
 
   if (!('contentBase64' in payload)) {
@@ -181,7 +174,10 @@ export async function prepareStepDocument(step: StructuredStep): Promise<Prepare
   return payload
 }
 
-export async function askFollowUpQuestion(question: string): Promise<ClarifyResponseBody> {
+export async function submitChatMessage(options: {
+  userText?: string
+  files?: File[]
+}): Promise<ClarifyResponseBody> {
   const activeCase = await getActiveCase()
   if (!activeCase?.latestReview) {
     throw new Error('Es gibt noch keine Auswertung für eine Nachfrage.')
@@ -192,6 +188,37 @@ export async function askFollowUpQuestion(question: string): Promise<ClarifyResp
     throw new Error('Es gibt noch keine Fallakte.')
   }
 
+  const trimmedText = options.userText?.trim() ?? ''
+  const files = options.files ?? []
+
+  if (!trimmedText && files.length === 0) {
+    throw new Error('Bitte schreib eine Nachfrage oder füge mindestens einen Anhang hinzu.')
+  }
+
+  if (files.length > MAX_CHAT_ATTACHMENTS) {
+    throw new Error(`Maximal ${MAX_CHAT_ATTACHMENTS} Anhänge pro Nachfrage.`)
+  }
+
+  const attachments: AnalyzeAttachment[] = []
+  for (const file of files) {
+    const prepared = prepareUploadFile(file)
+    if (prepared.kind === 'pdf') {
+      attachments.push({
+        kind: 'pdf',
+        dataUrl: await blobToDataUrl(prepared.blob),
+        fileName: prepared.fileName,
+      })
+      continue
+    }
+
+    const compressed = await compressImageForAnalysis(prepared.blob)
+    attachments.push({
+      kind: 'image',
+      dataUrl: await blobToDataUrl(compressed),
+      fileName: prepared.fileName,
+    })
+  }
+
   const review = activeCase.latestReview
   const priorMessages: FollowUpMessage[] = review.followUpMessages ?? []
 
@@ -200,7 +227,8 @@ export async function askFollowUpQuestion(question: string): Promise<ClarifyResp
     caseTitle: activeCase.title,
     caseNumber: activeCase.caseNumber,
     caseFileContent: rawCaseFile,
-    question,
+    question: trimmedText,
+    attachments,
     currentReview: {
       summary: review.summary,
       assessment: review.assessment,
@@ -228,6 +256,11 @@ export async function askFollowUpQuestion(question: string): Promise<ClarifyResp
   }
 
   return payload
+}
+
+/** @deprecated Use submitChatMessage */
+export async function askFollowUpQuestion(question: string): Promise<ClarifyResponseBody> {
+  return submitChatMessage({ userText: question })
 }
 
 export function base64ToBlob(base64: string, mimeType: string): Blob {
