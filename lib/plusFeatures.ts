@@ -24,7 +24,7 @@ export const PLUS_CANCEL_NOTE = 'Jederzeit kündbar (monatlich).'
 
 export const PLUS_CTA_LABEL = 'PLUS entdecken!'
 
-export const PLUS_ACTIVE_HEADER_LABEL = 'PLUS · gemeinsam'
+export const PLUS_ACTIVE_HEADER_LABEL = 'PLUS'
 export const PLUS_ACTIVE_HEADER_HINT =
   'Du hast PLUS gekauft — ab jetzt arbeiten wir zusammen. Tippe für deine Funktionen.'
 
