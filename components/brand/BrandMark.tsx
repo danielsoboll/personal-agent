@@ -2,7 +2,7 @@ import Image from 'next/image'
 
 import { BRAND_MARK_ALT, BRAND_MARK_SRC } from '@/lib/brand'
 
-export type BrandMarkVariant = 'header' | 'intro' | 'hero' | 'overlay' | 'watermark'
+export type BrandMarkVariant = 'header' | 'intro' | 'hero' | 'overlay' | 'flowTile'
 
 type BrandMarkProps = {
   variant?: BrandMarkVariant
@@ -15,31 +15,33 @@ const VARIANTS: Record<
   { size: number; frameClass: string; imageClass: string }
 > = {
   header: {
-    size: 44,
-    frameClass: 'h-11 w-11 overflow-hidden rounded-2xl border border-accent/20 shadow-sm',
-    imageClass: 'object-cover',
+    size: 48,
+    frameClass:
+      'h-12 w-12 rounded-2xl border border-accent/25 bg-accent-soft/40 shadow-sm ring-1 ring-accent/10',
+    imageClass: 'object-cover object-center',
   },
   intro: {
-    size: 44,
+    size: 56,
     frameClass:
-      'h-11 w-11 overflow-hidden rounded-2xl border border-accent/15 bg-accent-soft/35 shadow-sm',
-    imageClass: 'object-cover',
+      'h-14 w-14 rounded-2xl border border-accent/20 bg-accent-soft/35 shadow-sm ring-1 ring-accent/10',
+    imageClass: 'object-cover object-center',
   },
   hero: {
-    size: 156,
+    size: 140,
     frameClass:
-      'h-[9.75rem] w-[9.75rem] overflow-hidden rounded-2xl border border-accent/15 bg-accent-soft/35 shadow-sm sm:h-[9.75rem] sm:w-[9.75rem]',
-    imageClass: 'object-cover',
+      'h-[8.75rem] w-[8.75rem] rounded-2xl border border-accent/20 bg-accent-soft/30 shadow-md ring-1 ring-accent/10',
+    imageClass: 'object-cover object-center',
   },
   overlay: {
-    size: 72,
-    frameClass: 'h-[4.5rem] w-[4.5rem] overflow-hidden rounded-2xl border border-border shadow-sm',
-    imageClass: 'object-cover',
+    size: 80,
+    frameClass:
+      'h-20 w-20 rounded-2xl border border-border bg-accent-soft/30 shadow-md ring-1 ring-border/30',
+    imageClass: 'object-cover object-center',
   },
-  watermark: {
-    size: 320,
-    frameClass: 'pointer-events-none absolute -right-8 bottom-8 h-56 w-56 opacity-[0.05] dark:opacity-[0.08]',
-    imageClass: 'object-contain',
+  flowTile: {
+    size: 72,
+    frameClass: 'h-full w-full rounded-none border-0 shadow-none ring-0',
+    imageClass: 'object-cover object-center',
   },
 }
 
@@ -51,15 +53,17 @@ export default function BrandMark({
   const config = VARIANTS[variant]
 
   return (
-    <div className={`relative shrink-0 overflow-hidden ${config.frameClass} ${className}`} aria-hidden={variant === 'watermark'}>
+    <div
+      className={`relative shrink-0 overflow-hidden ${config.frameClass} ${className}`}
+    >
       <Image
         src={BRAND_MARK_SRC}
-        alt={variant === 'watermark' ? '' : BRAND_MARK_ALT}
-        width={config.size}
-        height={config.size}
+        alt={BRAND_MARK_ALT}
+        fill
+        sizes={`${config.size}px`}
         unoptimized
         priority={priority}
-        className={`block h-full w-full max-h-full max-w-full ${config.imageClass}`}
+        className={config.imageClass}
       />
     </div>
   )

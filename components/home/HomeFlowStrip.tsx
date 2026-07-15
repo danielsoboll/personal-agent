@@ -1,3 +1,4 @@
+import BrandMark from '@/components/brand/BrandMark'
 import { IconAiMystery } from '@/components/icons/BehoerdenIcons'
 import { HOME_FLOW_STEPS } from '@/lib/homeFlowSteps'
 
@@ -7,20 +8,23 @@ type HomeFlowStripProps = {
 
 function StepBubble({ step }: { step: (typeof HOME_FLOW_STEPS)[number] }) {
   const isAiStep = step.number === 2
+  const isPhotoStep = step.number === 1
 
   return (
     <li className="flex min-w-0 flex-col items-center text-center">
       <div
-        className={`flex h-14 w-14 items-center justify-center rounded-2xl border-2 shadow-sm ${
+        className={`flex h-[4.5rem] w-[4.5rem] items-center justify-center overflow-hidden rounded-2xl border-2 shadow-sm ${
           isAiStep
             ? 'border-sky-300/70 bg-gradient-to-br from-sky-50 via-blue-50/90 to-accent-soft/60 ring-1 ring-sky-200/40 dark:border-sky-700/50 dark:from-sky-950/40 dark:via-blue-950/30 dark:to-accent-soft/20'
             : 'border-amber-200/80 bg-gradient-to-br from-amber-50/95 via-orange-50/70 to-surface ring-1 ring-amber-200/35 dark:border-amber-800/45 dark:from-amber-950/35 dark:via-orange-950/20 dark:to-slate-900'
         }`}
       >
-        {isAiStep ? (
-          <IconAiMystery size={30} className="text-accent dark:text-sky-300" />
+        {isPhotoStep ? (
+          <BrandMark variant="flowTile" />
+        ) : isAiStep ? (
+          <IconAiMystery size={34} className="text-accent dark:text-sky-300" />
         ) : (
-          <span className="text-2xl leading-none" aria-hidden>
+          <span className="text-3xl leading-none" aria-hidden>
             {step.emoji}
           </span>
         )}
@@ -38,7 +42,7 @@ function StepBubble({ step }: { step: (typeof HOME_FLOW_STEPS)[number] }) {
   )
 }
 
-/** Kompakter 3-Schritte-Flow — ohne Riesenbilder. */
+/** Kompakter 3-Schritte-Flow — feste Kachelgrößen, kein Vollbild. */
 export default function HomeFlowStrip({ className = '' }: HomeFlowStripProps) {
   return (
     <section
@@ -57,12 +61,6 @@ export default function HomeFlowStrip({ className = '' }: HomeFlowStripProps) {
           <StepBubble key={step.number} step={step} />
         ))}
       </ol>
-
-      <div className="mt-3 flex items-center justify-center gap-1 text-accent/45" aria-hidden>
-        <span className="h-px w-8 bg-gradient-to-r from-transparent to-accent/30" />
-        <span className="text-xs">→</span>
-        <span className="h-px w-8 bg-gradient-to-l from-transparent to-accent/30" />
-      </div>
     </section>
   )
 }

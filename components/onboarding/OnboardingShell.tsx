@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 
+import BrandMark from '@/components/brand/BrandMark'
 import ThemeToggle from '@/components/ThemeToggle'
 import { buttonStyles } from '@/lib/buttonStyles'
 import { PRIVACY_ANALYSIS_SHORT, PRIVACY_STORAGE_SHORT } from '@/lib/privacyCopy'
@@ -47,6 +48,7 @@ export default function OnboardingShell({
     <div className="flex min-h-dvh flex-col">
       <header className="border-b border-border bg-surface px-5 py-4">
         <div className="mx-auto flex w-full max-w-lg items-center gap-3">
+          <BrandMark variant="header" priority />
           <div className="min-w-0 flex-1">
             {subtitle ? (
               <p className="truncate text-sm font-medium text-muted">{subtitle}</p>
