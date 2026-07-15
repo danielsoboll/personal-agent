@@ -14,6 +14,14 @@ export type DocumentsStatus = 'not_needed' | 'recommended' | 'required'
 
 export type ReviewPhase = 'interim' | 'final'
 
+export type FollowUpMessage = {
+  role: 'user' | 'assistant'
+  content: string
+  /** Hinweis der KI, ob die ursprüngliche Auswertung korrigiert werden sollte. */
+  correctionNote?: string
+  at: number
+}
+
 export type AnalyzeResult = {
   /** Interne JSONL-Fallakte — nie dem Nutzer anzeigen. */
   caseFileContent: string
@@ -39,6 +47,8 @@ export type AnalyzeResult = {
   analyzedAt: number
   intent: AnalyzeIntent
   photoCount: number
+  /** Nachfragen zur Auswertung — ändert summary/assessment nicht. */
+  followUpMessages?: FollowUpMessage[]
 }
 
 export type AnalyzeRequestBody = {
@@ -81,4 +91,22 @@ export type PrepareStepResponseBody = {
   contentBase64: string
   title: string
   previewText: string
+}
+
+export type ClarifyRequestBody = {
+  userName: string
+  caseTitle: string
+  caseNumber?: number
+  caseFileContent: string
+  question: string
+  currentReview: Pick<
+    AnalyzeResult,
+    'summary' | 'assessment' | 'nextSteps' | 'structuredSteps' | 'phase'
+  >
+  priorMessages?: FollowUpMessage[]
+}
+
+export type ClarifyResponseBody = {
+  answer: string
+  correctionNote: string
 }

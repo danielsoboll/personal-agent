@@ -1,7 +1,6 @@
 import type { AnalyzeResult, DocumentsStatus } from '@/lib/analyzeTypes'
 
 export type ReviewFooterState = {
-  openedFromScan: boolean
   showDeleteCase: boolean
   showDocumentChoice: boolean
   showCurrentMoreButton: boolean
@@ -14,14 +13,10 @@ export function reviewNeedsMoreDocuments(status: DocumentsStatus): boolean {
   return status !== 'not_needed'
 }
 
-export function reviewFooterState(
-  review: AnalyzeResult | null,
-  openedFromScan: boolean,
-): ReviewFooterState {
+export function reviewFooterState(review: AnalyzeResult | null): ReviewFooterState {
   if (!review) {
     return {
-      openedFromScan,
-      showDeleteCase: !openedFromScan,
+      showDeleteCase: true,
       showDocumentChoice: false,
       showCurrentMoreButton: false,
       showHistoricalButton: false,
@@ -37,8 +32,7 @@ export function reviewFooterState(
   const showFinalButton = review.readyForFinalAssessment && review.phase !== 'final'
 
   return {
-    openedFromScan,
-    showDeleteCase: !openedFromScan,
+    showDeleteCase: true,
     showDocumentChoice,
     showCurrentMoreButton: showDocumentChoice,
     showHistoricalButton: showDocumentChoice,

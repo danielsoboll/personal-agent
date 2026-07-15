@@ -344,6 +344,80 @@ export function buildAssessUserPrompt(options: {
   return sections.join('\n')
 }
 
+export const CLARIFY_SYSTEM_PROMPT = `Du bist Behördenpost — beantwortest Nachfragen zur bereits gezeigten Auswertung.
+Prompt-Version: ${PROMPT_VERSION}
+
+${CASE_SCOPE_RULES}
+
+Regeln:
+- Die ursprüngliche Auswertung (Zusammenfassung, Einordnung, Schritte) bleibt unverändert — du ergänzt nur.
+- Beantworte die konkrete Nachfrage des Nutzers klar in Du-Form.
+- Nutze Fall-Kontext und die gezeigte Auswertung; nichts erfinden.
+- correctionNote: nur wenn die Nachfrage zeigt, dass in der ursprünglichen Auswertung etwas falsch, unvollständig oder irreführend ist — kurz benennen, was angepasst werden sollte. Sonst leerer String.
+- Keine technischen Begriffe (JSONL, Fallakte, KI). Keine Platzhalter.`
+
+export function buildClarifyUserPrompt(options: {
+  userName: string
+  caseTitle: string
+  caseNumber?: number
+  caseFileContent: string
+  question: string
+  currentReview: {
+    summary: string
+    assessment: string
+    nextSteps: string
+    structuredSteps: Array<{ id: string; text: string; deadline?: string; priority?: string }>
+    phase: string
+  }
+  priorMessages?: Array<{ role: 'user' | 'assistant'; content: string }>
+}): string {
+  const ctx = buildCasePromptContext({
+    userName: options.userName,
+    caseTitle: options.caseTitle,
+    caseNumber: options.caseNumber,
+    caseFileContent: options.caseFileContent,
+  })
+
+  const stepsText =
+    options.currentReview.structuredSteps.length > 0
+      ? options.currentReview.structuredSteps
+          .map((step, index) => `${index + 1}. ${step.text}${step.deadline ? ` (Frist: ${step.deadline})` : ''}`)
+          .join('\n')
+      : options.currentReview.nextSteps
+
+  const sections = [
+    `${options.userName} stellt eine Nachfrage zur Auswertung:`,
+    '',
+    `Nachfrage: „${options.question.trim()}“`,
+    '',
+    '=== Bereits gezeigte Auswertung (nicht ersetzen) ===',
+    `Phase: ${options.currentReview.phase === 'final' ? 'finale Bewertung' : 'erste Einordnung'}`,
+    ...(options.currentReview.summary.trim()
+      ? [`Zusammenfassung: ${options.currentReview.summary.trim()}`]
+      : []),
+    `Einordnung: ${options.currentReview.assessment.trim()}`,
+    `Nächste Schritte:\n${stepsText.trim()}`,
+    '',
+  ]
+
+  if (options.priorMessages?.length) {
+    sections.push('=== Bisherige Nachfragen ===')
+    for (const message of options.priorMessages) {
+      const label = message.role === 'user' ? 'Nutzer' : 'Antwort'
+      sections.push(`${label}: ${message.content.trim()}`)
+    }
+    sections.push('')
+  }
+
+  appendFormattedCaseContext(sections, ctx)
+  sections.push(
+    '',
+    'Beantworte die Nachfrage in answer. Prüfe, ob correctionNote nötig ist.',
+  )
+
+  return sections.join('\n')
+}
+
 export function buildPrepareStepUserPrompt(options: {
   userName: string
   caseTitle: string

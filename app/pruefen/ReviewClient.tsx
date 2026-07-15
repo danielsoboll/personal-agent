@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
+import FollowUpQuestionPanel from '@/components/review/FollowUpQuestionPanel'
 import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { buttonStyles } from '@/lib/buttonStyles'
@@ -15,10 +16,11 @@ import { scheduleCaseFileReorganize } from '@/lib/caseFileReorganizeClient'
 import {
   base64ToBlob,
   downloadBlob,
+  askFollowUpQuestion,
   prepareStepDocument,
   requestFinalAssessment,
 } from '@/lib/analyzeClient'
-import type { AnalyzeResult, StructuredStep } from '@/lib/analyzeTypes'
+import type { AnalyzeResult, FollowUpMessage, StructuredStep } from '@/lib/analyzeTypes'
 import { normalizeDocumentsFields } from '@/lib/analyzeSchema'
 import {
   closeOpenAktuellBlock,
@@ -55,6 +57,7 @@ function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeRes
     readyForFinalAssessment: review.readyForFinalAssessment ?? false,
     phase: review.phase ?? (review.isComplete ? 'final' : 'interim'),
     intent: legacyIntent,
+    followUpMessages: review.followUpMessages ?? [],
     ...docs,
   }
 }
@@ -69,12 +72,11 @@ function priorityLabel(priority?: string): string | null {
 export default function ReviewClient() {
   const router = useRouter()
   const plus = usePlusDiscoverHeader()
-  const searchParams = useSearchParams()
-  const openedFromScan = searchParams.get('from') === 'scan'
   const [activeCase, setActiveCase] = useState<StoredCase | null>(null)
   const [review, setReview] = useState<AnalyzeResult | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
+  const [followUpBusy, setFollowUpBusy] = useState(false)
   const [busyStepId, setBusyStepId] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [preparedPreview, setPreparedPreview] = useState<{ title: string; text: string; fileName: string } | null>(
@@ -180,6 +182,7 @@ export default function ReviewClient() {
         analyzedAt: Date.now(),
         intent: 'final',
         photoCount: review.photoCount,
+        followUpMessages: review.followUpMessages ?? [],
       }
 
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
@@ -193,6 +196,44 @@ export default function ReviewClient() {
       setError(caught instanceof Error ? caught.message : 'Bewertung fehlgeschlagen.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function handleFollowUpQuestion(question: string) {
+    if (!activeCase || !review) return
+
+    setError('')
+    setFollowUpBusy(true)
+
+    try {
+      const result = await askFollowUpQuestion(question)
+      const now = Date.now()
+      const nextMessages: FollowUpMessage[] = [
+        ...(review.followUpMessages ?? []),
+        { role: 'user', content: question, at: now },
+        {
+          role: 'assistant',
+          content: result.answer,
+          correctionNote: result.correctionNote || undefined,
+          at: now + 1,
+        },
+      ]
+
+      const nextReview: AnalyzeResult = {
+        ...review,
+        followUpMessages: nextMessages,
+      }
+
+      await persistReview(nextReview)
+      logUserActivity('follow_up_question', {
+        case_id: activeCase.id,
+        case_number: activeCase.caseNumber,
+        has_correction_note: Boolean(result.correctionNote),
+      })
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Nachfrage fehlgeschlagen.')
+    } finally {
+      setFollowUpBusy(false)
     }
   }
 
@@ -237,7 +278,7 @@ export default function ReviewClient() {
     }
   }
 
-  const footer = reviewFooterState(review, openedFromScan)
+  const footer = reviewFooterState(review)
   const showDocumentChoice = footer.showDocumentChoice
   const showFinalButton = footer.showFinalButton
   const steps: StructuredStep[] = review?.structuredSteps?.length
@@ -303,15 +344,6 @@ export default function ReviewClient() {
               ) : (
                 <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
               )}
-              {footer.showDeleteCase ? (
-                <DeleteCaseSection
-                  caseId={activeCase.id}
-                  caseTitle={activeCase.title}
-                  disabled={busy || busyStepId !== null}
-                  onDeleted={() => router.replace('/')}
-                  onError={setError}
-                />
-              ) : null}
             </div>
           ) : null
         }
@@ -401,6 +433,13 @@ export default function ReviewClient() {
                 </div>
               )}
 
+              <FollowUpQuestionPanel
+                messages={review.followUpMessages ?? []}
+                busy={followUpBusy}
+                disabled={busy || busyStepId !== null}
+                onSubmit={handleFollowUpQuestion}
+              />
+
               {showDocumentChoice && review ? (
                 <p className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm leading-7 text-muted">
                   {documentChoiceHint(review, footer.showAllCapturedButton)}
@@ -433,6 +472,16 @@ export default function ReviewClient() {
 
               <PrivacyNote variant="storage" />
 
+              {footer.showDeleteCase && activeCase ? (
+                <DeleteCaseSection
+                  caseId={activeCase.id}
+                  caseTitle={activeCase.title}
+                  disabled={busy || busyStepId !== null || followUpBusy}
+                  onDeleted={() => router.replace('/')}
+                  onError={setError}
+                />
+              ) : null}
+
               <p className="text-xs leading-6 text-muted">
                 {review.photoCount} Foto{review.photoCount === 1 ? '' : 's'} zuletzt ausgewertet · verarbeitete Fotos
                 wurden vom Gerät gelöscht
@@ -456,6 +505,15 @@ export default function ReviewClient() {
                 }
               />
               <PrivacyNote variant="analysis" />
+              {activeCase ? (
+                <DeleteCaseSection
+                  caseId={activeCase.id}
+                  caseTitle={activeCase.title}
+                  disabled={busy}
+                  onDeleted={() => router.replace('/')}
+                  onError={setError}
+                />
+              ) : null}
             </>
           )}
         </section>

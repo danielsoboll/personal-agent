@@ -159,3 +159,18 @@ export type PreparedDocumentContent = {
   bodyParagraphs: string[]
   previewText: string
 }
+
+export const CLARIFY_SCHEMA = {
+  type: 'object' as const,
+  additionalProperties: false,
+  properties: {
+    answer: { type: 'string' as const },
+    correctionNote: { type: 'string' as const },
+  },
+  required: ['answer', 'correctionNote'],
+}
+
+export type ClarifyPayload = {
+  answer: string
+  correctionNote: string
+}

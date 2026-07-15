@@ -28,6 +28,7 @@ import {
   removeDocumentPhoto,
   type StoredPhoto,
 } from '@/lib/localDocuments'
+import { UPLOAD_ACCEPT, uploadFileToImageBlobs } from '@/lib/documentUpload'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
@@ -49,6 +50,7 @@ export default function ScanClient() {
   const plus = usePlusDiscoverHeader()
   const searchParams = useSearchParams()
   const inputRef = useRef<HTMLInputElement>(null)
+  const uploadInputRef = useRef<HTMLInputElement>(null)
   const [photos, setPhotos] = useState<PhotoPreview[]>([])
   const [activeCase, setActiveCase] = useState<StoredCase | null>(null)
   const [profileName, setProfileName] = useState('')
@@ -66,7 +68,7 @@ export default function ScanClient() {
       return {
         title: 'Weitere Fotos zum aktuellen Schreiben',
         heading: 'Ergänze das aktuelle Schreiben',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Fotos. Tippe auf die Kachel für das erste Foto — danach „Neues Foto“ unten.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Seiten. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
       }
     }
 
@@ -74,14 +76,14 @@ export default function ScanClient() {
       return {
         title: 'Ältere Dokumente erfassen',
         heading: 'Fotografiere ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Fotos. Erstes Foto über die Kachel — weitere über „Neues Foto“ unten.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Seiten. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
       }
     }
 
     return {
-      title: 'Dokument fotografieren',
-      heading: 'Fotografiere das Dokument, den Antrag oder die E-Mail',
-      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Fotos. Tippe auf die Kachel für dein erstes Foto — weitere Fotos dann über „Neues Foto“ unten.`,
+      title: 'Dokument erfassen',
+      heading: 'Fotografiere oder lade dein Dokument hoch',
+      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Seiten. Foto aufnehmen oder Datei hochladen — auch PDFs mit mehreren Seiten.`,
     }
   }, [intent])
 
@@ -117,18 +119,18 @@ export default function ScanClient() {
     }
   }, [photos])
 
-  async function savePhotoFile(file: File): Promise<boolean> {
+  async function saveDocumentBlob(blob: Blob): Promise<boolean> {
     setBusy(true)
     setError('')
 
     try {
-      const saved = await addDocumentPhoto(file, maxPhotos)
+      const saved = await addDocumentPhoto(blob, maxPhotos)
       const previewUrl = createPhotoPreviewUrl(saved.blob)
       const committed: PhotoPreview = { ...saved, previewUrl }
       setPhotos((current) => [...current, committed])
       return true
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Foto konnte nicht gespeichert werden.')
+      setError(caught instanceof Error ? caught.message : 'Datei konnte nicht gespeichert werden.')
       return false
     } finally {
       setBusy(false)
@@ -142,15 +144,64 @@ export default function ScanClient() {
     if (!file || analyzing || busy) return
 
     if (photos.length >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Fotos möglich.`)
+      setError(`Maximal ${maxPhotos} Seiten möglich.`)
       return
     }
 
-    const saved = await savePhotoFile(file)
+    const saved = await saveDocumentBlob(file)
     if (!saved) return
 
     if (photos.length + 1 >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Fotos erreicht. Tippe auf Prüfen.`)
+      setError(`Maximal ${maxPhotos} Seiten erreicht. Tippe auf Prüfen.`)
+    }
+  }
+
+  async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+
+    if (files.length === 0 || analyzing || busy) return
+
+    setBusy(true)
+    setError('')
+
+    let added = 0
+    let remaining = maxPhotos - photos.length
+    const newPreviews: PhotoPreview[] = []
+
+    try {
+      for (const file of files) {
+        if (remaining <= 0) {
+          setError(`Maximal ${maxPhotos} Seiten möglich — einige Dateien wurden nicht hinzugefügt.`)
+          break
+        }
+
+        const blobs = await uploadFileToImageBlobs(file)
+
+        for (const blob of blobs) {
+          if (remaining <= 0) {
+            setError(`Maximal ${maxPhotos} Seiten möglich — einige Seiten wurden nicht hinzugefügt.`)
+            break
+          }
+
+          const saved = await addDocumentPhoto(blob, maxPhotos)
+          newPreviews.push({ ...saved, previewUrl: createPhotoPreviewUrl(saved.blob) })
+          added += 1
+          remaining -= 1
+        }
+      }
+
+      if (newPreviews.length > 0) {
+        setPhotos((current) => [...current, ...newPreviews])
+      }
+
+      if (added > 0 && photos.length + added >= maxPhotos) {
+        setError(`Maximal ${maxPhotos} Seiten erreicht. Tippe auf Prüfen.`)
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Datei konnte nicht verarbeitet werden.')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -233,14 +284,24 @@ export default function ScanClient() {
         footer={
           <div className="space-y-2">
             {canAddMore && photos.length > 0 ? (
-              <button
-                type="button"
-                disabled={isInteractionLocked}
-                onClick={() => openCamera(inputRef.current)}
-                className={buttonStyles.secondary}
-              >
-                Neues Foto
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => openCamera(inputRef.current)}
+                  className={buttonStyles.secondary}
+                >
+                  Neues Foto
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => uploadInputRef.current?.click()}
+                  className={buttonStyles.secondary}
+                >
+                  Datei hochladen
+                </button>
+              </>
             ) : null}
             <button
               type="button"
@@ -253,7 +314,7 @@ export default function ScanClient() {
                   : buttonStyles.primaryActive
               }
             >
-              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Foto${photos.length === 1 ? '' : 's'})` : ''}
+              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Seite${photos.length === 1 ? '' : 'n'})` : ''}
             </button>
           </div>
         }
@@ -296,23 +357,36 @@ export default function ScanClient() {
             ))}
 
             {photos.length === 0 && canAddMore ? (
-              <button
-                type="button"
-                disabled={isInteractionLocked}
-                onClick={() => openCamera(inputRef.current)}
-                className={buttonStyles.photoCaptureTile}
-              >
-                <span className="text-3xl leading-none" aria-hidden>
-                  +
-                </span>
-                <span>{busy ? 'Wird gespeichert …' : 'Foto aufnehmen'}</span>
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => openCamera(inputRef.current)}
+                  className={buttonStyles.photoCaptureTile}
+                >
+                  <span className="text-3xl leading-none" aria-hidden>
+                    📷
+                  </span>
+                  <span>{busy ? 'Wird gespeichert …' : 'Foto aufnehmen'}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => uploadInputRef.current?.click()}
+                  className={buttonStyles.photoCaptureTile}
+                >
+                  <span className="text-3xl leading-none" aria-hidden>
+                    📄
+                  </span>
+                  <span>{busy ? 'Wird verarbeitet …' : 'Datei hochladen'}</span>
+                </button>
+              </>
             ) : null}
           </div>
 
           <p className="text-sm text-muted">
-            {photos.length} von {maxPhotos} Fotos
-            {photos.length === 0 ? ' — tippe auf die Kachel, um zu starten.' : ''}
+            {photos.length} von {maxPhotos} Seiten
+            {photos.length === 0 ? ' — Foto aufnehmen oder Datei hochladen (JPG, PNG, PDF).' : ''}
           </p>
 
           <input
@@ -322,6 +396,15 @@ export default function ScanClient() {
             capture="environment"
             className="hidden"
             onChange={(event) => void handlePhotoSelected(event)}
+          />
+
+          <input
+            ref={uploadInputRef}
+            type="file"
+            accept={UPLOAD_ACCEPT}
+            multiple
+            className="hidden"
+            onChange={(event) => void handleFilesSelected(event)}
           />
 
           {error ? (

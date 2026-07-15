@@ -6,6 +6,7 @@ export type ActivityAction =
   | 'photos_analyzed'
   | 'review_opened'
   | 'final_assessment'
+  | 'follow_up_question'
   | 'word_document_created'
   | 'plus_discover_opened'
   | 'plus_checkout_started'

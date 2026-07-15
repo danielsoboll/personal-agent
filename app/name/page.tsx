@@ -1,6 +1,21 @@
-import { redirect } from 'next/navigation'
+import { Suspense } from 'react'
 
-/** Vorname-Schritt entfällt — alte Links leiten auf „Neuer Fall“ um. */
+import OnboardingShell from '@/components/onboarding/OnboardingShell'
+
+import NameClient from './NameClient'
+
+function NameFallback() {
+  return (
+    <OnboardingShell title="Dein Vorname" subtitle="Behördenpost">
+      <p className="text-sm text-muted">Wird geladen …</p>
+    </OnboardingShell>
+  )
+}
+
 export default function NamePage() {
-  redirect('/fall/neu')
+  return (
+    <Suspense fallback={<NameFallback />}>
+      <NameClient />
+    </Suspense>
+  )
 }

@@ -4,6 +4,9 @@ import type {
   AssessRequestBody,
   AssessResponseBody,
   AnalyzeIntent,
+  ClarifyRequestBody,
+  ClarifyResponseBody,
+  FollowUpMessage,
   PrepareStepRequestBody,
   PrepareStepResponseBody,
   StructuredStep,
@@ -159,6 +162,55 @@ export async function prepareStepDocument(step: StructuredStep): Promise<Prepare
 
   if (!('contentBase64' in payload)) {
     throw new Error('Ungültige Antwort vom Dokument-Server.')
+  }
+
+  return payload
+}
+
+export async function askFollowUpQuestion(question: string): Promise<ClarifyResponseBody> {
+  const activeCase = await getActiveCase()
+  if (!activeCase?.latestReview) {
+    throw new Error('Es gibt noch keine Auswertung für eine Nachfrage.')
+  }
+
+  const rawCaseFile = await getCaseFileContent(activeCase.id)
+  if (!rawCaseFile) {
+    throw new Error('Es gibt noch keine Fallakte.')
+  }
+
+  const review = activeCase.latestReview
+  const priorMessages: FollowUpMessage[] = review.followUpMessages ?? []
+
+  const body: ClarifyRequestBody = {
+    userName: activeCase.userName,
+    caseTitle: activeCase.title,
+    caseNumber: activeCase.caseNumber,
+    caseFileContent: rawCaseFile,
+    question,
+    currentReview: {
+      summary: review.summary,
+      assessment: review.assessment,
+      nextSteps: review.nextSteps,
+      structuredSteps: review.structuredSteps ?? [],
+      phase: review.phase,
+    },
+    priorMessages,
+  }
+
+  const response = await fetch('/api/clarify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+
+  const payload = (await response.json()) as ClarifyResponseBody | { error?: string }
+
+  if (!response.ok) {
+    throw new Error('error' in payload && payload.error ? payload.error : 'Nachfrage fehlgeschlagen.')
+  }
+
+  if (!('answer' in payload)) {
+    throw new Error('Ungültige Antwort vom Nachfrage-Server.')
   }
 
   return payload

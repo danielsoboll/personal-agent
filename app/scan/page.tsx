@@ -7,7 +7,7 @@ import ScanClient from './ScanClient'
 function ScanFallback() {
   return (
     <OnboardingShell
-      title="Dokument fotografieren"
+      title="Dokument erfassen"
       subtitle="Behördenpost"
       footer={<PrimaryButton inactive>Prüfen</PrimaryButton>}
     >
