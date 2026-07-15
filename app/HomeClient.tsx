@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
-import HomeFlowStrip from '@/components/home/HomeFlowStrip'
+import HomeHeroFlow from '@/components/home/HomeHeroFlow'
 import HomePlusTeaser from '@/components/home/HomePlusTeaser'
 import FreeTrialCallout from '@/components/home/FreeTrialCallout'
 import { statusBadgeClassName } from '@/lib/caseStatus'
@@ -89,7 +89,7 @@ export default function HomeClient() {
               title="Briefe, Anträge und E-Mails besser verstehen"
               description="Behördenpost und wichtige Schreiben verstehen — mit klaren nächsten Schritten, direkt auf dem Handy."
             />
-            <HomeFlowStrip />
+            <HomeHeroFlow />
             <FreeTrialCallout />
             {plus.visible && !plus.plusActive ? (
               <HomePlusTeaser onDiscover={plus.openPlusDiscover} />

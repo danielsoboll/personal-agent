@@ -12,7 +12,7 @@ const MIDDLE_STEP = HOME_FLOW_STEPS.find((step) => step.number === 2)
 
 const VISUAL_SLOT_CLASS = 'flex h-[8.25rem] w-full items-center justify-center sm:h-[9.75rem]'
 const IMAGE_FRAME_CLASS =
-  'relative h-[8.25rem] w-[8.25rem] overflow-hidden rounded-2xl border border-accent/15 bg-accent-soft/35 shadow-sm sm:h-[9.75rem] sm:w-[9.75rem]'
+  'relative h-[8.25rem] w-[8.25rem] overflow-hidden rounded-2xl border-2 border-border bg-gradient-to-b from-surface via-accent-soft/25 to-slate-100/90 shadow-sm ring-1 ring-border/25 lifexp-tile-3d sm:h-[9.75rem] sm:w-[9.75rem]'
 
 function StepCaption({ step, raised = false }: { step: HomeFlowStep; raised?: boolean }) {
   const showEmoji = step.showEmojiInCaption !== false && step.emoji

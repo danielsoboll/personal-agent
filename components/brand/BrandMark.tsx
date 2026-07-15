@@ -2,7 +2,7 @@ import Image from 'next/image'
 
 import { BRAND_MARK_ALT, BRAND_MARK_SRC } from '@/lib/brand'
 
-export type BrandMarkVariant = 'header' | 'intro' | 'hero' | 'overlay' | 'flowTile'
+export type BrandMarkVariant = 'header' | 'intro' | 'hero' | 'overlay'
 
 type BrandMarkProps = {
   variant?: BrandMarkVariant
@@ -15,32 +15,26 @@ const VARIANTS: Record<
   { size: number; frameClass: string; imageClass: string }
 > = {
   header: {
-    size: 48,
+    size: 44,
     frameClass:
-      'h-12 w-12 rounded-2xl border border-accent/25 bg-accent-soft/40 shadow-sm ring-1 ring-accent/10',
+      'h-11 w-11 rounded-2xl border border-accent/20 bg-accent-soft/35 shadow-sm',
     imageClass: 'object-cover object-center',
   },
   intro: {
-    size: 56,
+    size: 44,
     frameClass:
-      'h-14 w-14 rounded-2xl border border-accent/20 bg-accent-soft/35 shadow-sm ring-1 ring-accent/10',
+      'h-11 w-11 rounded-2xl border border-accent/15 bg-accent-soft/35 shadow-sm',
     imageClass: 'object-cover object-center',
   },
   hero: {
-    size: 140,
+    size: 156,
     frameClass:
-      'h-[8.75rem] w-[8.75rem] rounded-2xl border border-accent/20 bg-accent-soft/30 shadow-md ring-1 ring-accent/10',
+      'h-[9.75rem] w-[9.75rem] rounded-2xl border border-accent/15 bg-accent-soft/35 shadow-sm',
     imageClass: 'object-cover object-center',
   },
   overlay: {
-    size: 80,
-    frameClass:
-      'h-20 w-20 rounded-2xl border border-border bg-accent-soft/30 shadow-md ring-1 ring-border/30',
-    imageClass: 'object-cover object-center',
-  },
-  flowTile: {
     size: 72,
-    frameClass: 'h-full w-full rounded-none border-0 shadow-none ring-0',
+    frameClass: 'h-[4.5rem] w-[4.5rem] rounded-2xl border border-border shadow-sm',
     imageClass: 'object-cover object-center',
   },
 }
