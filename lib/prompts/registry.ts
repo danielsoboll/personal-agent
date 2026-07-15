@@ -14,21 +14,44 @@ import {
 import { CASE_FILE_JSONL_EXAMPLE, CASE_FILE_JSONL_MINIMAL_EXAMPLE } from '@/lib/caseFileJsonl'
 import type { AnalyzeIntent } from '@/lib/analyzeTypes'
 
-export const PROMPT_VERSION = '2026-07-14.4'
+export const PROMPT_VERSION = '2026-07-15.1'
 
 /** Wie eine direkte ChatGPT-Nachricht mit angehängten Fotos. */
-export const CORE_USER_QUESTIONS = `Beantworte zuerst inhaltlich — so gut wie ChatGPT mit denselben Fotos:
+export const CORE_USER_QUESTIONS = `Beantworte zuerst inhaltlich — so gut wie ChatGPT mit denselben Unterlagen:
 
 1. **Was ist das?** — Absender, Art des Schreibens, worum es geht, wichtige Beträge und Fristen
-2. **Was sollte ich jetzt tun?** — die unmittelbar nächste Handlung und die sinnvollen Folgeschritte`
+2. **Was sollte ich jetzt tun?** — die unmittelbar nächste Handlung und die sinnvollen Folgeschritte
+3. **Bei Streit / Gegenseite:** Welche Behauptungen stehen im Raum — und gegen welche Punkte kann man sinnvoll vorgehen?`
 
-export const READING_RULES = `So liest du die Fotos (WICHTIG):
+export const READING_RULES = `So liest du die Unterlagen (WICHTIG):
 
-- Lies JEDE Seite vollständig: Absender, Datum, Betreff, Beträge, Fristen, Aktenzeichen, Tabellen.
-- Mehrere Fotos = meist EIN Schreiben oder zusammengehörige Post — alles zusammen verstehen, nicht getrennt bewerten.
+- Lies JEDE Seite vollständig: Absender, Datum, Betreff, Beträge, Fristen, Aktenzeichen, Tabellen, Anlagenvermerke.
+- Mehrere Fotos/PDFs = oft EIN Schreiben ODER ein Paket (z. B. Gericht + Anwaltsschreiben der Gegenseite) — alles zusammen verstehen, Rollen trennen (wer schreibt wem?).
 - Zahlen und Daten exakt aus dem Text — nicht raten.
-- Bei klaren Schreiben (Finanzamt, Jobcenter, Versicherung …) direkt und konkret antworten.
+- Bei klaren Schreiben (Finanzamt, Jobcenter, Versicherung, Gericht, Anwalt …) direkt und konkret antworten.
 - Nichts erfinden. Unklares ehrlich sagen.`
+
+export const ADVERSARIAL_ANALYSIS_RULES = `Streit, Gegenseite, Gericht & Anwalt (wenn erkennbar):
+
+Trifft zu bei Klage, Verfügung, Gerichtstermin, Widerspruch, Mahnverfahren, Anwaltsschreiben der Gegenseite, Stellungnahmen, Anlagen mit Behauptungen über dich.
+
+Dann — zusätzlich zu „Was ist das?“ und „Was tun?“ — wie eine gute ChatGPT-Analyse:
+
+**Behauptungen der Gegenseite / im Schreiben**
+- Nenne die wesentlichen Behauptungen oder Forderungen punktweise (kurz, in eigenen Worten).
+- Trenne: was ist Tatsache laut Dokument vs. was ist nur Behauptung/Rechtsauffassung.
+
+**Gegen welche Punkte man vorgehen kann**
+- Markiere die Punkte, die typischerweise angreifbar oder prüfenswert sind (z. B. fehlende Begründung, widersprüchliche Daten, Frist-/Zustellungsfragen, unklare Forderungen, fehlende Nachweise, offensichtliche Übertreibungen).
+- Erkläre jeweils in 1 Satz WARUM dieser Punkt angreifbar wirkt — nur aus dem Text der Unterlagen, nichts erfinden.
+- Wenn du aus den Unterlagen keine Angriffspunkte erkennst: klar sagen, statt welche zu erfinden.
+
+**Einordnung (kein Anwaltsersatz)**
+- Du hilfst zur Orientierung, keine Rechtsberatung und keine Erfolgsgarantie.
+- Formuliere als Prüfungspunkte („das lohnt sich zu prüfen / dagegen zu argumentieren“), nicht als Urteil.
+- Wenn Fristen oder Termine laufen: diese zuerst priorisieren, dann die inhaltlichen Angriffspunkte.
+
+In assessment und structuredSteps müssen diese Angriffspunkte sichtbar werden — nicht nur „Anwalt fragen“.`
 
 export const JSONL_TWO_BEREICHE = `
 Die JSONL-Fallakte hat **2 Bereiche** (dem Nutzer unsichtbar):
@@ -70,11 +93,13 @@ Ordne deine inhaltliche Antwort in die **3 Bereiche der App**:
 
 **2. assessment → „Was das Schreiben bedeutet“** (ausführlicher als summary)
 - Du-Form mit Vornamen
-- 4–8 Sätze: Was will der Absender? Was heißt das für mich? Was passiert, wenn ich nicht reagiere?
+- 4–10 Sätze: Was will der Absender? Was heißt das für mich? Was passiert, wenn ich nicht reagiere?
 - Konkrete Beträge, Daten und Fristen aus dem Brief
+- Bei Streit/Gegenseite: Behauptungen kurz auflisten und die prüfenswerten/angreifbaren Punkte benennen (siehe ADVERSARIAL_ANALYSIS_RULES)
 
 **3. structuredSteps + nextSteps → „Nächste Schritte“** (Antwort auf: Was sollte ich jetzt tun?)
 - 2–6 konkrete Handlungen — erster Schritt = die JETZT wichtigste Aktion
+- Bei Streit/Gegenseite: konkrete Prüfungspunkte als eigene Schritte (z. B. „Behauptung X prüfen/widersprechen“, „Nachweis zu Y besorgen“), nicht nur generisch „Anwältin anrufen“
 - id: schritt_1, schritt_2 …
 - text: klare Handlung
 - deadline: YYYY-MM-DD nur wenn im Schreiben oder klar ableitbar; sonst weglassen
@@ -112,6 +137,8 @@ Prompt-Version: ${PROMPT_VERSION}
 
 ${READING_RULES}
 
+${ADVERSARIAL_ANALYSIS_RULES}
+
 ${CASE_SCOPE_RULES}
 
 ${HISTORIE_USAGE_RULES}
@@ -143,9 +170,12 @@ ${HISTORIE_USAGE_RULES}
 
 ${CORE_USER_QUESTIONS}
 
+${ADVERSARIAL_ANALYSIS_RULES}
+
 Ergänze:
 - Was passiert, wenn ich nicht reagiere oder die Frist verpasse?
 - Brauche ich noch weitere Unterlagen?
+- Bei Streitunterlagen: Welche Behauptungen der Gegenseite sind angreifbar — und was ist der nächste konkrete Prüfungsschritt?
 
 ${USER_OUTPUT_RULES}
 
@@ -383,12 +413,15 @@ Prompt-Version: ${PROMPT_VERSION}
 
 ${CASE_SCOPE_RULES}
 
+${ADVERSARIAL_ANALYSIS_RULES}
+
 Regeln:
 - Bei JEDER Nachfrage: updatedSummary, updatedAssessment, updatedNextSteps und updatedStructuredSteps vollständig neu liefern — integriere alle bisherigen Infos, den Chat und neue Anhänge.
 - Die Hauptauswertung oben in der App wird nach jeder Nachfrage aus diesen updated-Feldern neu gezeichnet.
 - answer: kurze Chat-Antwort zur konkreten Nachfrage — nur Ergänzungen, die nicht schon in updatedAssessment oder den Schritten stehen.
-- wordDocumentRequested: true NUR wenn der Nutzer ein formales Schreiben braucht (Widerspruch, Antwort an Behörde, Fristverlängerung o. Ä.) und du einen Entwurf liefern sollst. Sonst false und wordDocument-Felder leer ("" bzw. leeres Array).
-- Bei wordDocumentRequested=true: wordDocumentTitle, wordDocumentSubject, wordDocumentBodyParagraphs (Absätze), wordDocumentPreviewText (Kurzvorschau für die App) ausfüllen — sachlich, höflich, Du-Form im Chat, Sie-Form im Schreiben.
+- Bei Streit/Gegenseite oder Nachfragen dazu: in answer und updatedAssessment Behauptungen und angreifbare Punkte klar machen; Schritte konkretisieren.
+- wordDocumentRequested: true NUR wenn der Nutzer ein formales Schreiben braucht (Widerspruch, Antwort an Behörde/Gericht, Fristverlängerung o. Ä.) und du einen Entwurf liefern sollst. Sonst false und wordDocument-Felder leer ("" bzw. leeres Array).
+- Bei wordDocumentRequested=true: wordDocumentTitle, wordDocumentSubject, wordDocumentBodyParagraphs (Absätze), wordDocumentPreviewText (Kurzvorschau für die App) ausfüllen — sachlich, höflich, Du-Form im Chat, Sie-Form im Schreiben; angreifbare Punkte der Gegenseite gezielt aufgreifen.
 - contextSummary: eine kurze Zeile für die UI, z. B. „Fallakte + 1 PDF“ — kein Prompt-Text.
 - Du-Form im Chat, klar, keine technischen Begriffe (JSONL, Fallakte, KI).`
 

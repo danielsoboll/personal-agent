@@ -502,7 +502,7 @@ export default function ReviewClient() {
                 type="button"
                 disabled={busy || wordDocBusyAt !== null}
                 onClick={() => setChatOpen(true)}
-                className={`w-full ${buttonStyles.accentSoft}`}
+                className={buttonStyles.primaryActive}
               >
                 Chatverlauf
                 {(review.followUpMessages?.length ?? 0) > 0

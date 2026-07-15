@@ -1,18 +1,16 @@
 'use client'
 
-import { ChangeEvent, useEffect, useRef, useState } from 'react'
+import { ChangeEvent, useEffect, useLayoutEffect, useRef, useState } from 'react'
 
 import SheetPortal from '@/components/plus/SheetPortal'
 import { buttonStyles } from '@/lib/buttonStyles'
 import {
-  buildAttachmentMetaSummary,
   getFollowUpUserText,
   MAX_CHAT_ATTACHMENTS,
   normalizeFollowUpMessage,
 } from '@/lib/chatFollowUp'
 import type { FollowUpAttachmentMeta, FollowUpMessage, FollowUpWordDocument } from '@/lib/analyzeTypes'
 import { UPLOAD_ACCEPT, prepareUploadFile } from '@/lib/documentUpload'
-import { PRIVACY_CHAT_LOCAL } from '@/lib/privacyCopy'
 
 type PendingAttachment = FollowUpAttachmentMeta & {
   id: string
@@ -65,6 +63,7 @@ export default function ChatHistorySheet({
 }: ChatHistorySheetProps) {
   const uploadRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [draft, setDraft] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [error, setError] = useState('')
@@ -77,6 +76,14 @@ export default function ChatHistorySheet({
     if (!node) return
     node.scrollTop = node.scrollHeight
   }, [normalizedMessages.length, busy])
+
+  useLayoutEffect(() => {
+    const node = textareaRef.current
+    if (!node) return
+    node.style.height = '0px'
+    const next = Math.min(Math.max(node.scrollHeight, 44), 160)
+    node.style.height = `${next}px`
+  }, [draft])
 
   async function handleSubmit(event?: React.FormEvent) {
     event?.preventDefault()
@@ -126,32 +133,31 @@ export default function ChatHistorySheet({
   return (
     <SheetPortal>
       <div
-        className="fixed inset-0 z-50 flex flex-col justify-end bg-black/45 backdrop-blur-[1px]"
+        className="fixed inset-0 z-50 flex flex-col bg-surface"
         onClick={onClose}
         role="presentation"
       >
         <div
-          className="lifexp-bottom-sheet flex max-h-[92dvh] min-h-[70dvh] flex-col border-t border-border bg-surface pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-4 shadow-2xl"
+          className="flex h-dvh max-h-dvh w-full flex-col bg-surface pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
           onClick={(event) => event.stopPropagation()}
           role="dialog"
           aria-modal="true"
           aria-labelledby="chat-history-title"
         >
-          <div className="mx-auto mb-3 h-1.5 w-12 shrink-0 rounded-full bg-border" />
-
-          <div className="flex shrink-0 items-center justify-between px-5 pb-3">
-            <div>
-              <h2 id="chat-history-title" className="text-lg font-semibold tracking-tight">
-                Chatverlauf
-              </h2>
-              <p className="text-sm text-muted">Nachfragen mit optionalen Fotos oder PDFs</p>
-            </div>
-            <button type="button" onClick={onClose} className={buttonStyles.header}>
-              Schließen
+          <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border/70 px-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-2 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft"
+            >
+              ← Zurück
             </button>
+            <h2 id="chat-history-title" className="truncate text-sm font-semibold tracking-tight">
+              Chatverlauf
+            </h2>
           </div>
 
-          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-2">
+          <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
             {normalizedMessages.length === 0 ? (
               <p className="rounded-2xl border border-border bg-accent-soft/40 px-4 py-3 text-sm leading-7 text-muted">
                 Stelle eine Frage oder lade ergänzende Unterlagen hoch — beides zusammen geht auch.
@@ -220,9 +226,9 @@ export default function ChatHistorySheet({
             )}
           </div>
 
-          <div className="shrink-0 border-t border-border px-4 pt-3">
+          <div className="shrink-0 border-t border-border px-3 pt-2 pb-2">
             {pending.length > 0 ? (
-              <div className="mb-3 flex flex-wrap gap-2">
+              <div className="mb-2 flex flex-wrap gap-2">
                 {pending.map((item) => (
                   <span
                     key={item.id}
@@ -242,34 +248,39 @@ export default function ChatHistorySheet({
               </div>
             ) : null}
 
-            <form onSubmit={(event) => void handleSubmit(event)} className="space-y-2">
+            <form onSubmit={(event) => void handleSubmit(event)} className="flex items-end gap-2">
+              <button
+                type="button"
+                disabled={busy || disabled || pending.length >= MAX_CHAT_ATTACHMENTS}
+                onClick={() => uploadRef.current?.click()}
+                aria-label="Anhang hinzufügen"
+                className={`${buttonStyles.header} h-10 w-10 shrink-0 px-0 py-0 text-base`}
+              >
+                +
+              </button>
+
               <textarea
+                ref={textareaRef}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="Frage stellen …"
-                rows={2}
+                rows={1}
                 maxLength={2000}
                 disabled={busy || disabled}
-                className="w-full resize-none rounded-2xl border-2 border-border bg-surface px-4 py-3 text-sm leading-7 text-foreground shadow-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-60"
+                className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-2xl border-2 border-border bg-surface px-3.5 py-2.5 text-sm leading-6 text-foreground shadow-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-60"
               />
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  disabled={busy || disabled || pending.length >= MAX_CHAT_ATTACHMENTS}
-                  onClick={() => uploadRef.current?.click()}
-                  className={buttonStyles.secondary}
-                >
-                  Anhang
-                </button>
-                <button
-                  type="submit"
-                  disabled={!canSend}
-                  className={`flex-1 ${canSend ? buttonStyles.primaryActive : buttonStyles.primaryInactive}`}
-                >
-                  {busy ? 'Wird gesendet …' : 'Senden'}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={!canSend}
+                className={`h-11 shrink-0 rounded-2xl px-4 text-sm font-semibold ${
+                  canSend
+                    ? 'border-2 border-blue-950 bg-gradient-to-b from-blue-700 via-accent to-blue-950 text-white'
+                    : 'cursor-not-allowed border-2 border-border bg-slate-100 text-muted opacity-80 dark:bg-slate-800'
+                }`}
+              >
+                {busy ? '…' : 'Senden'}
+              </button>
             </form>
 
             <input
@@ -286,8 +297,6 @@ export default function ChatHistorySheet({
                 {error}
               </p>
             ) : null}
-
-            <p className="mt-3 text-xs leading-6 text-muted">{PRIVACY_CHAT_LOCAL}</p>
           </div>
         </div>
       </div>
