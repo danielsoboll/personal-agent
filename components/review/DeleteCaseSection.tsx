@@ -52,8 +52,7 @@ export default function DeleteCaseSection({
   return (
     <div className="rounded-2xl border border-red-300 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
       <p className="text-sm leading-7 text-red-900 dark:text-red-100">
-        Fall „{caseTitle}“ wirklich löschen? Fallakte, gespeicherte KI-Auswertung, Scan-Fotos und zugehörige
-        Schreiben in der Bibliothek werden unwiderruflich vom Gerät entfernt.
+        Fall „{caseTitle}“ wirklich löschen? Alles dazu wird vom Gerät entfernt.
       </p>
       <div className="mt-4 flex flex-col gap-2">
         <button

@@ -13,7 +13,7 @@ import ReviewChangesBanner from '@/components/review/ReviewChangesBanner'
 import ChatHistorySheet from '@/components/review/ChatHistorySheet'
 import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
-import { buttonStyles } from '@/lib/buttonStyles'
+import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
 import { logUserActivity } from '@/lib/activityLog'
 import { scheduleCaseFileReorganize } from '@/lib/caseFileReorganizeClient'
 import {
@@ -35,7 +35,6 @@ import {
 } from '@/lib/caseFileOps'
 import { displaySummary, shouldShowSummary } from '@/lib/reviewDisplay'
 import { formatDeadlineShort } from '@/lib/deadlineDisplay'
-import { downloadDeadlineIcs } from '@/lib/calendarExport'
 import { buildReviewChanges, type ReviewChangeItem } from '@/lib/reviewDiff'
 import { loadDoneStepIds, toggleDoneStepId } from '@/lib/stepProgress'
 import { documentChoiceHint, reviewFooterState } from '@/lib/reviewFooter'
@@ -47,7 +46,6 @@ import {
 } from '@/lib/localCases'
 import { saveLibraryDocument } from '@/lib/localLibrary'
 import { recordFinalAssessmentCompleted, recordWordDocumentCreated } from '@/lib/plusEngagement'
-import { PRIVACY_CHAT_LOCAL } from '@/lib/privacyCopy'
 
 function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeResult {
   const legacyIntent =
@@ -72,13 +70,6 @@ function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeRes
     ...docs,
     ...decision,
   }
-}
-
-function priorityLabel(priority?: string): string | null {
-  if (priority === 'hoch') return 'Dringend'
-  if (priority === 'mittel') return 'Bald erledigen'
-  if (priority === 'niedrig') return 'Kann warten'
-  return null
 }
 
 export default function ReviewClient() {
@@ -297,8 +288,9 @@ export default function ReviewClient() {
   }
 
   function handleToggleStepDone(stepId: string) {
-    if (!activeCase) return
-    setDoneStepIds(toggleDoneStepId(activeCase.id, stepId))
+    if (!activeCase || !stepId) return
+    const next = toggleDoneStepId(activeCase.id, stepId)
+    setDoneStepIds(next)
   }
 
   async function handleRequestReplyDraft() {
@@ -506,77 +498,49 @@ export default function ReviewClient() {
 
               {steps.length > 0 ? (
                 <div className="space-y-3">
-                  <div>
-                    <h3 className="text-lg font-semibold tracking-tight">Deine nächsten Schritte</h3>
-                    <p className="mt-1 text-sm leading-6 text-muted">
-                      Abhaken, wenn erledigt — speichert nur auf diesem Gerät.
-                    </p>
-                  </div>
-                  <ul className="space-y-3">
+                  <h3 className="text-xl font-semibold tracking-tight">Nächste Schritte</h3>
+                  <ul className="space-y-2">
                     {steps.map((step, index) => {
-                      const label = priorityLabel(step.priority)
-                      const done = doneStepIds.includes(step.id)
+                      const stepKey = step.id?.trim() || `legacy_${index}`
+                      const done = doneStepIds.includes(stepKey)
                       return (
-                        <li
-                          key={step.id}
-                          className={`rounded-2xl border p-4 shadow-sm ${
-                            done
-                              ? 'border-emerald-200 bg-emerald-50/70 dark:border-emerald-900 dark:bg-emerald-950/20'
-                              : 'border-border bg-surface'
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <button
-                              type="button"
-                              aria-pressed={done}
-                              aria-label={done ? `Schritt ${index + 1} wieder öffnen` : `Schritt ${index + 1} erledigt`}
-                              disabled={busy || followUpBusy}
-                              onClick={() => handleToggleStepDone(step.id)}
-                              className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+                        <li key={stepKey}>
+                          <button
+                            type="button"
+                            aria-pressed={done}
+                            disabled={busy || followUpBusy}
+                            onClick={() => handleToggleStepDone(stepKey)}
+                            className={`${PRESSABLE_3D} flex w-full items-center gap-4 rounded-2xl border-2 px-4 py-4 text-left transition ${
+                              done
+                                ? 'border-emerald-500 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
+                                : 'border-accent/50 bg-surface hover:border-accent'
+                            }`}
+                          >
+                            <span
+                              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 text-2xl font-bold ${
                                 done
-                                  ? 'bg-emerald-600 text-white'
-                                  : 'bg-accent text-white'
+                                  ? 'border-emerald-600 bg-emerald-600 text-white'
+                                  : 'border-accent bg-white text-transparent dark:bg-slate-900'
                               }`}
+                              aria-hidden
                             >
-                              {done ? '✓' : index + 1}
-                            </button>
-                            <div className="min-w-0 flex-1">
-                              <p
-                                className={`text-sm leading-7 ${
+                              ✓
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span
+                                className={`block text-base font-semibold leading-7 ${
                                   done ? 'text-muted line-through' : 'text-foreground'
                                 }`}
                               >
                                 {step.text}
-                              </p>
-                              <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                {step.deadline ? (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      downloadDeadlineIcs({
-                                        deadline: step.deadline!,
-                                        title: `${step.text.slice(0, 80)}${activeCase?.title ? ` — ${activeCase.title}` : ''}`,
-                                        fileName: `Schritt_${step.deadline}.ics`,
-                                      })
-                                    }
-                                    className="rounded-full bg-amber-100 px-2.5 py-1 font-medium text-amber-900 hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-200"
-                                  >
-                                    Bis {formatDeadlineShort(step.deadline)} · Kalender
-                                  </button>
-                                ) : null}
-                                {label ? (
-                                  <span className="rounded-full bg-zinc-100 px-2.5 py-1 font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                                    {label}
-                                  </span>
-                                ) : null}
-                                {done ? (
-                                  <span className="rounded-full bg-emerald-100 px-2.5 py-1 font-medium text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-200">
-                                    Erledigt
-                                  </span>
-                                ) : null}
-                              </div>
-                            </div>
-                          </div>
+                              </span>
+                              {step.deadline ? (
+                                <span className="mt-1 block text-sm font-medium text-amber-800 dark:text-amber-200">
+                                  Bis {formatDeadlineShort(step.deadline)}
+                                </span>
+                              ) : null}
+                            </span>
+                          </button>
                         </li>
                       )
                     })}
@@ -584,8 +548,8 @@ export default function ReviewClient() {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-border bg-surface p-5">
-                  <h3 className="text-base font-semibold">Deine nächsten Schritte</h3>
-                  <p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-muted">{review.nextSteps}</p>
+                  <h3 className="text-xl font-semibold">Nächste Schritte</h3>
+                  <p className="mt-3 whitespace-pre-wrap text-base leading-7 text-foreground">{review.nextSteps}</p>
                 </div>
               )}
 
@@ -596,9 +560,7 @@ export default function ReviewClient() {
               ) : null}
 
               {showFinalButton ? (
-                <p className="rounded-2xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm leading-7 text-emerald-900 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
-                  Unterlagen sind erfasst. Mit „Bewertung einholen“ bekommst du die klare Gesamtübersicht mit Fristen.
-                </p>
+                <p className="text-sm leading-6 text-muted">Unten: „Bewertung einholen“ tippen.</p>
               ) : null}
 
 
@@ -619,7 +581,7 @@ export default function ReviewClient() {
               </Link>
 
               {activeCase ? (
-                <div className="space-y-3 border-t border-border pt-6">
+                <div className="border-t border-border pt-6">
                   <DeleteCaseSection
                     caseId={activeCase.id}
                     caseTitle={activeCase.title}
@@ -627,14 +589,8 @@ export default function ReviewClient() {
                     onDeleted={() => router.replace('/')}
                     onError={setError}
                   />
-                  <p className="text-sm leading-7 text-muted">{PRIVACY_CHAT_LOCAL}</p>
                 </div>
               ) : null}
-
-              <p className="text-xs leading-6 text-muted">
-                {review.photoCount} Foto{review.photoCount === 1 ? '' : 's'} zuletzt ausgewertet · verarbeitete Fotos
-                wurden vom Gerät gelöscht
-              </p>
 
               {error ? (
                 <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
@@ -653,7 +609,7 @@ export default function ReviewClient() {
                   </>
                 }
               />
-              <div className="space-y-3 border-t border-border pt-6">
+              <div className="border-t border-border pt-6">
                 {activeCase ? (
                   <DeleteCaseSection
                     caseId={activeCase.id}
@@ -663,7 +619,6 @@ export default function ReviewClient() {
                     onError={setError}
                   />
                 ) : null}
-                <p className="text-sm leading-7 text-muted">{PRIVACY_CHAT_LOCAL}</p>
               </div>
               <PrivacyNote variant="analysis" />
             </>

@@ -6,7 +6,6 @@ import { APP_DESCRIPTION } from '@/lib/privacyCopy'
 import KeyboardViewportRoot from '@/components/KeyboardViewportRoot'
 import PlusBillingSync from '@/components/plus/PlusBillingSync'
 import PwaInstallListener from '@/components/pwa/PwaInstallListener'
-import PwaInstallTopBanner from '@/components/pwa/PwaInstallTopBanner'
 import ThemeHydration from '@/components/ThemeHydration'
 import { THEME_FALLBACK_BG_LIGHT, themeInitScript } from '@/lib/theme'
 
@@ -66,7 +65,6 @@ export default function RootLayout({
         <PlusBillingSync />
         <PwaInstallListener />
         <KeyboardViewportRoot />
-        <PwaInstallTopBanner />
         {children}
       </body>
     </html>

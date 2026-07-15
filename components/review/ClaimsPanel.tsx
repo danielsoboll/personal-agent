@@ -19,59 +19,35 @@ export default function ClaimsPanel({
   if (claims.length === 0 && points.length === 0) return null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {claims.length > 0 ? (
-        <section className="space-y-3">
-          <div>
-            <h3 className="text-lg font-semibold tracking-tight">Was die andere Seite sagt</h3>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Kurz die wichtigsten Behauptungen oder Forderungen aus dem Schreiben.
-            </p>
-          </div>
-          <ol className="space-y-2">
-            {claims.map((claim, index) => (
+        <section className="space-y-2">
+          <h3 className="text-lg font-semibold tracking-tight">Was behauptet wird</h3>
+          <ul className="space-y-2">
+            {claims.map((claim) => (
               <li
                 key={claim.id}
-                className="flex gap-3 rounded-2xl border border-border bg-surface px-4 py-3 shadow-sm"
+                className="rounded-2xl border border-border bg-surface px-4 py-3 text-base leading-7 text-foreground"
               >
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
-                  {index + 1}
-                </span>
-                <p className="text-sm leading-7 text-foreground">{claim.text}</p>
+                {claim.text}
               </li>
             ))}
-          </ol>
+          </ul>
         </section>
       ) : null}
 
       {points.length > 0 ? (
         <section className="space-y-3">
-          <div>
-            <h3 className="text-lg font-semibold tracking-tight">Das kannst du prüfen</h3>
-            <p className="mt-1 text-sm leading-6 text-muted">
-              Punkte, bei denen sich ein genauerer Blick oder Widerspruch lohnen kann — keine Rechtsberatung.
-            </p>
-          </div>
-          <ul className="space-y-3">
-            {points.map((point, index) => (
+          <h3 className="text-lg font-semibold tracking-tight">Wo du ansetzen kannst</h3>
+          <ul className="space-y-2">
+            {points.map((point) => (
               <li
                 key={point.id}
-                className="rounded-2xl border border-accent/25 bg-accent-soft/50 p-4 shadow-sm"
+                className="rounded-2xl border-2 border-accent/30 bg-accent-soft/60 px-4 py-3"
               >
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-accent">
-                  Punkt {index + 1}
-                </p>
-                <p className="mt-2 text-base font-semibold leading-7 text-foreground">{point.claim}</p>
-                <div className="mt-3 space-y-2 text-sm leading-7">
-                  <p className="text-muted">
-                    <span className="font-medium text-foreground">Warum: </span>
-                    {point.why}
-                  </p>
-                  <p className="rounded-xl bg-surface/80 px-3 py-2 text-foreground">
-                    <span className="font-medium">Was du tun kannst: </span>
-                    {point.suggestedAction}
-                  </p>
-                </div>
+                <p className="text-base font-semibold leading-7 text-foreground">{point.claim}</p>
+                <p className="mt-1 text-sm leading-6 text-muted">{point.why}</p>
+                <p className="mt-2 text-sm font-semibold text-accent">{point.suggestedAction}</p>
               </li>
             ))}
           </ul>
@@ -81,9 +57,9 @@ export default function ClaimsPanel({
               type="button"
               disabled={draftBusy}
               onClick={onRequestReplyDraft}
-              className={buttonStyles.accentSoft}
+              className={buttonStyles.primaryActive}
             >
-              {draftBusy ? 'Entwurf wird vorbereitet …' : 'Antwortschreiben vorbereiten'}
+              {draftBusy ? 'Wird vorbereitet …' : 'Antwortschreiben machen'}
             </button>
           ) : null}
         </section>

@@ -25,7 +25,7 @@ export function BackNavLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className="-mt-2 mb-6 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-accent"
+      className="-mt-2 mb-2 inline-flex min-h-11 items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-accent"
     >
       <span aria-hidden className="text-base leading-none">
         ←

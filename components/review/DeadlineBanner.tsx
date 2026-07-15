@@ -20,39 +20,32 @@ export default function DeadlineBanner({ deadline, label, caseTitle }: DeadlineB
 
   const tone =
     urgency === 'overdue'
-      ? 'border-red-300 bg-red-50 text-red-950 dark:border-red-900 dark:bg-red-950/40 dark:text-red-100'
+      ? 'border-red-400 bg-red-50 text-red-950 dark:border-red-800 dark:bg-red-950/40 dark:text-red-100'
       : urgency === 'soon'
-        ? 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100'
-        : 'border-accent/30 bg-accent-soft text-foreground'
+        ? 'border-amber-400 bg-amber-50 text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100'
+        : 'border-accent bg-accent-soft text-foreground'
 
-  const headline =
-    urgency === 'overdue' ? 'Frist abgelaufen' : urgency === 'soon' ? 'Frist bald' : 'Wichtige Frist'
-
-  const deadlineLabel = label?.trim() || 'Wichtige Frist'
+  const daysLine =
+    days === null ? null : days < 0 ? formatDaysRemaining(days) : formatDaysRemaining(days)
 
   function handleAddToCalendar() {
+    const deadlineLabel = label?.trim() || 'Frist'
     downloadDeadlineIcs({
       deadline: deadlineValue,
       title: `${deadlineLabel}${caseTitle ? ` — ${caseTitle}` : ''}`.slice(0, 120),
-      description: `Aus Behördenpost${caseTitle ? ` (Fall: ${caseTitle})` : ''}. Deadline: ${formatDeadlineDate(deadlineValue)}.`,
+      description: `Behördenpost${caseTitle ? `: ${caseTitle}` : ''}`,
       fileName: `Frist_${deadlineValue}.ics`,
     })
   }
 
   return (
-    <div className={`rounded-2xl border px-5 py-4 ${tone}`} role="status">
-      <p className="text-sm font-medium opacity-80">{headline}</p>
-      <p className="mt-1 text-2xl font-semibold tracking-tight">{formatDeadlineDate(deadlineValue)}</p>
-      <p className="mt-1 text-sm leading-6 opacity-90">
-        {deadlineLabel}
-        {days !== null ? ` · ${formatDaysRemaining(days)}` : ''}
-      </p>
-      <button
-        type="button"
-        onClick={handleAddToCalendar}
-        className={`mt-3 ${buttonStyles.secondary} !h-11 text-sm`}
-      >
-        In den Kalender legen
+    <div className={`rounded-2xl border-2 px-5 py-4 ${tone}`} role="status">
+      <p className="text-sm font-semibold uppercase tracking-wide opacity-80">Frist</p>
+      <p className="mt-1 text-3xl font-bold tracking-tight">{formatDeadlineDate(deadlineValue)}</p>
+      {daysLine ? <p className="mt-1 text-base font-semibold">{daysLine}</p> : null}
+      {label?.trim() ? <p className="mt-1 text-sm opacity-80">{label.trim()}</p> : null}
+      <button type="button" onClick={handleAddToCalendar} className={`mt-3 ${buttonStyles.secondary} !h-11`}>
+        In Kalender
       </button>
     </div>
   )
