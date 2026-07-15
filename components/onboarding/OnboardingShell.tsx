@@ -60,11 +60,9 @@ export default function OnboardingShell({
         </div>
       </header>
 
-      <main className="relative mx-auto flex w-full max-w-lg flex-1 flex-col overflow-hidden px-5 py-8">
+      <main className="relative mx-auto w-full max-w-lg flex-1 px-5 py-6">
         {backNav ? <BackNavLink href={backNav.href} label={backNav.label} /> : null}
-        <div className={`relative z-[1] flex flex-1 flex-col ${footer ? formBottomSpacerClass : ''}`}>
-          {children}
-        </div>
+        <div className={footer ? formBottomSpacerClass : undefined}>{children}</div>
       </main>
 
       {footer ? (

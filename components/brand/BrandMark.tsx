@@ -51,7 +51,7 @@ export default function BrandMark({
   const config = VARIANTS[variant]
 
   return (
-    <div className={`relative shrink-0 ${config.frameClass} ${className}`} aria-hidden={variant === 'watermark'}>
+    <div className={`relative shrink-0 overflow-hidden ${config.frameClass} ${className}`} aria-hidden={variant === 'watermark'}>
       <Image
         src={BRAND_MARK_SRC}
         alt={variant === 'watermark' ? '' : BRAND_MARK_ALT}
@@ -59,7 +59,7 @@ export default function BrandMark({
         height={config.size}
         unoptimized
         priority={priority}
-        className={`h-full w-full ${config.imageClass}`}
+        className={`block h-full w-full max-h-full max-w-full ${config.imageClass}`}
       />
     </div>
   )
