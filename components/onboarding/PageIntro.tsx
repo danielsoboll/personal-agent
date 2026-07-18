@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 
-import BrandMark from '@/components/brand/BrandMark'
+import { IconBrandMark } from '@/components/icons/BehoerdenIcons'
 
 type PageIntroProps = {
   title: string
@@ -25,7 +25,9 @@ export default function PageIntro({
     <section className="space-y-3">
       {showBrand ? (
         <div className="flex items-start gap-3.5">
-          <BrandMark variant="intro" />
+          <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent/20 bg-accent-soft text-accent">
+            <IconBrandMark size={28} />
+          </span>
           <div className="min-w-0 flex-1 pt-0.5">
             <h2 className={titleClass}>{title}</h2>
           </div>
