@@ -87,7 +87,9 @@ export default function FallNeuClient() {
         onSubmit={handleSubmit}
       >
         <div className="flex items-start gap-3.5">
-          <BrandMark variant="intro" />
+          <span className="mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent/20 bg-accent-soft text-accent">
+            <IconBrandMark size={28} />
+          </span>
           <h2 className="min-w-0 flex-1 pt-0.5 text-3xl font-bold tracking-tight text-balance leading-tight">
             Wie soll der Fall heißen?
           </h2>
