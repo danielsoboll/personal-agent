@@ -4,7 +4,7 @@ import BrandMark from '@/components/brand/BrandMark'
 
 type PageIntroProps = {
   title: string
-  description: ReactNode
+  description?: ReactNode
   /** Startseite: Header hat schon Logo — hier weglassen. */
   showBrand?: boolean
 }
@@ -22,7 +22,7 @@ export default function PageIntro({ title, description, showBrand = true }: Page
       ) : (
         <h2 className="text-2xl font-semibold tracking-tight text-balance">{title}</h2>
       )}
-      <p className="leading-7 text-muted">{description}</p>
+      {description ? <p className="text-sm leading-6 text-muted">{description}</p> : null}
     </section>
   )
 }

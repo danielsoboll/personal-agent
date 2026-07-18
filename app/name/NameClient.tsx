@@ -136,10 +136,7 @@ export default function NameClient() {
         className={`flex flex-1 flex-col gap-8 ${formBottomSpacerClass}`}
         onSubmit={handleSubmit}
       >
-        <PageIntro
-          title="Wie ist dein Vorname?"
-          description={`Für Fall „${caseTitle}“ — nur lokal auf dem Gerät.`}
-        />
+        <PageIntro title="Wie ist dein Vorname?" />
 
         <label className="block space-y-2">
           <span className="text-sm font-medium text-muted">Vorname</span>

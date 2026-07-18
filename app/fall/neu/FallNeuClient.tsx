@@ -8,7 +8,6 @@ import OnboardingShell, {
   FormStickyFooter,
   PageIntro,
   PrimaryButton,
-  PrivacyNote,
   formBottomSpacerClass,
 } from '@/components/onboarding/OnboardingShell'
 import { logUserActivity } from '@/lib/activityLog'
@@ -87,10 +86,7 @@ export default function FallNeuClient() {
         className={`flex flex-1 flex-col gap-8 ${formBottomSpacerClass}`}
         onSubmit={handleSubmit}
       >
-        <PageIntro
-          title="Wie soll der Fall heißen?"
-          description="Gib deinem Fall einen Namen, damit du ihn später wiederfindest — zum Beispiel nach dem Thema oder Absender."
-        />
+        <PageIntro title="Wie soll der Fall heißen?" description="Kurz und klar — zum Wiederfinden." />
 
         <label className="relative block space-y-2">
           <IosContactAutofillDecoy />
@@ -99,13 +95,11 @@ export default function FallNeuClient() {
             id="behoerdenpost-case-title"
             required
             enterKeyHint="go"
-            placeholder="z. B. Unterhalt Neuberechnung"
+            placeholder="z. B. Unterhalt"
             className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2"
             autofillProps={caseTitleInputProps()}
           />
         </label>
-
-        <PrivacyNote variant="storage" />
 
         {error ? (
           <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">

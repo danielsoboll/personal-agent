@@ -83,24 +83,21 @@ export default function ScanClient() {
   const copy = useMemo(() => {
     if (intent === 'current_more') {
       return {
-        title: 'Weitere Fotos zum aktuellen Schreiben',
-        heading: 'Noch Fotos zum aktuellen Schreiben',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} — Mediathek oder Dateien.`,
+        title: 'Weitere Dateien',
+        heading: 'Noch was zum aktuellen Schreiben',
       }
     }
 
     if (intent === 'historical') {
       return {
-        title: 'Ältere Dokumente erfassen',
-        heading: 'Ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} — Mediathek oder Dateien.`,
+        title: 'Ältere Unterlagen',
+        heading: 'Ältere Unterlagen hinzufügen',
       }
     }
 
     return {
       title: 'Dokument erfassen',
-      heading: 'Dein Dokument hinzufügen',
-      hint: `Bis zu ${MAX_INITIAL_PHOTOS} — Mediathek oder Dateien.`,
+      heading: 'Dokument hinzufügen',
     }
   }, [intent])
 
@@ -402,7 +399,7 @@ export default function ScanClient() {
         }
       >
         <section className="flex flex-1 flex-col gap-6">
-          <PageIntro title={copy.heading} description={copy.hint} />
+          <PageIntro title={copy.heading} />
 
           <PrivacyNote variant="analysis" />
 
