@@ -3,10 +3,11 @@ export const GALLERY_ACCEPT =
   'image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
 /**
- * Fallback für <input type="file">: PDF öffnet die Dateien-App
- * (Durchsuchen → Downloads), ohne Kamera.
+ * Fallback für <input type="file">: PDF öffnet die Dateien-App ohne Kamera.
  */
 export const DOCUMENT_FILE_ACCEPT = 'application/pdf,.pdf'
+
+export type DocumentPickSource = 'downloads' | 'documents' | 'browse'
 
 type OpenFilePickerOptions = {
   multiple?: boolean
@@ -23,34 +24,45 @@ type OpenFilePickerWindow = Window & {
   showOpenFilePicker?: (options?: OpenFilePickerOptions) => Promise<FileSystemFileHandle[]>
 }
 
+const DOCUMENT_ACCEPT_TYPES = [
+  {
+    description: 'Dokumente',
+    accept: {
+      'application/pdf': ['.pdf'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/png': ['.png'],
+      'image/webp': ['.webp'],
+      'image/heic': ['.heic', '.heif'],
+    },
+  },
+] as const
+
 /**
- * Dateien wählen — bevorzugt Downloads mit Ordner-Navigation (Chromium).
- * `null` = abgebrochen, `'fallback'` = klassisches Datei-Input nutzen.
+ * Dateien wählen.
+ * - downloads / documents: Chromium startet im Ordner, sonst Fallback-Input
+ * - browse: immer klassisches Durchsuchen
+ * `null` = abgebrochen, `'fallback'` = Input nutzen
  */
-export async function pickDocumentsFromDownloads(options?: {
+export async function pickDocuments(options?: {
   multiple?: boolean
+  source?: DocumentPickSource
 }): Promise<File[] | 'fallback' | null> {
+  const source = options?.source ?? 'downloads'
+  if (source === 'browse') return 'fallback'
+
   const picker = (window as OpenFilePickerWindow).showOpenFilePicker
   if (!picker) return 'fallback'
+
+  const startIn = source === 'documents' ? 'documents' : 'downloads'
+  const id = source === 'documents' ? 'behoerdenpost-dateien' : 'behoerdenpost-downloads'
 
   try {
     const handles = await picker({
       multiple: options?.multiple ?? true,
       excludeAcceptAllOption: false,
-      startIn: 'downloads',
-      id: 'behoerdenpost-dokumente',
-      types: [
-        {
-          description: 'Dokumente',
-          accept: {
-            'application/pdf': ['.pdf'],
-            'image/jpeg': ['.jpg', '.jpeg'],
-            'image/png': ['.png'],
-            'image/webp': ['.webp'],
-            'image/heic': ['.heic', '.heif'],
-          },
-        },
-      ],
+      startIn,
+      id,
+      types: [...DOCUMENT_ACCEPT_TYPES],
     })
 
     return Promise.all(handles.map((handle) => handle.getFile()))

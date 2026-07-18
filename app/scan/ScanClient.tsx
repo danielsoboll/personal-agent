@@ -32,7 +32,8 @@ import { prepareUploadFile, displayDocumentLabel } from '@/lib/documentUpload'
 import {
   DOCUMENT_FILE_ACCEPT,
   GALLERY_ACCEPT,
-  pickDocumentsFromDownloads,
+  pickDocuments,
+  type DocumentPickSource,
 } from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
@@ -75,6 +76,7 @@ export default function ScanClient() {
   const [peekResult, setPeekResult] = useState<DocumentPeekResult | null>(null)
   const [peekBusy, setPeekBusy] = useState(false)
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
+  const [fileSourceOpen, setFileSourceOpen] = useState(false)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
@@ -85,7 +87,7 @@ export default function ScanClient() {
       return {
         title: 'Weitere Fotos zum aktuellen Schreiben',
         heading: 'Ergänze das aktuelle Schreiben',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Aus der Mediathek oder Dateien durchsuchen.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Aus der Mediathek oder Datei hochladen.`,
       }
     }
 
@@ -93,14 +95,14 @@ export default function ScanClient() {
       return {
         title: 'Ältere Dokumente erfassen',
         heading: 'Ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Aus der Mediathek oder Dateien durchsuchen.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Aus der Mediathek oder Datei hochladen.`,
       }
     }
 
     return {
       title: 'Dokument erfassen',
-      heading: 'Dokument hinzufügen',
-      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente. Aus der Mediathek oder Dateien durchsuchen — tippen zum Entfernen vor dem Prüfen.`,
+      heading: 'Lade dein Dokument hoch',
+      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente. Aus der Mediathek oder Datei hochladen — tippen zum Entfernen vor dem Prüfen.`,
     }
   }, [intent])
 
@@ -252,23 +254,25 @@ export default function ScanClient() {
     }
   }
 
-  async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? [])
-    event.target.value = ''
-    await ingestFiles(files)
-  }
-
-  async function handlePickDocuments() {
+  async function handlePickDocuments(source: DocumentPickSource) {
     if (analyzing || busy || !canAddMore) return
 
-    const picked = await pickDocumentsFromDownloads({ multiple: true })
+    const picked = await pickDocuments({ multiple: true, source })
     if (picked === null) return
     if (picked === 'fallback') {
       openFileInput(uploadInputRef.current)
       return
     }
 
+    setFileSourceOpen(false)
     await ingestFiles(picked)
+  }
+
+  async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    setFileSourceOpen(false)
+    await ingestFiles(files)
   }
 
   async function handleRemovePhoto(id: string) {
@@ -359,39 +363,78 @@ export default function ScanClient() {
         }
         footer={
           <div className="space-y-2">
-            {canAddMore && photos.length > 0 ? (
+            {fileSourceOpen ? (
               <>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openFileInput(galleryInputRef.current)}
+                  onClick={() => void handlePickDocuments('downloads')}
                   className={buttonStyles.secondary}
                 >
-                  Aus Mediathek
+                  Downloads
                 </button>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments()}
+                  onClick={() => void handlePickDocuments('documents')}
                   className={buttonStyles.secondary}
                 >
-                  Dateien durchsuchen
+                  Dateien
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => void handlePickDocuments('browse')}
+                  className={buttonStyles.secondary}
+                >
+                  Durchsuchen
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => setFileSourceOpen(false)}
+                  className={buttonStyles.accentSoft + ' w-full'}
+                >
+                  Zurück
                 </button>
               </>
-            ) : null}
-            <button
-              type="button"
-              disabled={isInteractionLocked || photos.length === 0}
-              aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
-              onClick={() => void handleReview()}
-              className={
-                isInteractionLocked || photos.length === 0
-                  ? buttonStyles.primaryInactive
-                  : buttonStyles.primaryActive
-              }
-            >
-              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
-            </button>
+            ) : (
+              <>
+                {canAddMore && photos.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={isInteractionLocked}
+                      onClick={() => openFileInput(galleryInputRef.current)}
+                      className={buttonStyles.secondary}
+                    >
+                      Aus Mediathek
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isInteractionLocked}
+                      onClick={() => setFileSourceOpen(true)}
+                      className={buttonStyles.secondary}
+                    >
+                      Datei hochladen
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={isInteractionLocked || photos.length === 0}
+                  aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
+                  onClick={() => void handleReview()}
+                  className={
+                    isInteractionLocked || photos.length === 0
+                      ? buttonStyles.primaryInactive
+                      : buttonStyles.primaryActive
+                  }
+                >
+                  Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
+                </button>
+              </>
+            )}
           </div>
         }
       >
@@ -448,7 +491,10 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openFileInput(galleryInputRef.current)}
+                  onClick={() => {
+                    setFileSourceOpen(false)
+                    openFileInput(galleryInputRef.current)
+                  }}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
@@ -459,32 +505,23 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments()}
+                  onClick={() => setFileSourceOpen(true)}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
-                    📁
+                    📄
                   </span>
-                  <span>{busy ? 'Wird verarbeitet …' : 'Dateien durchsuchen'}</span>
+                  <span>{busy ? 'Wird verarbeitet …' : 'Datei hochladen'}</span>
                 </button>
               </>
             ) : null}
           </div>
 
-          {photos.length === 0 ? (
-            <div className="rounded-2xl border-2 border-accent/35 bg-accent-soft/50 px-4 py-3">
-              <p className="text-sm font-semibold text-foreground">Bei Dateien so:</p>
-              <ol className="mt-2 space-y-1.5 text-sm font-semibold leading-6 text-foreground">
-                <li>1. Durchsuchen</li>
-                <li>2. Downloads</li>
-                <li>3. Datei tippen</li>
-              </ol>
-            </div>
-          ) : (
+          {photos.length > 0 ? (
             <p className="text-sm text-muted">
-              {photos.length} von {maxPhotos} — tippe zum Entfernen
+              {photos.length} von {maxPhotos} Dokumenten — tippe zum Entfernen
             </p>
-          )}
+          ) : null}
 
           <input
             ref={galleryInputRef}
