@@ -2,6 +2,8 @@ import type { DocumentsStatus, StructuredStep } from '@/lib/analyzeTypes'
 import {
   DECISION_OUTPUT_PROPERTIES,
   DECISION_OUTPUT_REQUIRED,
+  SCHEMA_OPTIONAL_PRIORITY,
+  SCHEMA_OPTIONAL_STRING,
   normalizeDecisionFields,
   normalizePrimaryDeadline,
 } from '@/lib/decisionFields'
@@ -36,10 +38,13 @@ export const ANALYZE_RESULT_SCHEMA = {
           id: { type: 'string' as const },
           text: { type: 'string' as const },
           deadline: {
-            type: 'string' as const,
-            description: 'YYYY-MM-DD wenn bekannt, sonst leerer String',
+            ...SCHEMA_OPTIONAL_STRING,
+            description: 'Frist als ISO-Datum oder null',
           },
-          priority: { type: 'string' as const, enum: ['hoch', 'mittel', 'niedrig'] },
+          priority: {
+            ...SCHEMA_OPTIONAL_PRIORITY,
+            description: 'Priorität oder null',
+          },
         },
         required: ['id', 'text', 'deadline', 'priority'],
       },
@@ -189,10 +194,13 @@ export const CLARIFY_STEP_SCHEMA = {
     id: { type: 'string' as const },
     text: { type: 'string' as const },
     deadline: {
-      type: 'string' as const,
-      description: 'YYYY-MM-DD wenn bekannt, sonst leerer String',
+      ...SCHEMA_OPTIONAL_STRING,
+      description: 'Frist als ISO-Datum oder null',
     },
-    priority: { type: 'string' as const, enum: ['hoch', 'mittel', 'niedrig'] },
+    priority: {
+      ...SCHEMA_OPTIONAL_PRIORITY,
+      description: 'Priorität oder null',
+    },
   },
   required: ['id', 'text', 'deadline', 'priority'],
 }

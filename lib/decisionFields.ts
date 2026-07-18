@@ -34,6 +34,18 @@ export const CONTESTABLE_POINT_SCHEMA = {
   required: ['id', 'claim', 'why', 'suggestedAction'],
 }
 
+/** OpenAI strict: optionale Felder = anyOf string|null, weiterhin in required. */
+export const SCHEMA_OPTIONAL_STRING = {
+  anyOf: [{ type: 'string' as const }, { type: 'null' as const }],
+} as const
+
+export const SCHEMA_OPTIONAL_PRIORITY = {
+  anyOf: [
+    { type: 'string' as const, enum: ['hoch', 'mittel', 'niedrig'] },
+    { type: 'null' as const },
+  ],
+} as const
+
 /** Gemeinsame Entscheidungsfelder für Analyze / Assess. */
 export const DECISION_OUTPUT_PROPERTIES = {
   documentKind: {
@@ -42,12 +54,12 @@ export const DECISION_OUTPUT_PROPERTIES = {
     description: 'Dokumenttyp für Playbook und UI',
   },
   primaryDeadline: {
-    type: 'string' as const,
-    description: 'Wichtigste Frist als YYYY-MM-DD — leer wenn keine harte Frist',
+    ...SCHEMA_OPTIONAL_STRING,
+    description: 'Wichtigste Frist als ISO-Datum, sonst null',
   },
   primaryDeadlineLabel: {
-    type: 'string' as const,
-    description: 'Kurzes Label der Frist, z. B. Einspruchsfrist — leer wenn keine Frist',
+    ...SCHEMA_OPTIONAL_STRING,
+    description: 'Kurzes Fristen-Label, sonst null',
   },
   keyClaims: {
     type: 'array' as const,
@@ -101,8 +113,10 @@ export function normalizeContestablePoints(points: ContestablePoint[] | undefine
 }
 
 export function normalizePrimaryDeadline(value: unknown): string | undefined {
+  if (value === null || value === undefined) return undefined
   if (typeof value !== 'string') return undefined
   const trimmed = value.trim()
+  if (!trimmed) return undefined
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return undefined
   return trimmed
 }
