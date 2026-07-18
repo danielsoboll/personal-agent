@@ -35,10 +35,13 @@ export const ANALYZE_RESULT_SCHEMA = {
         properties: {
           id: { type: 'string' as const },
           text: { type: 'string' as const },
-          deadline: { type: 'string' as const },
+          deadline: {
+            type: 'string' as const,
+            description: 'YYYY-MM-DD wenn bekannt, sonst leerer String',
+          },
           priority: { type: 'string' as const, enum: ['hoch', 'mittel', 'niedrig'] },
         },
-        required: ['id', 'text'],
+        required: ['id', 'text', 'deadline', 'priority'],
       },
     },
     ...DECISION_OUTPUT_PROPERTIES,
@@ -185,10 +188,13 @@ export const CLARIFY_STEP_SCHEMA = {
   properties: {
     id: { type: 'string' as const },
     text: { type: 'string' as const },
-    deadline: { type: 'string' as const },
+    deadline: {
+      type: 'string' as const,
+      description: 'YYYY-MM-DD wenn bekannt, sonst leerer String',
+    },
     priority: { type: 'string' as const, enum: ['hoch', 'mittel', 'niedrig'] },
   },
-  required: ['id', 'text'],
+  required: ['id', 'text', 'deadline', 'priority'],
 }
 
 export const CLARIFY_SCHEMA = {
