@@ -7,15 +7,16 @@ export const DOCUMENT_UPLOAD_ACCEPT =
   'application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
 /**
- * iPhone: kein accept — sonst greyt iOS PDFs aus, sobald PDF und Bilder
- * kombiniert werden (WebKit-Bug). Filterung bleibt in prepareUploadFiles.
+ * iPhone: kein accept (oder nur ein Typ) — sonst greyt iOS PDFs aus,
+ * sobald PDF und Bilder kombiniert werden (WebKit-Bug).
+ * Filterung bleibt in prepareUploadFiles / validateUploadFile.
  */
 export function systemUploadAccept(): string | undefined {
   if (isAppleTouchDevice()) return undefined
   return DOCUMENT_UPLOAD_ACCEPT
 }
 
-export type DocumentPickSource = 'downloads' | 'documents' | 'browse'
+export type DocumentPickSource = 'downloads' | 'documents' | 'gallery'
 
 type OpenFilePickerOptions = {
   multiple?: boolean
@@ -56,17 +57,12 @@ export function isAppleTouchDevice(): boolean {
 }
 
 /**
- * Nur wenn der Browser wirklich in Downloads/Dokumente springen kann.
- * iPhone/Safari: false → kein eigenes Menü, direkt System-Dialog (2 Tipps).
+ * Nur wenn der Browser wirklich in Downloads/Dateien springen kann.
+ * iPhone/Safari: false → kein eigenes Menü, direkt System-Dialog.
  */
 export function canOpenWellKnownFolders(): boolean {
   if (typeof window === 'undefined' || isAppleTouchDevice()) return false
   return typeof (window as OpenFilePickerWindow).showOpenFilePicker === 'function'
-}
-
-/** @deprecated Alias — gleich canOpenWellKnownFolders */
-export function canUseFolderPicker(): boolean {
-  return canOpenWellKnownFolders()
 }
 
 /**
@@ -75,10 +71,10 @@ export function canUseFolderPicker(): boolean {
  */
 export async function pickDocuments(options?: {
   multiple?: boolean
-  source?: DocumentPickSource
+  source?: Exclude<DocumentPickSource, 'gallery'>
 }): Promise<File[] | 'fallback' | null> {
   const source = options?.source ?? 'documents'
-  if (source === 'browse' || !canOpenWellKnownFolders()) return 'fallback'
+  if (!canOpenWellKnownFolders()) return 'fallback'
 
   const picker = (window as OpenFilePickerWindow).showOpenFilePicker
   if (!picker) return 'fallback'

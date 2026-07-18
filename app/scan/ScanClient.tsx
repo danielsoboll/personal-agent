@@ -30,8 +30,8 @@ import {
 } from '@/lib/localDocuments'
 import { prepareUploadFiles, displayDocumentLabel } from '@/lib/documentUpload'
 import {
-  DOCUMENT_UPLOAD_ACCEPT,
   canOpenWellKnownFolders,
+  isAppleTouchDevice,
   pickDocuments,
   systemUploadAccept,
   type DocumentPickSource,
@@ -51,6 +51,15 @@ function parseIntent(value: string | null): AnalyzeIntent {
   if (value === 'current_more' || value === 'historical') return value
   return 'initial'
 }
+
+/**
+ * Nicht `display:none` / `.hidden` — iOS öffnet sonst oft den kaputten
+ * Such-Dialog statt Dateien → iCloud Drive → Dokumente.
+ */
+const FILE_INPUT_CLIPPED =
+  'pointer-events-none absolute left-0 top-0 h-px w-px overflow-hidden opacity-0'
+
+const UPLOAD_INPUT_ID = 'behoerdenpost-scan-upload'
 
 /** Sofort klicken — setTimeout bricht auf iOS die User-Geste. */
 function openFileInput(input: HTMLInputElement | null) {
@@ -79,7 +88,9 @@ export default function ScanClient() {
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
   const [fileSourceOpen, setFileSourceOpen] = useState(false)
   const [folderPickerAvailable, setFolderPickerAvailable] = useState(false)
-  const [uploadAccept, setUploadAccept] = useState<string | undefined>(DOCUMENT_UPLOAD_ACCEPT)
+  /** Start ohne accept — erst nach Mount setzen (iPhone: weiter ohne accept). */
+  const [uploadAccept, setUploadAccept] = useState<string | undefined>(undefined)
+  const [showIcloudHint, setShowIcloudHint] = useState(false)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
@@ -88,6 +99,7 @@ export default function ScanClient() {
   useEffect(() => {
     setFolderPickerAvailable(canOpenWellKnownFolders())
     setUploadAccept(systemUploadAccept())
+    setShowIcloudHint(isAppleTouchDevice())
   }, [])
 
   const copy = useMemo(() => {
@@ -289,10 +301,11 @@ export default function ScanClient() {
 
   async function handlePickDocuments(source: DocumentPickSource) {
     if (analyzing || busy || !canAddMore) return
+    if (source === 'gallery') return
 
     const picked = await pickDocuments({
       multiple: true,
-      source: source === 'downloads' ? 'downloads' : 'documents',
+      source: source === 'documents' ? 'documents' : 'downloads',
     })
     if (picked === null) return
     if (picked !== 'fallback') {
@@ -438,14 +451,23 @@ export default function ScanClient() {
                     >
                       Neues Foto
                     </button>
-                    <button
-                      type="button"
-                      disabled={isInteractionLocked}
-                      onClick={handleDocumentUpload}
-                      className={buttonStyles.secondary}
-                    >
-                      Dokument hochladen
-                    </button>
+                    {folderPickerAvailable ? (
+                      <button
+                        type="button"
+                        disabled={isInteractionLocked}
+                        onClick={handleDocumentUpload}
+                        className={buttonStyles.secondary}
+                      >
+                        Dokument hochladen
+                      </button>
+                    ) : (
+                      <label
+                        htmlFor={UPLOAD_INPUT_ID}
+                        className={`${buttonStyles.secondary} ${isInteractionLocked ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
+                      >
+                        Dokument hochladen
+                      </label>
+                    )}
                   </>
                 ) : null}
                 <button
@@ -527,20 +549,38 @@ export default function ScanClient() {
                   </span>
                   <span>{busy ? 'Wird gespeichert …' : 'Foto aufnehmen'}</span>
                 </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={handleDocumentUpload}
-                  className={buttonStyles.photoCaptureTile}
-                >
-                  <span className="text-3xl leading-none" aria-hidden>
-                    📄
-                  </span>
-                  <span>{busy ? 'Wird verarbeitet …' : 'Dokument hochladen'}</span>
-                </button>
+                {folderPickerAvailable ? (
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={handleDocumentUpload}
+                    className={buttonStyles.photoCaptureTile}
+                  >
+                    <span className="text-3xl leading-none" aria-hidden>
+                      📄
+                    </span>
+                    <span>{busy ? 'Wird verarbeitet …' : 'Dokument hochladen'}</span>
+                  </button>
+                ) : (
+                  <label
+                    htmlFor={UPLOAD_INPUT_ID}
+                    className={`${buttonStyles.photoCaptureTile} ${isInteractionLocked ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
+                  >
+                    <span className="text-3xl leading-none" aria-hidden>
+                      📄
+                    </span>
+                    <span>{busy ? 'Wird verarbeitet …' : 'Dokument hochladen'}</span>
+                  </label>
+                )}
               </>
             ) : null}
           </div>
+
+          {showIcloudHint && photos.length === 0 ? (
+            <p className="text-center text-sm text-muted">
+              In Dateien: <span className="font-medium text-foreground">iCloud Drive → Dokumente</span>
+            </p>
+          ) : null}
 
           {photos.length > 0 ? (
             <p className="text-sm text-muted">
@@ -553,16 +593,19 @@ export default function ScanClient() {
             type="file"
             accept="image/*"
             capture="environment"
-            className="hidden"
+            className={FILE_INPUT_CLIPPED}
+            tabIndex={-1}
             onChange={(event) => void handleCameraSelected(event)}
           />
 
           <input
+            id={UPLOAD_INPUT_ID}
             ref={uploadInputRef}
             type="file"
-            accept={uploadAccept}
+            {...(uploadAccept ? { accept: uploadAccept } : {})}
             multiple
-            className="hidden"
+            className={FILE_INPUT_CLIPPED}
+            tabIndex={-1}
             onChange={(event) => void handleFilesSelected(event)}
           />
 
