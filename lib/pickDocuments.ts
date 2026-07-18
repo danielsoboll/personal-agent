@@ -2,9 +2,19 @@
 export const GALLERY_ACCEPT =
   'image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
-/** System-Dialog: PDF + Bilder (iPhone-Menü / Android-Fallback). */
+/** System-Dialog: PDF + Bilder (Android/Desktop). */
 export const DOCUMENT_UPLOAD_ACCEPT =
   'application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
+
+/**
+ * iPhone: kein accept (oder nur ein Typ) — sonst greyt iOS PDFs aus,
+ * sobald PDF und Bilder kombiniert werden (WebKit-Bug).
+ * Filterung bleibt in prepareUploadFiles / validateUploadFile.
+ */
+export function systemUploadAccept(): string | undefined {
+  if (isAppleTouchDevice()) return undefined
+  return DOCUMENT_UPLOAD_ACCEPT
+}
 
 export type DocumentPickSource = 'downloads' | 'documents' | 'gallery'
 

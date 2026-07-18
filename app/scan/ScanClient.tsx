@@ -34,6 +34,7 @@ import {
   GALLERY_ACCEPT,
   canOpenWellKnownFolders,
   pickDocuments,
+  systemUploadAccept,
   type DocumentPickSource,
 } from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
@@ -80,6 +81,7 @@ export default function ScanClient() {
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
   const [fileSourceOpen, setFileSourceOpen] = useState(false)
   const [folderPickerAvailable, setFolderPickerAvailable] = useState(false)
+  const [uploadAccept, setUploadAccept] = useState<string | undefined>(DOCUMENT_UPLOAD_ACCEPT)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
@@ -87,6 +89,7 @@ export default function ScanClient() {
 
   useEffect(() => {
     setFolderPickerAvailable(canOpenWellKnownFolders())
+    setUploadAccept(systemUploadAccept())
   }, [])
 
   const copy = useMemo(() => {
@@ -582,7 +585,7 @@ export default function ScanClient() {
           <input
             ref={uploadInputRef}
             type="file"
-            accept={DOCUMENT_UPLOAD_ACCEPT}
+            accept={uploadAccept}
             multiple
             className="hidden"
             onChange={(event) => void handleFilesSelected(event)}
