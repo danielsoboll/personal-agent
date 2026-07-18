@@ -45,10 +45,7 @@ public class DocumentsPickerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPicke
             picker.delegate = self
             picker.allowsMultipleSelection = call.getBool("multiple") ?? true
             picker.modalPresentationStyle = .fullScreen
-
-            if let startURL = Self.preferredDocumentsDirectory() {
-                picker.directoryURL = startURL
-            }
+            // Kein directoryURL — sonst landet man in der App-Sandbox statt im vollen Dateien-Dialog.
 
             guard let presenter = self.bridge?.viewController else {
                 self.pendingCall = nil
@@ -58,27 +55,6 @@ public class DocumentsPickerPlugin: CAPPlugin, CAPBridgedPlugin, UIDocumentPicke
 
             presenter.present(picker, animated: true)
         }
-    }
-
-    /// iCloud Drive → Dokumente, sonst iCloud-Root, sonst lokales Dokumente.
-    private static func preferredDocumentsDirectory() -> URL? {
-        let fm = FileManager.default
-
-        if let cloudDocs = fm.url(forUbiquityContainerIdentifier: "com.apple.CloudDocs") {
-            let documents = cloudDocs.appendingPathComponent("Documents", isDirectory: true)
-            var isDir: ObjCBool = false
-            if fm.fileExists(atPath: documents.path, isDirectory: &isDir), isDir.boolValue {
-                return documents
-            }
-            return cloudDocs
-        }
-
-        if let appIcloud = fm.url(forUbiquityContainerIdentifier: nil) {
-            let documents = appIcloud.appendingPathComponent("Documents", isDirectory: true)
-            return documents
-        }
-
-        return fm.urls(for: .documentDirectory, in: .userDomainMask).first
     }
 
     public func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {

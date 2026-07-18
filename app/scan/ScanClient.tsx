@@ -35,10 +35,6 @@ import {
   pickDocuments,
   systemUploadAccept,
 } from '@/lib/pickDocuments'
-import {
-  canUseNativeDocumentsPicker,
-  pickDocumentsNative,
-} from '@/lib/documentsPickerNative'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
@@ -93,18 +89,15 @@ export default function ScanClient() {
   /** Start ohne accept — erst nach Mount setzen (iPhone: weiter ohne accept). */
   const [uploadAccept, setUploadAccept] = useState<string | undefined>(undefined)
   const [showIcloudHint, setShowIcloudHint] = useState(false)
-  const [nativeDocumentsPicker, setNativeDocumentsPicker] = useState(false)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
   const canAddMore = photos.length < maxPhotos
 
   useEffect(() => {
-    const native = canUseNativeDocumentsPicker()
     setFolderPickerAvailable(canOpenWellKnownFolders())
     setUploadAccept(systemUploadAccept())
-    setNativeDocumentsPicker(native)
-    setShowIcloudHint(isAppleTouchDevice() && !native)
+    setShowIcloudHint(isAppleTouchDevice())
   }, [])
 
   const copy = useMemo(() => {
@@ -293,26 +286,12 @@ export default function ScanClient() {
     await ingestFiles([file])
   }
 
-  /** Native iOS → Dokumente/iCloud. Android FSA → Dokumente. Sonst Dateien-Dialog. */
+  /**
+   * Immer Web-<input type="file"> priorisieren (auch in Capacitor).
+   * Android/Chrome mit FSA: optional Dokumente-Ordner. iPhone: voller Dateien-Dialog.
+   */
   function handleDocumentUpload() {
     if (analyzing || busy || !canAddMore) return
-
-    if (nativeDocumentsPicker) {
-      void (async () => {
-        try {
-          const files = await pickDocumentsNative(true)
-          if (files === null || files.length === 0) return
-          await ingestFiles(files)
-        } catch (caught) {
-          setError(
-            caught instanceof Error
-              ? caught.message
-              : 'Dokumente konnten nicht geöffnet werden.',
-          )
-        }
-      })()
-      return
-    }
 
     if (!folderPickerAvailable) {
       openFileInput(uploadInputRef.current)
@@ -434,7 +413,7 @@ export default function ScanClient() {
                 >
                   Neues Foto
                 </button>
-                {folderPickerAvailable || nativeDocumentsPicker ? (
+                {folderPickerAvailable ? (
                   <button
                     type="button"
                     disabled={isInteractionLocked}
@@ -530,7 +509,7 @@ export default function ScanClient() {
                   </span>
                   <span>{busy ? 'Wird gespeichert …' : 'Foto aufnehmen'}</span>
                 </button>
-                {folderPickerAvailable || nativeDocumentsPicker ? (
+                {folderPickerAvailable ? (
                   <button
                     type="button"
                     disabled={isInteractionLocked}
