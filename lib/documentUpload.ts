@@ -15,34 +15,81 @@ const IMAGE_TYPES = new Set([
   'image/heif',
 ])
 
+const PDF_MIME_TYPES = new Set([
+  'application/pdf',
+  'application/x-pdf',
+  'application/acrobat',
+  'application/vnd.adobe.pdf',
+  'text/pdf',
+])
+
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|webp|heic|heif)$/i
+const PDF_EXTENSION = /\.pdf$/i
+
 export function isPdfMimeType(mimeType: string): boolean {
-  return mimeType === 'application/pdf'
+  return PDF_MIME_TYPES.has(mimeType.toLowerCase())
 }
 
 export function isPdfFile(file: File): boolean {
-  if (file.type === 'application/pdf') return true
-  if (file.name.toLowerCase().endsWith('.pdf')) return true
-  // iOS liefert oft leeren oder generischen MIME-Typ
-  if (!file.type || file.type === 'application/octet-stream') {
-    return file.name.toLowerCase().endsWith('.pdf')
-  }
+  if (file.type && isPdfMimeType(file.type)) return true
+  if (PDF_EXTENSION.test(file.name)) return true
   return false
 }
 
-const IMAGE_EXTENSIONS = /\.(jpe?g|png|webp|heic|heif)$/i
-
 function isImageFile(file: File): boolean {
   if (file.type.startsWith('image/') || IMAGE_TYPES.has(file.type)) return true
-  // iOS Dateien-App: oft type="" oder octet-stream trotz gültigem Foto
   if (!file.type || file.type === 'application/octet-stream' || file.type === 'application/x-octet-stream') {
     return IMAGE_EXTENSIONS.test(file.name)
   }
   return false
 }
 
+/** iOS Dateien: oft leerer MIME und Name ohne .pdf — Signatur %PDF prüfen. */
+async function sniffPdf(file: File): Promise<boolean> {
+  try {
+    const header = new Uint8Array(await file.slice(0, 8).arrayBuffer())
+    // %PDF
+    return header.length >= 4 && header[0] === 0x25 && header[1] === 0x50 && header[2] === 0x44 && header[3] === 0x46
+  } catch {
+    return false
+  }
+}
+
+async function sniffImage(file: File): Promise<boolean> {
+  try {
+    const header = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+    if (header.length < 3) return false
+    // JPEG
+    if (header[0] === 0xff && header[1] === 0xd8 && header[2] === 0xff) return true
+    // PNG
+    if (header[0] === 0x89 && header[1] === 0x50 && header[2] === 0x4e && header[3] === 0x47) return true
+    // WEBP: RIFF....WEBP
+    if (
+      header.length >= 12 &&
+      header[0] === 0x52 &&
+      header[1] === 0x49 &&
+      header[2] === 0x46 &&
+      header[3] === 0x46 &&
+      header[8] === 0x57 &&
+      header[9] === 0x45 &&
+      header[10] === 0x42 &&
+      header[11] === 0x50
+    ) {
+      return true
+    }
+    // HEIC/HEIF: ....ftyp
+    if (header.length >= 8 && header[4] === 0x66 && header[5] === 0x74 && header[6] === 0x79 && header[7] === 0x70) {
+      return true
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
 export function inferDocumentKind(mimeType: string, fileName?: string): DocumentKind {
   if (isPdfMimeType(mimeType)) return 'pdf'
-  if (fileName?.toLowerCase().endsWith('.pdf')) return 'pdf'
+  if (fileName && PDF_EXTENSION.test(fileName)) return 'pdf'
   return 'image'
 }
 
@@ -54,9 +101,10 @@ export function displayDocumentLabel(fileName: string | undefined, kind: Documen
   return withoutExt || (kind === 'pdf' ? 'Datei' : 'Foto')
 }
 
+/** Sync-Validierung (ohne Signatur-Sniff). */
 export function validateUploadFile(file: File): void {
   if (!isImageFile(file) && !isPdfFile(file)) {
-    throw new Error('Bitte wähle ein Foto oder eine Datei vom Schreiben.')
+    throw new Error('Bitte ein PDF oder Foto wählen (JPG, PNG, HEIC).')
   }
 
   if (file.size > MAX_UPLOAD_BYTES) {
@@ -64,7 +112,7 @@ export function validateUploadFile(file: File): void {
   }
 
   if (file.size === 0) {
-    throw new Error('Die Datei ist leer oder konnte nicht gelesen werden.')
+    throw new Error('Die Datei ist leer — in Dateien ggf. erst öffnen, damit iCloud sie lädt.')
   }
 }
 
@@ -82,9 +130,14 @@ export async function pdfBlobToImageBlobs(blob: Blob): Promise<Blob[]> {
   }
 
   const pdfjs = await import('pdfjs-dist')
-  pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs'
+  const origin = window.location.origin
+  pdfjs.GlobalWorkerOptions.workerSrc = `${origin}/pdf.worker.min.mjs`
 
   const data = new Uint8Array(await blob.arrayBuffer())
+  if (data.length < 5) {
+    throw new Error('PDF ist leer oder noch nicht von iCloud geladen.')
+  }
+
   const pdf = await pdfjs.getDocument({ data }).promise
   const blobs: Blob[] = []
 
@@ -121,27 +174,45 @@ export async function pdfBlobToImageBlobs(blob: Blob): Promise<Blob[]> {
 
 /**
  * Bild bleibt Bild; PDF wird seitenweise zu JPEG.
- * So geht die Auswertung über Vision — ohne kaputte PDF-File-Parts.
+ * Erkennt PDFs auch ohne MIME/.pdf (iOS Dateien / iCloud).
  */
 export async function prepareUploadFiles(file: File): Promise<PreparedUploadFile[]> {
-  validateUploadFile(file)
-
-  if (isPdfFile(file)) {
-    const pages = await pdfBlobToImageBlobs(file)
-    if (pages.length === 0) {
-      throw new Error('Die PDF-Datei enthält keine Seiten.')
-    }
-
-    const baseName = file.name.replace(/\.pdf$/i, '').trim() || 'Dokument'
-    return pages.map((blob, index) => ({
-      blob,
-      fileName: pages.length === 1 ? `${baseName}.jpg` : `${baseName}-Seite-${index + 1}.jpg`,
-      mimeType: 'image/jpeg',
-      kind: 'image' as const,
-    }))
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error('Die Datei ist zu gross (max. 20 MB).')
+  }
+  if (file.size === 0) {
+    throw new Error('Die Datei ist leer — in Dateien ggf. erst öffnen, damit iCloud sie lädt.')
   }
 
-  const mimeType = file.type || 'image/jpeg'
+  const treatAsPdf = isPdfFile(file) || (await sniffPdf(file))
+  const treatAsImage = !treatAsPdf && (isImageFile(file) || (await sniffImage(file)))
+
+  if (!treatAsPdf && !treatAsImage) {
+    const hint = [file.name || 'ohne Namen', file.type || 'ohne Typ'].join(', ')
+    throw new Error(`Bitte ein PDF oder Foto wählen (JPG, PNG, HEIC). (${hint})`)
+  }
+
+  if (treatAsPdf) {
+    try {
+      const pages = await pdfBlobToImageBlobs(file)
+      if (pages.length === 0) {
+        throw new Error('Die PDF-Datei enthält keine Seiten.')
+      }
+
+      const baseName = file.name.replace(/\.pdf$/i, '').trim() || 'Dokument'
+      return pages.map((blob, index) => ({
+        blob,
+        fileName: pages.length === 1 ? `${baseName}.jpg` : `${baseName}-Seite-${index + 1}.jpg`,
+        mimeType: 'image/jpeg',
+        kind: 'image' as const,
+      }))
+    } catch (caught) {
+      const detail = caught instanceof Error ? caught.message : 'Unbekannter Fehler'
+      throw new Error(`PDF konnte nicht verarbeitet werden: ${detail}`)
+    }
+  }
+
+  const mimeType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg'
   return [
     {
       blob: file,
