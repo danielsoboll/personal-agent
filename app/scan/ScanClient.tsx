@@ -444,10 +444,7 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => {
-                    setFileSourceOpen(false)
-                    openFileInput(cameraInputRef.current)
-                  }}
+                  onClick={() => openFileInput(cameraInputRef.current)}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
