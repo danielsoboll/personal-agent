@@ -3,6 +3,7 @@
 import { FormEvent, useRef, useState } from 'react'
 
 import AutofillSafeTextInput from '@/components/AutofillSafeTextInput'
+import BrandMark from '@/components/brand/BrandMark'
 import IosContactAutofillDecoy from '@/components/IosContactAutofillDecoy'
 import OnboardingShell, {
   FormStickyFooter,
