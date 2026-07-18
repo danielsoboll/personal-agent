@@ -28,10 +28,8 @@ import {
   removeDocumentPhoto,
   type StoredPhoto,
 } from '@/lib/localDocuments'
-import { prepareUploadFile, displayDocumentLabel } from '@/lib/documentUpload'
+import { UPLOAD_ACCEPT, prepareUploadFile, displayDocumentLabel } from '@/lib/documentUpload'
 import {
-  DOCUMENT_FILE_ACCEPT,
-  GALLERY_ACCEPT,
   pickDocuments,
   type DocumentPickSource,
 } from '@/lib/pickDocuments'
@@ -62,7 +60,7 @@ export default function ScanClient() {
   const router = useRouter()
   const plus = usePlusDiscoverHeader()
   const searchParams = useSearchParams()
-  const galleryInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const peekRequestIdRef = useRef(0)
   const peekPromiseRef = useRef<Promise<DocumentPeekResult | null> | null>(null)
@@ -87,7 +85,7 @@ export default function ScanClient() {
       return {
         title: 'Weitere Fotos zum aktuellen Schreiben',
         heading: 'Ergänze das aktuelle Schreiben',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Aus der Mediathek oder Datei hochladen.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — Foto oder Datei.`,
       }
     }
 
@@ -95,14 +93,14 @@ export default function ScanClient() {
       return {
         title: 'Ältere Dokumente erfassen',
         heading: 'Ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Aus der Mediathek oder Datei hochladen.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — Foto oder Datei.`,
       }
     }
 
     return {
       title: 'Dokument erfassen',
-      heading: 'Lade dein Dokument hoch',
-      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente. Aus der Mediathek oder Datei hochladen — tippen zum Entfernen vor dem Prüfen.`,
+      heading: 'Fotografiere oder lade dein Dokument hoch',
+      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente — Foto aufnehmen oder Dokument hochladen.`,
     }
   }, [intent])
 
@@ -254,6 +252,14 @@ export default function ScanClient() {
     }
   }
 
+  async function handleCameraSelected(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setFileSourceOpen(false)
+    await ingestFiles([file])
+  }
+
   async function handlePickDocuments(source: DocumentPickSource) {
     if (analyzing || busy || !canAddMore) return
 
@@ -393,7 +399,7 @@ export default function ScanClient() {
                   type="button"
                   disabled={isInteractionLocked}
                   onClick={() => setFileSourceOpen(false)}
-                  className={buttonStyles.accentSoft + ' w-full'}
+                  className={`${buttonStyles.accentSoft} w-full`}
                 >
                   Zurück
                 </button>
@@ -405,10 +411,10 @@ export default function ScanClient() {
                     <button
                       type="button"
                       disabled={isInteractionLocked}
-                      onClick={() => openFileInput(galleryInputRef.current)}
+                      onClick={() => openFileInput(cameraInputRef.current)}
                       className={buttonStyles.secondary}
                     >
-                      Aus Mediathek
+                      Neues Foto
                     </button>
                     <button
                       type="button"
@@ -416,7 +422,7 @@ export default function ScanClient() {
                       onClick={() => setFileSourceOpen(true)}
                       className={buttonStyles.secondary}
                     >
-                      Datei hochladen
+                      Dokument hochladen
                     </button>
                   </>
                 ) : null}
@@ -493,14 +499,14 @@ export default function ScanClient() {
                   disabled={isInteractionLocked}
                   onClick={() => {
                     setFileSourceOpen(false)
-                    openFileInput(galleryInputRef.current)
+                    openFileInput(cameraInputRef.current)
                   }}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
-                    🖼️
+                    📷
                   </span>
-                  <span>{busy ? 'Wird gespeichert …' : 'Aus Mediathek'}</span>
+                  <span>{busy ? 'Wird gespeichert …' : 'Foto aufnehmen'}</span>
                 </button>
                 <button
                   type="button"
@@ -511,7 +517,7 @@ export default function ScanClient() {
                   <span className="text-3xl leading-none" aria-hidden>
                     📄
                   </span>
-                  <span>{busy ? 'Wird verarbeitet …' : 'Datei hochladen'}</span>
+                  <span>{busy ? 'Wird verarbeitet …' : 'Dokument hochladen'}</span>
                 </button>
               </>
             ) : null}
@@ -524,18 +530,18 @@ export default function ScanClient() {
           ) : null}
 
           <input
-            ref={galleryInputRef}
+            ref={cameraInputRef}
             type="file"
-            accept={GALLERY_ACCEPT}
-            multiple
+            accept="image/*"
+            capture="environment"
             className="hidden"
-            onChange={(event) => void handleFilesSelected(event)}
+            onChange={(event) => void handleCameraSelected(event)}
           />
 
           <input
             ref={uploadInputRef}
             type="file"
-            accept={DOCUMENT_FILE_ACCEPT}
+            accept={UPLOAD_ACCEPT}
             multiple
             className="hidden"
             onChange={(event) => void handleFilesSelected(event)}
