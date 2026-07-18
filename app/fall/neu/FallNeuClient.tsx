@@ -4,9 +4,9 @@ import { FormEvent, useRef, useState } from 'react'
 
 import AutofillSafeTextInput from '@/components/AutofillSafeTextInput'
 import IosContactAutofillDecoy from '@/components/IosContactAutofillDecoy'
+import { IconBrandMark } from '@/components/icons/BehoerdenIcons'
 import OnboardingShell, {
   FormStickyFooter,
-  PageIntro,
   PrimaryButton,
   PrivacyNote,
   formBottomSpacerClass,
@@ -87,22 +87,30 @@ export default function FallNeuClient() {
         className={`flex flex-1 flex-col gap-8 ${formBottomSpacerClass}`}
         onSubmit={handleSubmit}
       >
-        <PageIntro
-          large
-          title="Wie soll der Fall heißen?"
-          description="Kurz und klar — zum Wiederfinden, z. B. nach Thema oder Absender."
-        />
+        <div className="space-y-3">
+          <div className="flex items-start gap-3.5">
+            <span className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent/20 bg-accent-soft text-accent">
+              <IconBrandMark size={28} />
+            </span>
+            <h2 className="min-w-0 flex-1 pt-0.5 text-2xl font-semibold tracking-tight text-balance">
+              Wie soll der Fall heißen?
+            </h2>
+          </div>
+          <p className="leading-7 text-muted">
+            Kurz und klar — zum Wiederfinden, z. B. nach Thema oder Absender.
+          </p>
+        </div>
 
         <label className="relative block space-y-4">
           <IosContactAutofillDecoy />
-          <span className="text-base font-semibold text-foreground">Fallname</span>
+          <span className="text-sm font-medium text-muted">Fallname</span>
           <AutofillSafeTextInput
             id="behoerdenpost-case-title"
             required
             autoFocus
             enterKeyHint="go"
             placeholder="z. B. Unterhalt Neuberechnung"
-            className="mt-1 h-16 w-full rounded-2xl border-2 border-border bg-surface px-4 text-xl font-semibold text-foreground outline-none ring-accent placeholder:font-medium placeholder:text-muted focus:border-accent focus:ring-2 [font-size:20px]"
+            className="mt-1 h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2 [font-size:16px]"
             autofillProps={caseTitleInputProps()}
           />
         </label>
