@@ -6,7 +6,6 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrivacyNote } from '@/components/onboarding/OnboardingShell'
-import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { analyzeCurrentPhotos, requestDocumentPeek } from '@/lib/analyzeClient'
@@ -29,8 +28,14 @@ import {
   removeDocumentPhoto,
   type StoredPhoto,
 } from '@/lib/localDocuments'
-import { prepareUploadFile, displayDocumentLabel } from '@/lib/documentUpload'
-import { DOCUMENT_FILE_ACCEPT } from '@/lib/pickDocuments'
+import { prepareUploadFiles, displayDocumentLabel } from '@/lib/documentUpload'
+import {
+  DOCUMENT_FILE_ACCEPT,
+  GALLERY_ACCEPT,
+  documentFallbackAccept,
+  pickDocuments,
+  type DocumentPickSource,
+} from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
@@ -60,6 +65,7 @@ export default function ScanClient() {
   const searchParams = useSearchParams()
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const peekRequestIdRef = useRef(0)
   const peekPromiseRef = useRef<Promise<DocumentPeekResult | null> | null>(null)
   const [photos, setPhotos] = useState<PhotoPreview[]>([])
@@ -72,6 +78,7 @@ export default function ScanClient() {
   const [peekResult, setPeekResult] = useState<DocumentPeekResult | null>(null)
   const [peekBusy, setPeekBusy] = useState(false)
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
+  const [fileSourceOpen, setFileSourceOpen] = useState(false)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
@@ -221,18 +228,25 @@ export default function ScanClient() {
           break
         }
 
-        const prepared = prepareUploadFile(file)
-        const saved = await addDocumentPhoto(prepared.blob, maxPhotos, undefined, {
-          fileName: prepared.fileName,
-          mimeType: prepared.mimeType,
-          kind: prepared.kind,
-        })
-        newPreviews.push({
-          ...saved,
-          previewUrl: saved.kind === 'pdf' ? null : createPhotoPreviewUrl(saved.blob),
-        })
-        added += 1
-        remaining -= 1
+        const preparedList = await prepareUploadFiles(file)
+        for (const prepared of preparedList) {
+          if (remaining <= 0) {
+            setError(`Maximal ${maxPhotos} Dokumente möglich — einige Seiten wurden nicht hinzugefügt.`)
+            break
+          }
+
+          const saved = await addDocumentPhoto(prepared.blob, maxPhotos, undefined, {
+            fileName: prepared.fileName,
+            mimeType: prepared.mimeType,
+            kind: prepared.kind,
+          })
+          newPreviews.push({
+            ...saved,
+            previewUrl: createPhotoPreviewUrl(saved.blob),
+          })
+          added += 1
+          remaining -= 1
+        }
       }
 
       if (newPreviews.length > 0) {
@@ -253,17 +267,40 @@ export default function ScanClient() {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
+    setFileSourceOpen(false)
     await ingestFiles([file])
   }
 
-  function handleDocumentUpload() {
+  function openDocumentFallbackInput(source: DocumentPickSource) {
+    if (source === 'gallery') {
+      openFileInput(galleryInputRef.current)
+      return
+    }
+
+    const input = uploadInputRef.current
+    if (!input) return
+    input.accept = documentFallbackAccept(source)
+    openFileInput(input)
+  }
+
+  async function handlePickDocuments(source: DocumentPickSource) {
     if (analyzing || busy || !canAddMore) return
-    openFileInput(uploadInputRef.current)
+
+    const picked = await pickDocuments({ multiple: true, source })
+    if (picked === null) return
+    if (picked === 'fallback') {
+      openDocumentFallbackInput(source)
+      return
+    }
+
+    setFileSourceOpen(false)
+    await ingestFiles(picked)
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
+    setFileSourceOpen(false)
     await ingestFiles(files)
   }
 
@@ -355,39 +392,87 @@ export default function ScanClient() {
         }
         footer={
           <div className="space-y-2">
-            {canAddMore && photos.length > 0 ? (
+            {fileSourceOpen ? (
               <>
+                <p className="px-1 text-center text-xs text-muted">Wo liegt das Dokument?</p>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openFileInput(cameraInputRef.current)}
+                  onClick={() => void handlePickDocuments('gallery')}
                   className={buttonStyles.secondary}
                 >
-                  Neues Foto
+                  Fotomediathek
                 </button>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={handleDocumentUpload}
+                  onClick={() => void handlePickDocuments('downloads')}
                   className={buttonStyles.secondary}
                 >
-                  Dokument hochladen
+                  Downloads
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => void handlePickDocuments('documents')}
+                  className={buttonStyles.secondary}
+                >
+                  Dateien
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => void handlePickDocuments('browse')}
+                  className={buttonStyles.secondary}
+                >
+                  PDF suchen
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => setFileSourceOpen(false)}
+                  className={`${buttonStyles.accentSoft} w-full`}
+                >
+                  Zurück
                 </button>
               </>
-            ) : null}
-            <button
-              type="button"
-              disabled={isInteractionLocked || photos.length === 0}
-              aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
-              onClick={() => void handleReview()}
-              className={
-                isInteractionLocked || photos.length === 0
-                  ? buttonStyles.primaryInactive
-                  : buttonStyles.primaryActive
-              }
-            >
-              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
-            </button>
+            ) : (
+              <>
+                {canAddMore && photos.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={isInteractionLocked}
+                      onClick={() => openFileInput(cameraInputRef.current)}
+                      className={buttonStyles.secondary}
+                    >
+                      Neues Foto
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isInteractionLocked}
+                      onClick={() => setFileSourceOpen(true)}
+                      className={buttonStyles.secondary}
+                    >
+                      Dokument hochladen
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={isInteractionLocked || photos.length === 0}
+                  aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
+                  onClick={() => void handleReview()}
+                  className={
+                    isInteractionLocked || photos.length === 0
+                      ? buttonStyles.primaryInactive
+                      : buttonStyles.primaryActive
+                  }
+                >
+                  Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
+                </button>
+              </>
+            )}
           </div>
         }
       >
@@ -455,7 +540,7 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={handleDocumentUpload}
+                  onClick={() => setFileSourceOpen(true)}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
@@ -483,6 +568,15 @@ export default function ScanClient() {
           />
 
           <input
+            ref={galleryInputRef}
+            type="file"
+            accept={GALLERY_ACCEPT}
+            multiple
+            className="hidden"
+            onChange={(event) => void handleFilesSelected(event)}
+          />
+
+          <input
             ref={uploadInputRef}
             type="file"
             accept={DOCUMENT_FILE_ACCEPT}
@@ -495,18 +589,6 @@ export default function ScanClient() {
             <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
               {error}
             </p>
-          ) : null}
-
-          {activeCase ? (
-            <div className="border-t border-border pt-6">
-              <DeleteCaseSection
-                caseId={activeCase.id}
-                caseTitle={activeCase.title}
-                disabled={isInteractionLocked}
-                onDeleted={() => router.replace('/')}
-                onError={setError}
-              />
-            </div>
           ) : null}
         </section>
       </OnboardingShell>

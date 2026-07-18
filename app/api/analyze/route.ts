@@ -143,7 +143,7 @@ export async function POST(request: Request) {
 
   if (!attempt.ok) {
     return NextResponse.json(
-      { error: 'KI-Analyse fehlgeschlagen. Bitte später erneut versuchen.' },
+      { error: attempt.error || 'KI-Analyse fehlgeschlagen. Bitte später erneut versuchen.' },
       { status: 502 },
     )
   }
@@ -163,7 +163,7 @@ export async function POST(request: Request) {
 
     if (!attempt.ok) {
       return NextResponse.json(
-        { error: 'KI-Analyse fehlgeschlagen. Bitte später erneut versuchen.' },
+        { error: attempt.error || 'KI-Analyse fehlgeschlagen. Bitte später erneut versuchen.' },
         { status: 502 },
       )
     }

@@ -84,7 +84,7 @@ export default function FallNeuClient() {
     >
       <form
         ref={formRef}
-        className={`flex flex-1 flex-col gap-8 ${formBottomSpacerClass}`}
+        className={`flex flex-1 flex-col gap-6 ${formBottomSpacerClass}`}
         onSubmit={handleSubmit}
       >
         <div className="space-y-3">
@@ -101,16 +101,16 @@ export default function FallNeuClient() {
           </p>
         </div>
 
-        <label className="relative block space-y-4">
+        <label className="relative block space-y-6">
           <IosContactAutofillDecoy />
-          <span className="text-sm font-medium text-muted">Fallname</span>
+          <span className="text-base font-semibold text-foreground">Fallname</span>
           <AutofillSafeTextInput
             id="behoerdenpost-case-title"
             required
             autoFocus
             enterKeyHint="go"
             placeholder="z. B. Unterhalt Neuberechnung"
-            className="mt-1 h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2 [font-size:16px]"
+            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2 [font-size:16px]"
             autofillProps={caseTitleInputProps()}
           />
         </label>

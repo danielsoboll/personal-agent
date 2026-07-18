@@ -21,7 +21,7 @@ export type OpenAiChatResult =
   | { ok: false; status: number; error: string; model: string }
 
 function usesGpt5Family(model: string): boolean {
-  return model.includes('gpt-5')
+  return model.includes('gpt-5') || model.startsWith('o1') || model.startsWith('o3')
 }
 
 export function buildChatCompletionBody(options: {
@@ -31,13 +31,20 @@ export function buildChatCompletionBody(options: {
   maxTokens?: number
   jsonSchema?: JsonSchemaFormat
 }): Record<string, unknown> {
+  const maxTokens = options.maxTokens ?? 4096
   const body: Record<string, unknown> = {
     model: options.model,
     messages: options.messages,
-    max_tokens: options.maxTokens ?? 4096,
   }
 
-  if (options.temperature !== undefined) {
+  // GPT-5 / Reasoning-Modelle: max_tokens wird abgelehnt
+  if (usesGpt5Family(options.model)) {
+    body.max_completion_tokens = maxTokens
+  } else {
+    body.max_tokens = maxTokens
+  }
+
+  if (options.temperature !== undefined && !usesGpt5Family(options.model)) {
     body.temperature = options.temperature
   }
 
@@ -69,6 +76,20 @@ function parseOpenAiError(status: number, errorText: string): string {
     /* ignore */
   }
   return `OpenAI-Anfrage fehlgeschlagen (${status}).`
+}
+
+function isRetryableModelError(status: number, error: string): boolean {
+  const lower = error.toLowerCase()
+  return (
+    status === 404 ||
+    status === 400 ||
+    lower.includes('model') ||
+    lower.includes('reasoning_effort') ||
+    lower.includes('unsupported parameter') ||
+    lower.includes('max_tokens') ||
+    lower.includes('max_completion_tokens') ||
+    lower.includes('temperature')
+  )
 }
 
 export async function callOpenAiChatCompletion(options: {
@@ -112,13 +133,7 @@ export async function callOpenAiChatCompletion(options: {
       lastError = parseOpenAiError(response.status, errorText)
       console.error('OpenAI chat completion failed:', model, response.status, errorText)
 
-      const retryableModelError =
-        response.status === 404 ||
-        response.status === 400 ||
-        lastError.toLowerCase().includes('model') ||
-        lastError.toLowerCase().includes('reasoning_effort')
-
-      if (model !== models.at(-1) && retryableModelError) {
+      if (model !== models.at(-1) && isRetryableModelError(response.status, lastError)) {
         console.warn(`OpenAI retry with fallback model after ${model} failed.`)
         continue
       }
