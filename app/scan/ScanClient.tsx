@@ -29,11 +29,7 @@ import {
   type StoredPhoto,
 } from '@/lib/localDocuments'
 import { prepareUploadFiles, displayDocumentLabel } from '@/lib/documentUpload'
-import {
-  DOCUMENT_FILE_ACCEPT,
-  pickDocuments,
-  type DocumentPickSource,
-} from '@/lib/pickDocuments'
+import { DOCUMENT_FILE_ACCEPT, pickDocuments } from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
@@ -51,7 +47,8 @@ function parseIntent(value: string | null): AnalyzeIntent {
 }
 
 function openFileInput(input: HTMLInputElement | null) {
-  input?.click()
+  if (!input) return
+  window.setTimeout(() => input.click(), 150)
 }
 
 const PEEK_WAIT_MS = 12_000
@@ -74,7 +71,6 @@ export default function ScanClient() {
   const [peekResult, setPeekResult] = useState<DocumentPeekResult | null>(null)
   const [peekBusy, setPeekBusy] = useState(false)
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
-  const [fileSourceOpen, setFileSourceOpen] = useState(false)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
@@ -263,28 +259,26 @@ export default function ScanClient() {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
-    setFileSourceOpen(false)
     await ingestFiles([file])
   }
 
-  async function handlePickDocuments(source: DocumentPickSource) {
+  /** Ein Tipp: Android → Downloads-Ordner, iPhone → Dateien mit wählbaren PDFs. */
+  async function handleDocumentUpload() {
     if (analyzing || busy || !canAddMore) return
 
-    const picked = await pickDocuments({ multiple: true, source })
+    const picked = await pickDocuments({ multiple: true, source: 'downloads' })
     if (picked === null) return
     if (picked === 'fallback') {
       openFileInput(uploadInputRef.current)
       return
     }
 
-    setFileSourceOpen(false)
     await ingestFiles(picked)
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
-    setFileSourceOpen(false)
     await ingestFiles(files)
   }
 
@@ -376,78 +370,39 @@ export default function ScanClient() {
         }
         footer={
           <div className="space-y-2">
-            {fileSourceOpen ? (
+            {canAddMore && photos.length > 0 ? (
               <>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('downloads')}
+                  onClick={() => openFileInput(cameraInputRef.current)}
                   className={buttonStyles.secondary}
                 >
-                  Downloads
+                  Neues Foto
                 </button>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('documents')}
+                  onClick={() => void handleDocumentUpload()}
                   className={buttonStyles.secondary}
                 >
-                  Dateien
-                </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('browse')}
-                  className={buttonStyles.secondary}
-                >
-                  Durchsuchen
-                </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => setFileSourceOpen(false)}
-                  className={`${buttonStyles.accentSoft} w-full`}
-                >
-                  Zurück
+                  Dokument hochladen
                 </button>
               </>
-            ) : (
-              <>
-                {canAddMore && photos.length > 0 ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isInteractionLocked}
-                      onClick={() => openFileInput(cameraInputRef.current)}
-                      className={buttonStyles.secondary}
-                    >
-                      Neues Foto
-                    </button>
-                    <button
-                      type="button"
-                      disabled={isInteractionLocked}
-                      onClick={() => setFileSourceOpen(true)}
-                      className={buttonStyles.secondary}
-                    >
-                      Dokument hochladen
-                    </button>
-                  </>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={isInteractionLocked || photos.length === 0}
-                  aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
-                  onClick={() => void handleReview()}
-                  className={
-                    isInteractionLocked || photos.length === 0
-                      ? buttonStyles.primaryInactive
-                      : buttonStyles.primaryActive
-                  }
-                >
-                  Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
-                </button>
-              </>
-            )}
+            ) : null}
+            <button
+              type="button"
+              disabled={isInteractionLocked || photos.length === 0}
+              aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
+              onClick={() => void handleReview()}
+              className={
+                isInteractionLocked || photos.length === 0
+                  ? buttonStyles.primaryInactive
+                  : buttonStyles.primaryActive
+              }
+            >
+              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
+            </button>
           </div>
         }
       >
@@ -504,7 +459,9 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openFileInput(cameraInputRef.current)}
+                  onClick={() => {
+                    openFileInput(cameraInputRef.current)
+                  }}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
@@ -515,7 +472,7 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => setFileSourceOpen(true)}
+                  onClick={() => void handleDocumentUpload()}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
