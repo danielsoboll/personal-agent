@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
-import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
 import DeadlineBanner from '@/components/review/DeadlineBanner'
 import ClaimsPanel from '@/components/review/ClaimsPanel'
@@ -438,7 +438,7 @@ export default function ReviewClient() {
                     </PrimaryButton>
                   ) : null}
                   {review.phase === 'final' ? (
-                    <PrimaryButton href="/scan">Neues Schreiben fotografieren</PrimaryButton>
+                    <PrimaryButton href="/scan">Neues Schreiben hinzufügen</PrimaryButton>
                   ) : null}
                 </>
               ) : (
@@ -602,12 +602,7 @@ export default function ReviewClient() {
             <>
               <PageIntro
                 title="Noch keine Auswertung"
-                description={
-                  <>
-                    Fotografiere zuerst ein Schreiben und tippe auf Prüfen. Danach siehst du hier die Bewertung
-                    und nächsten Schritte für „{activeCase?.title}“.
-                  </>
-                }
+                description="Füge zuerst ein Schreiben hinzu und tippe auf Prüfen."
               />
               <div className="border-t border-border pt-6">
                 {activeCase ? (
@@ -620,7 +615,6 @@ export default function ReviewClient() {
                   />
                 ) : null}
               </div>
-              <PrivacyNote variant="analysis" />
             </>
           )}
         </section>

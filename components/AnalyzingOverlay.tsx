@@ -1,5 +1,4 @@
 import BrandMark from '@/components/brand/BrandMark'
-import { PRIVACY_ANALYZING_OVERLAY } from '@/lib/privacyCopy'
 
 type AnalyzingOverlayProps = {
   message?: string
@@ -15,7 +14,6 @@ export default function AnalyzingOverlay({
           <BrandMark variant="overlay" />
         </div>
         <p className="mt-4 text-lg font-semibold">{message}</p>
-        <p className="mt-2 text-sm leading-6 text-muted">{PRIVACY_ANALYZING_OVERLAY}</p>
       </div>
     </div>
   )

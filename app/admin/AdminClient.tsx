@@ -44,18 +44,10 @@ export default function AdminClient() {
 
   return (
     <OnboardingShell title="Admin" backNav={{ href: '/', label: 'Zur Startseite' }}>
-      <section className="flex flex-1 flex-col gap-8">
-        <form onSubmit={handleSaveName} className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted">Vorname</p>
-            <p className="text-sm leading-7 text-muted">
-              Wird in Erklärungen und KI-Antworten verwendet. Bereits angelegte Fälle behalten ihren
-              gespeicherten Namen — neue Fälle nutzen den aktualisierten Vornamen.
-            </p>
-          </div>
-
+      <section className="flex flex-1 flex-col gap-6">
+        <form onSubmit={handleSaveName} className="space-y-3">
           <label className="block space-y-2">
-            <span className="text-sm font-medium text-muted">Dein Vorname</span>
+            <span className="text-sm font-medium text-muted">Vorname</span>
             <input
               type="text"
               name="profileName"
@@ -79,11 +71,11 @@ export default function AdminClient() {
                 : buttonStyles.accentSoft
             }
           >
-            Vorname speichern
+            Speichern
           </button>
 
           {saved ? (
-            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Vorname gespeichert.</p>
+            <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Gespeichert.</p>
           ) : null}
         </form>
 

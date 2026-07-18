@@ -28,7 +28,12 @@ import {
   removeDocumentPhoto,
   type StoredPhoto,
 } from '@/lib/localDocuments'
-import { UPLOAD_ACCEPT, prepareUploadFile } from '@/lib/documentUpload'
+import { prepareUploadFile } from '@/lib/documentUpload'
+import {
+  DOCUMENT_FILE_ACCEPT,
+  GALLERY_ACCEPT,
+  pickDocumentsFromDownloads,
+} from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
@@ -45,7 +50,7 @@ function parseIntent(value: string | null): AnalyzeIntent {
   return 'initial'
 }
 
-function openCamera(input: HTMLInputElement | null) {
+function openFileInput(input: HTMLInputElement | null) {
   if (!input) return
   window.setTimeout(() => input.click(), 150)
 }
@@ -56,8 +61,8 @@ export default function ScanClient() {
   const router = useRouter()
   const plus = usePlusDiscoverHeader()
   const searchParams = useSearchParams()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const uploadInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const peekRequestIdRef = useRef(0)
   const peekPromiseRef = useRef<Promise<DocumentPeekResult | null> | null>(null)
   const [photos, setPhotos] = useState<PhotoPreview[]>([])
@@ -79,23 +84,23 @@ export default function ScanClient() {
     if (intent === 'current_more') {
       return {
         title: 'Weitere Fotos zum aktuellen Schreiben',
-        heading: 'Ergänze das aktuelle Schreiben',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
+        heading: 'Noch Fotos zum aktuellen Schreiben',
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} — Mediathek oder Dateien.`,
       }
     }
 
     if (intent === 'historical') {
       return {
         title: 'Ältere Dokumente erfassen',
-        heading: 'Fotografiere ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
+        heading: 'Ältere Unterlagen für den Hintergrund',
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} — Mediathek oder Dateien.`,
       }
     }
 
     return {
       title: 'Dokument erfassen',
-      heading: 'Fotografiere oder lade dein Dokument hoch',
-      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente. PDFs werden direkt ausgewertet — Fotos und Dateien kannst du vor dem Prüfen antippen, um sie zu entfernen.`,
+      heading: 'Dein Dokument hinzufügen',
+      hint: `Bis zu ${MAX_INITIAL_PHOTOS} — Mediathek oder Dateien.`,
     }
   }, [intent])
 
@@ -202,54 +207,7 @@ export default function ScanClient() {
     return raced ?? peekResult ?? undefined
   }
 
-  async function saveDocumentBlob(
-    blob: Blob,
-    meta?: { fileName?: string; mimeType?: string; kind?: StoredPhoto['kind'] },
-  ): Promise<boolean> {
-    setBusy(true)
-    setError('')
-
-    try {
-      const saved = await addDocumentPhoto(blob, maxPhotos, undefined, meta)
-      const previewUrl = saved.kind === 'pdf' ? null : createPhotoPreviewUrl(saved.blob)
-      const committed: PhotoPreview = { ...saved, previewUrl }
-      setPhotos((current) => [...current, committed])
-      return true
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Datei konnte nicht gespeichert werden.')
-      return false
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function handlePhotoSelected(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-
-    if (!file || analyzing || busy) return
-
-    if (photos.length >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Dokumente möglich.`)
-      return
-    }
-
-    const saved = await saveDocumentBlob(file, {
-      fileName: file.name || 'Foto.jpg',
-      mimeType: file.type || 'image/jpeg',
-      kind: 'image',
-    })
-    if (!saved) return
-
-    if (photos.length + 1 >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Dokumente erreicht. Tippe auf Prüfen.`)
-    }
-  }
-
-  async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? [])
-    event.target.value = ''
-
+  async function ingestFiles(files: File[]) {
     if (files.length === 0 || analyzing || busy) return
 
     setBusy(true)
@@ -292,6 +250,31 @@ export default function ScanClient() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function handleGallerySelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    await ingestFiles(files)
+  }
+
+  async function handleFileInputSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    await ingestFiles(files)
+  }
+
+  async function handlePickDocuments() {
+    if (analyzing || busy || !canAddMore) return
+
+    const picked = await pickDocumentsFromDownloads({ multiple: true })
+    if (picked === null) return
+    if (picked === 'fallback') {
+      openFileInput(fileInputRef.current)
+      return
+    }
+
+    await ingestFiles(picked)
   }
 
   async function handleRemovePhoto(id: string) {
@@ -387,18 +370,18 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openCamera(inputRef.current)}
+                  onClick={() => openFileInput(galleryInputRef.current)}
                   className={buttonStyles.secondary}
                 >
-                  Neues Foto
+                  Aus Mediathek
                 </button>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => uploadInputRef.current?.click()}
+                  onClick={() => void handlePickDocuments()}
                   className={buttonStyles.secondary}
                 >
-                  Datei hochladen
+                  Dateien durchsuchen
                 </button>
               </>
             ) : null}
@@ -471,52 +454,60 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openCamera(inputRef.current)}
+                  onClick={() => openFileInput(galleryInputRef.current)}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
-                    📷
+                    🖼️
                   </span>
-                  <span>{busy ? 'Wird gespeichert …' : 'Foto aufnehmen'}</span>
+                  <span>{busy ? 'Wird gespeichert …' : 'Aus Mediathek'}</span>
                 </button>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => uploadInputRef.current?.click()}
+                  onClick={() => void handlePickDocuments()}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
-                    📄
+                    📁
                   </span>
-                  <span>{busy ? 'Wird verarbeitet …' : 'Datei hochladen'}</span>
+                  <span>{busy ? 'Wird verarbeitet …' : 'Dateien durchsuchen'}</span>
                 </button>
               </>
             ) : null}
           </div>
 
-          <p className="text-sm text-muted">
-            {photos.length} von {maxPhotos} Dokumenten
-            {photos.length === 0
-              ? ' — Foto aufnehmen oder Datei hochladen (JPG, PNG, PDF).'
-              : ' — tippe auf ein Dokument, um es vor dem Prüfen zu entfernen.'}
-          </p>
+          {photos.length === 0 ? (
+            <div className="rounded-2xl border-2 border-accent/35 bg-accent-soft/50 px-4 py-3">
+              <p className="text-sm font-semibold text-foreground">Bei Dateien so:</p>
+              <ol className="mt-2 space-y-1.5 text-sm font-semibold leading-6 text-foreground">
+                <li>1. Durchsuchen</li>
+                <li>2. Downloads</li>
+                <li>3. Datei tippen</li>
+              </ol>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              {photos.length} von {maxPhotos} — Tippen zum Entfernen
+            </p>
+          )}
 
           <input
-            ref={inputRef}
+            ref={galleryInputRef}
             type="file"
-            accept="image/*"
-            capture="environment"
+            accept={GALLERY_ACCEPT}
+            multiple
             className="hidden"
-            onChange={(event) => void handlePhotoSelected(event)}
+            onChange={(event) => void handleGallerySelected(event)}
           />
 
           <input
-            ref={uploadInputRef}
+            ref={fileInputRef}
             type="file"
-            accept={UPLOAD_ACCEPT}
+            accept={DOCUMENT_FILE_ACCEPT}
             multiple
             className="hidden"
-            onChange={(event) => void handleFilesSelected(event)}
+            onChange={(event) => void handleFileInputSelected(event)}
           />
 
           {error ? (

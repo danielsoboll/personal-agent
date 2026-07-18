@@ -7,7 +7,6 @@ import OnboardingShell, {
   FormStickyFooter,
   PageIntro,
   PrimaryButton,
-  PrivacyNote,
   formBottomSpacerClass,
 } from '@/components/onboarding/OnboardingShell'
 import { logUserActivity } from '@/lib/activityLog'
@@ -139,7 +138,7 @@ export default function NameClient() {
       >
         <PageIntro
           title="Wie ist dein Vorname?"
-          description={`Fall „${caseTitle}“ — wir nutzen deinen Vornamen nur lokal, damit Erklärungen und Antworten zu deiner Situation passen.`}
+          description={`Für Fall „${caseTitle}“ — nur lokal auf dem Gerät.`}
         />
 
         <label className="block space-y-2">
@@ -158,8 +157,6 @@ export default function NameClient() {
             className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2 [font-size:16px]"
           />
         </label>
-
-        <PrivacyNote variant="storage" />
 
         {error ? (
           <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">

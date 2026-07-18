@@ -75,7 +75,7 @@ export default function HomeClient() {
       }
       footer={
         <PrimaryButton href="/fall/neu">
-          {hasCases ? 'Neuen Fall anlegen' : 'Jetzt Dokument fotografieren'}
+          {hasCases ? 'Neuen Fall anlegen' : 'Dokument hinzufügen'}
         </PrimaryButton>
       }
     >

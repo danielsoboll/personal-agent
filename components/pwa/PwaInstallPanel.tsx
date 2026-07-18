@@ -112,8 +112,7 @@ function IpadInstallSteps() {
 function AndroidInstallHint() {
   return (
     <p className="rounded-xl border border-accent/25 bg-accent-soft/60 px-4 py-3 text-sm leading-relaxed text-foreground">
-      Öffne {APP_NAME} in Chrome. Wenn der Button erscheint, tippe auf „{APP_NAME} installieren“.
-      Alternativ: Browser-Menü → „App installieren“ oder „Zum Startbildschirm hinzufügen“.
+      In Chrome: Menü → „App installieren“ oder „Zum Startbildschirm“.
     </p>
   )
 }
@@ -130,9 +129,7 @@ function AppIconPreview({ prominent = false }: { prominent?: boolean }) {
           className="h-[4.5rem] w-[4.5rem] shrink-0 rounded-2xl object-cover shadow-lg ring-4 ring-accent/25"
           priority
         />
-        <p className="max-w-xs text-sm font-semibold leading-snug text-foreground">
-          So erscheint {APP_NAME} auf deinem Home-Bildschirm.
-        </p>
+        <p className="max-w-xs text-sm font-semibold leading-snug text-foreground">{APP_NAME}</p>
       </div>
     )
   }
@@ -147,9 +144,7 @@ function AppIconPreview({ prominent = false }: { prominent?: boolean }) {
         className="h-12 w-12 shrink-0 rounded-xl object-cover shadow-md ring-2 ring-accent/30"
         priority
       />
-      <p className="text-sm leading-snug text-muted">
-        {APP_NAME} auf dem Home-Bildschirm — schneller Zugriff wie bei einer installierten App.
-      </p>
+      <p className="text-sm leading-snug text-muted">{APP_NAME} zum Home-Bildschirm</p>
     </div>
   )
 }
@@ -238,14 +233,14 @@ export default function PwaInstallPanel({
       <AndroidInstallHint />
     ) : platform === 'other' ? (
       <p className="rounded-xl border border-border bg-surface px-4 py-3 text-sm leading-relaxed text-muted">
-        Am Handy (Safari oder Chrome) kannst du {APP_NAME} zum Home-Bildschirm hinzufügen.
+        Am Handy in Safari oder Chrome hinzufügen.
       </p>
     ) : null
 
   if (isStandaloneDisplayMode() && !showIosDoneButton) {
     return (
       <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-        ✓ {APP_NAME} läuft bereits als App auf deinem Home-Bildschirm.
+        ✓ Schon als App eingerichtet
       </p>
     )
   }
