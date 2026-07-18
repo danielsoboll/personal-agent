@@ -93,7 +93,7 @@ export default function FallNeuClient() {
           description="Kurz und klar — zum Wiederfinden, z. B. nach Thema oder Absender."
         />
 
-        <label className="relative block space-y-2.5">
+        <label className="relative block space-y-4">
           <IosContactAutofillDecoy />
           <span className="text-base font-semibold text-foreground">Fallname</span>
           <AutofillSafeTextInput
@@ -102,7 +102,7 @@ export default function FallNeuClient() {
             autoFocus
             enterKeyHint="go"
             placeholder="z. B. Unterhalt Neuberechnung"
-            className="h-16 w-full rounded-2xl border-2 border-border bg-surface px-4 text-xl font-semibold text-foreground outline-none ring-accent placeholder:font-medium placeholder:text-muted focus:border-accent focus:ring-2 [font-size:20px]"
+            className="mt-1 h-16 w-full rounded-2xl border-2 border-border bg-surface px-4 text-xl font-semibold text-foreground outline-none ring-accent placeholder:font-medium placeholder:text-muted focus:border-accent focus:ring-2 [font-size:20px]"
             autofillProps={caseTitleInputProps()}
           />
         </label>
