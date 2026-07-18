@@ -14,7 +14,7 @@ import {
 import { CASE_FILE_JSONL_EXAMPLE, CASE_FILE_JSONL_MINIMAL_EXAMPLE } from '@/lib/caseFileJsonl'
 import type { AnalyzeIntent } from '@/lib/analyzeTypes'
 
-export const PROMPT_VERSION = '2026-07-18.5'
+export const PROMPT_VERSION = '2026-07-19.1'
 
 /** Wie eine direkte ChatGPT-Nachricht mit angehängten Dokumenten. */
 export const CORE_USER_QUESTIONS = `Beantworte zuerst inhaltlich — so gut wie ChatGPT mit denselben Unterlagen:
@@ -151,11 +151,15 @@ Ordne deine inhaltliche Antwort in die **3 Bereiche der App**:
 
 **4. Entscheidungsfelder für die App (zusätzlich, Pflichtfelder):**
 - documentKind: behoerde|gericht|anwalt|versicherung|formular|sonstiges
-- primaryDeadline: wichtigste Frist als YYYY-MM-DD — oder "" wenn keine
-- primaryDeadlineLabel: z. B. „Einspruchsfrist“, „Abgabefrist Formular“ — oder ""
+- primaryDeadline: wichtigste Frist bevorzugt als YYYY-MM-DD — oder null wenn unklar/keine. Kein Freitext wie „bald“ oder „Ende Monat“.
+- primaryDeadlineLabel: z. B. „Einspruchsfrist“, „Abgabefrist Formular“ — oder null
 - keyClaims: 0–3 Behauptungen/Forderungen ODER bei Formularen kritische leere Felder — nur die wichtigsten. Sonst []
 - contestablePoints: 0–3 Punkte mit claim, why (1 Satz), suggestedAction. Bei Formularen: bereits ausgefüllte Stellen prüfen. Nur was aus dem Text folgt — nichts erfinden. Sonst []
 - replyDraftRecommended: true NUR wenn ein formales Antwortschreiben jetzt sinnvoll ist (z. B. Widerspruch, Einspruch, Stellungnahme, Fristverlängerung, Antwort an Behörde/Gericht/Versicherung/Gegenseite). false bei Formularen zum Ausfüllen, rein informativen Schreiben, Telefon/Zahlung/Upload als Nächstes, oder wenn erst Unterlagen fehlen.
+- documentKind exakt einer von: behoerde, gericht, anwalt, versicherung, formular, sonstiges (ohne Umlaute)
+- documentsStatus idealerweise: not_needed | recommended | required
+- phase: interim (Scan) oder final (Bewertung)
+- structuredSteps.priority: hoch | mittel | niedrig oder null
 
 Dieselben Inhalte landen in resultat (summary, assessment, next_steps) für Bereich 1 der Fallakte.
 

@@ -5,7 +5,10 @@ import {
   SCHEMA_OPTIONAL_PRIORITY,
   SCHEMA_OPTIONAL_STRING,
   normalizeDecisionFields,
+  normalizeDocumentsStatus,
   normalizePrimaryDeadline,
+  normalizeReviewPhase,
+  normalizeStepPriority,
 } from '@/lib/decisionFields'
 
 export const ANALYZE_RESULT_SCHEMA = {
@@ -39,11 +42,10 @@ export const ANALYZE_RESULT_SCHEMA = {
           text: { type: 'string' as const },
           deadline: {
             ...SCHEMA_OPTIONAL_STRING,
-            description: 'Frist als ISO-Datum oder null',
+            description: 'Frist bevorzugt YYYY-MM-DD oder null — unklar lieber null',
           },
           priority: {
             ...SCHEMA_OPTIONAL_PRIORITY,
-            description: 'Priorität oder null',
           },
         },
         required: ['id', 'text', 'deadline', 'priority'],
@@ -53,9 +55,8 @@ export const ANALYZE_RESULT_SCHEMA = {
     needsMoreDocuments: { type: 'boolean' as const },
     documentsStatus: {
       type: 'string' as const,
-      enum: ['not_needed', 'recommended', 'required'],
       description:
-        'Üblich recommended (weitere Unterlagen helfen, mit Beispielen). required nur wenn ohne sie keine Einordnung möglich. not_needed nur wenn die vorliegenden Dokumente allein klar genügen.',
+        'Freier Text, idealerweise: not_needed | recommended | required. Üblich recommended wenn mehr Belege helfen.',
     },
     documentsComment: {
       type: 'string' as const,
@@ -65,12 +66,15 @@ export const ANALYZE_RESULT_SCHEMA = {
     requestedDocuments: {
       type: 'string' as const,
       description:
-        'Bei recommended/required konkrete Beispiele als Komma-Liste (z. B. „früherer Bescheid, Kontoauszug, Mietvertrag“) — nie leer bei recommended/required',
+        'Bei recommended/required konkrete Beispiele als Komma-Liste; sonst leerer String',
     },
     isComplete: { type: 'boolean' as const },
     documentChoiceRequired: { type: 'boolean' as const },
     readyForFinalAssessment: { type: 'boolean' as const },
-    phase: { type: 'string' as const, enum: ['interim', 'final'] },
+    phase: {
+      type: 'string' as const,
+      description: 'interim oder final',
+    },
   },
   required: [
     'caseFileContent',
@@ -113,7 +117,7 @@ export type ParsedAnalyzePayload = {
 }
 
 export function normalizeDocumentsFields(payload: {
-  documentsStatus?: DocumentsStatus
+  documentsStatus?: DocumentsStatus | string
   documentsComment?: string
   requestedDocuments?: string
   needsMoreDocuments?: boolean
@@ -123,7 +127,7 @@ export function normalizeDocumentsFields(payload: {
   requestedDocuments: string
   needsMoreDocuments: boolean
 } {
-  let status = payload.documentsStatus
+  let status = normalizeDocumentsStatus(payload.documentsStatus)
 
   if (!status) {
     if (payload.needsMoreDocuments && payload.requestedDocuments?.trim()) {
@@ -163,11 +167,17 @@ export function normalizeStructuredSteps(steps: StructuredStep[]): StructuredSte
       }
       const deadline = normalizePrimaryDeadline(step.deadline)
       if (deadline) normalized.deadline = deadline
-      if (step.priority === 'hoch' || step.priority === 'mittel' || step.priority === 'niedrig') {
-        normalized.priority = step.priority
-      }
+      const priority = normalizeStepPriority(step.priority)
+      if (priority) normalized.priority = priority
       return normalized
     })
+}
+
+export function normalizeAnalyzePhase(
+  value: unknown,
+  fallback: 'interim' | 'final' = 'interim',
+): 'interim' | 'final' {
+  return normalizeReviewPhase(value) ?? fallback
 }
 
 export { normalizeDecisionFields }

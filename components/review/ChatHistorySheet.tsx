@@ -10,7 +10,8 @@ import {
   normalizeFollowUpMessage,
 } from '@/lib/chatFollowUp'
 import type { FollowUpAttachmentMeta, FollowUpMessage, FollowUpWordDocument } from '@/lib/analyzeTypes'
-import { UPLOAD_ACCEPT, prepareUploadFile } from '@/lib/documentUpload'
+import { prepareUploadFile } from '@/lib/documentUpload'
+import { systemUploadAccept } from '@/lib/pickDocuments'
 
 type PendingAttachment = FollowUpAttachmentMeta & {
   id: string
@@ -67,9 +68,15 @@ export default function ChatHistorySheet({
   const [draft, setDraft] = useState('')
   const [pending, setPending] = useState<PendingAttachment[]>([])
   const [error, setError] = useState('')
+  /** iPhone: ohne accept — sonst WebKit-Fehler bei gemischten Filtern. */
+  const [uploadAccept, setUploadAccept] = useState<string | undefined>(undefined)
 
   const normalizedMessages = messages.map(normalizeFollowUpMessage)
   const canSend = (draft.trim().length > 0 || pending.length > 0) && !busy && !disabled
+
+  useEffect(() => {
+    setUploadAccept(systemUploadAccept())
+  }, [])
 
   useEffect(() => {
     const node = scrollRef.current
@@ -286,7 +293,7 @@ export default function ChatHistorySheet({
             <input
               ref={uploadRef}
               type="file"
-              accept={UPLOAD_ACCEPT}
+              {...(uploadAccept ? { accept: uploadAccept } : {})}
               multiple
               className="hidden"
               onChange={handleFilesSelected}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 
 import {
   ANALYZE_RESULT_SCHEMA,
+  normalizeAnalyzePhase,
   normalizeDecisionFields,
   normalizeDocumentsFields,
   normalizeStructuredSteps,
@@ -39,6 +40,7 @@ function parseAndValidate(content: string): { ok: true; result: ParsedAnalyzePay
 
   const documents = normalizeDocumentsFields(parsed)
   const decision = normalizeDecisionFields(parsed)
+  const phase = normalizeAnalyzePhase(parsed.phase, parsed.phase === 'final' ? 'final' : 'interim')
 
   return {
     ok: true,
@@ -47,6 +49,7 @@ function parseAndValidate(content: string): { ok: true; result: ParsedAnalyzePay
       caseFileContent: prepared.content,
       structuredSteps: normalizeStructuredSteps(parsed.structuredSteps ?? []),
       summary: parsed.summary?.trim() || '',
+      phase,
       ...documents,
       ...decision,
     },
