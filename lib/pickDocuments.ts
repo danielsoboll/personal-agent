@@ -24,7 +24,10 @@ type OpenFilePickerWindow = Window & {
   showOpenFilePicker?: (options?: OpenFilePickerOptions) => Promise<FileSystemFileHandle[]>
 }
 
-const DOCUMENT_ACCEPT_TYPES = [
+const DOCUMENT_ACCEPT_TYPES: Array<{
+  description?: string
+  accept: Record<string, string[]>
+}> = [
   {
     description: 'Dokumente',
     accept: {
@@ -35,7 +38,7 @@ const DOCUMENT_ACCEPT_TYPES = [
       'image/heic': ['.heic', '.heif'],
     },
   },
-] as const
+]
 
 /**
  * Dateien wählen.
@@ -62,7 +65,7 @@ export async function pickDocuments(options?: {
       excludeAcceptAllOption: false,
       startIn,
       id,
-      types: [...DOCUMENT_ACCEPT_TYPES],
+      types: DOCUMENT_ACCEPT_TYPES,
     })
 
     return Promise.all(handles.map((handle) => handle.getFile()))
