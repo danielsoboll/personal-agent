@@ -6,7 +6,6 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrivacyNote } from '@/components/onboarding/OnboardingShell'
-import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { analyzeCurrentPhotos, requestDocumentPeek } from '@/lib/analyzeClient'
@@ -31,7 +30,6 @@ import {
 } from '@/lib/localDocuments'
 import { prepareUploadFiles, displayDocumentLabel } from '@/lib/documentUpload'
 import {
-  DOCUMENT_FILE_ACCEPT,
   DOCUMENT_UPLOAD_ACCEPT,
   GALLERY_ACCEPT,
   canOpenWellKnownFolders,
@@ -54,7 +52,7 @@ function parseIntent(value: string | null): AnalyzeIntent {
   return 'initial'
 }
 
-/** Sofort klicken — setTimeout bricht auf iOS oft die User-Geste und öffnet den falschen Dialog. */
+/** Sofort klicken — setTimeout bricht auf iOS die User-Geste. */
 function openFileInput(input: HTMLInputElement | null) {
   input?.click()
 }
@@ -67,8 +65,7 @@ export default function ScanClient() {
   const searchParams = useSearchParams()
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
-  const pdfInputRef = useRef<HTMLInputElement>(null)
-  const androidFileInputRef = useRef<HTMLInputElement>(null)
+  const uploadInputRef = useRef<HTMLInputElement>(null)
   const peekRequestIdRef = useRef(0)
   const peekPromiseRef = useRef<Promise<DocumentPeekResult | null> | null>(null)
   const [photos, setPhotos] = useState<PhotoPreview[]>([])
@@ -279,6 +276,16 @@ export default function ScanClient() {
     await ingestFiles([file])
   }
 
+  /** Dokument hochladen: Menü nur wenn Ordner wirklich springen — sonst direkt System-Dialog. */
+  function handleDocumentUpload() {
+    if (analyzing || busy || !canAddMore) return
+    if (folderPickerAvailable) {
+      setFileSourceOpen(true)
+      return
+    }
+    openFileInput(uploadInputRef.current)
+  }
+
   async function handlePickDocuments(source: DocumentPickSource) {
     if (analyzing || busy || !canAddMore) return
 
@@ -287,13 +294,10 @@ export default function ScanClient() {
       return
     }
 
-    if (source === 'file') {
-      openFileInput(pdfInputRef.current)
-      return
-    }
-
-    // Android/Desktop: echter Ordner (Downloads / Dateien)
-    const picked = await pickDocuments({ multiple: true, source })
+    const picked = await pickDocuments({
+      multiple: true,
+      source: source === 'documents' ? 'documents' : 'downloads',
+    })
     if (picked === null) return
     if (picked !== 'fallback') {
       setFileSourceOpen(false)
@@ -301,7 +305,7 @@ export default function ScanClient() {
       return
     }
 
-    openFileInput(androidFileInputRef.current)
+    openFileInput(uploadInputRef.current)
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
@@ -399,74 +403,42 @@ export default function ScanClient() {
         }
         footer={
           <div className="space-y-2">
-            {fileSourceOpen ? (
-              folderPickerAvailable ? (
-                <>
-                  <p className="px-1 text-center text-xs text-muted">Wo liegt das Dokument?</p>
-                  <button
-                    type="button"
-                    disabled={isInteractionLocked}
-                    onClick={() => void handlePickDocuments('gallery')}
-                    className={buttonStyles.secondary}
-                  >
-                    Fotomediathek
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isInteractionLocked}
-                    onClick={() => void handlePickDocuments('downloads')}
-                    className={buttonStyles.secondary}
-                  >
-                    Downloads
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isInteractionLocked}
-                    onClick={() => void handlePickDocuments('documents')}
-                    className={buttonStyles.secondary}
-                  >
-                    Dateien
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isInteractionLocked}
-                    onClick={() => setFileSourceOpen(false)}
-                    className={`${buttonStyles.accentSoft} w-full`}
-                  >
-                    Zurück
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="px-1 text-center text-xs text-muted">
-                    Fotos oder PDF — Kamera nur über „Foto aufnehmen“
-                  </p>
-                  <button
-                    type="button"
-                    disabled={isInteractionLocked}
-                    onClick={() => void handlePickDocuments('gallery')}
-                    className={buttonStyles.secondary}
-                  >
-                    Fotos aus Mediathek
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isInteractionLocked}
-                    onClick={() => void handlePickDocuments('file')}
-                    className={buttonStyles.secondary}
-                  >
-                    PDF aus Dateien
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isInteractionLocked}
-                    onClick={() => setFileSourceOpen(false)}
-                    className={`${buttonStyles.accentSoft} w-full`}
-                  >
-                    Zurück
-                  </button>
-                </>
-              )
+            {fileSourceOpen && folderPickerAvailable ? (
+              <>
+                <p className="px-1 text-center text-xs text-muted">Wo liegt das Dokument?</p>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => void handlePickDocuments('gallery')}
+                  className={buttonStyles.secondary}
+                >
+                  Fotomediathek
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => void handlePickDocuments('downloads')}
+                  className={buttonStyles.secondary}
+                >
+                  Downloads
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => void handlePickDocuments('documents')}
+                  className={buttonStyles.secondary}
+                >
+                  Dateien
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => setFileSourceOpen(false)}
+                  className={`${buttonStyles.accentSoft} w-full`}
+                >
+                  Zurück
+                </button>
+              </>
             ) : (
               <>
                 {canAddMore && photos.length > 0 ? (
@@ -482,7 +454,7 @@ export default function ScanClient() {
                     <button
                       type="button"
                       disabled={isInteractionLocked}
-                      onClick={() => setFileSourceOpen(true)}
+                      onClick={handleDocumentUpload}
                       className={buttonStyles.secondary}
                     >
                       Dokument hochladen
@@ -571,7 +543,7 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => setFileSourceOpen(true)}
+                  onClick={handleDocumentUpload}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
@@ -608,16 +580,7 @@ export default function ScanClient() {
           />
 
           <input
-            ref={pdfInputRef}
-            type="file"
-            accept={DOCUMENT_FILE_ACCEPT}
-            multiple
-            className="hidden"
-            onChange={(event) => void handleFilesSelected(event)}
-          />
-
-          <input
-            ref={androidFileInputRef}
+            ref={uploadInputRef}
             type="file"
             accept={DOCUMENT_UPLOAD_ACCEPT}
             multiple
@@ -629,18 +592,6 @@ export default function ScanClient() {
             <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
               {error}
             </p>
-          ) : null}
-
-          {activeCase && photos.length === 0 && !fileSourceOpen ? (
-            <div className="border-t border-border pt-6">
-              <DeleteCaseSection
-                caseId={activeCase.id}
-                caseTitle={activeCase.title}
-                disabled={isInteractionLocked}
-                onDeleted={() => router.replace('/')}
-                onError={setError}
-              />
-            </div>
           ) : null}
         </section>
       </OnboardingShell>

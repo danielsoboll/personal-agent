@@ -2,14 +2,11 @@
 export const GALLERY_ACCEPT =
   'image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
-/** Nur PDF → iOS öffnet Dateien ohne „Foto aufnehmen“ / Mediathek. */
-export const DOCUMENT_FILE_ACCEPT = 'application/pdf,.pdf'
-
-/** Android-Fallback: Dateien inkl. Bilder, ohne `capture`. */
+/** System-Dialog: PDF + Bilder (iPhone-Menü / Android-Fallback). */
 export const DOCUMENT_UPLOAD_ACCEPT =
   'application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
-export type DocumentPickSource = 'downloads' | 'documents' | 'gallery' | 'file'
+export type DocumentPickSource = 'downloads' | 'documents' | 'gallery'
 
 type OpenFilePickerOptions = {
   multiple?: boolean
@@ -49,19 +46,22 @@ export function isAppleTouchDevice(): boolean {
   return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
 }
 
-/** Chrome/Android: echte Startordner (Downloads / Dateien). Safari/iOS: nie. */
+/**
+ * Nur wenn der Browser wirklich in Downloads/Dateien springen kann.
+ * iPhone/Safari: false → kein eigenes Menü, direkt System-Dialog.
+ */
 export function canOpenWellKnownFolders(): boolean {
   if (typeof window === 'undefined' || isAppleTouchDevice()) return false
   return typeof (window as OpenFilePickerWindow).showOpenFilePicker === 'function'
 }
 
 /**
- * Ordner-Picker (nur Android/Desktop-Chrome).
- * `null` = abgebrochen, `'fallback'` = klassisches Input nutzen.
+ * Ordner-Picker (Android/Desktop-Chrome).
+ * `null` = abgebrochen, `'fallback'` = System-Input.
  */
 export async function pickDocuments(options?: {
   multiple?: boolean
-  source?: Exclude<DocumentPickSource, 'gallery' | 'file'>
+  source?: Exclude<DocumentPickSource, 'gallery'>
 }): Promise<File[] | 'fallback' | null> {
   const source = options?.source ?? 'downloads'
   if (!canOpenWellKnownFolders()) return 'fallback'
