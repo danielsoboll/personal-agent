@@ -18,6 +18,7 @@ import {
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { ensurePlusDiscoverFromCaseCount } from '@/lib/plusEngagement'
 import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import PrivacyTrustPoints from '@/components/onboarding/PrivacyTrustPoints'
 import LegalFooterNav from '@/components/legal/LegalFooterNav'
 
 function formatCaseDateShort(timestamp: number): string {
@@ -74,7 +75,7 @@ export default function HomeClient() {
       }
       footer={
         <PrimaryButton href="/fall/neu">
-          {hasCases ? 'Neuen Fall anlegen' : 'Dokument hinzufügen'}
+          {hasCases ? 'Neuen Fall anlegen' : 'Jetzt Dokument fotografieren'}
         </PrimaryButton>
       }
     >
@@ -83,17 +84,26 @@ export default function HomeClient() {
           <p className="text-sm text-muted">Fälle werden geladen …</p>
         ) : !hasCases ? (
           <>
-            <PageIntro showBrand={false} title="Schreiben besser verstehen" />
+            <PageIntro
+              showBrand={false}
+              title="Briefe, Anträge und E-Mails besser verstehen"
+              description="Mit klaren nächsten Schritten — direkt auf dem Handy."
+            />
             <HomeHeroFlow />
             <FreeTrialCallout />
             {plus.visible && !plus.plusActive ? (
               <HomePlusTeaser onDiscover={plus.openPlusDiscover} />
             ) : null}
-            <PrivacyNote variant="storage" />
+            <PrivacyTrustPoints />
           </>
         ) : (
           <>
-            <PageIntro showBrand={false} title="Deine Fälle" />
+            <PageIntro
+              showBrand={false}
+              title="Deine Fälle"
+              description="Fall öffnen oder neu anlegen — getrennt auf deinem Handy."
+            />
+            <PrivacyNote variant="storage" />
             <ul className="space-y-3">
               {cases.map((caseItem) => (
                 <li key={caseItem.id} className="flex items-center gap-2">

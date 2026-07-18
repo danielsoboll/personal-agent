@@ -21,21 +21,22 @@ export const PLUS_PRICE_TAGLINE = 'Alles inklusive.'
 export const PLUS_ABO_SLOGAN = 'Dauerhafter Helfer für Behördenpost.'
 export const PLUS_CANCEL_NOTE = 'Jederzeit kündbar.'
 
-export const PLUS_CTA_LABEL = 'PLUS entdecken'
+export const PLUS_CTA_LABEL = 'PLUS entdecken!'
 
 export const PLUS_ACTIVE_HEADER_LABEL = 'PLUS'
 export const PLUS_ACTIVE_HEADER_HINT = 'PLUS — Tippen für Überblick'
 
 export const PLUS_CHECKOUT_UNAVAILABLE = 'Checkout bald verfügbar.'
 
-export const PLUS_MOTIVATION_TITLE = 'Dauerhafter Helfer für deine Fälle'
-export const PLUS_MOTIVATION_INTRO = 'Historie statt jedes Mal neu.'
+export const PLUS_MOTIVATION_TITLE = 'Dein dauerhafter Helfer — nicht nur für einen Brief'
+export const PLUS_MOTIVATION_INTRO =
+  'Mit Historie und mehr Fällen — damit du nicht jedes Mal bei null anfängst.'
 
 export const PLUS_SHEET = {
   titleFree: PLUS_MOTIVATION_TITLE,
-  titleActive: 'PLUS ist aktiv',
+  titleActive: 'Du hast PLUS — ab jetzt arbeiten wir zusammen',
   introFree: PLUS_MOTIVATION_INTRO,
-  introActive: 'Alle PLUS-Funktionen frei.',
+  introActive: 'Historie, mehr Fälle und alle PLUS-Funktionen sind freigeschaltet.',
 } as const
 
 export const PLUS_PURCHASE_CONFIRMATION = {
