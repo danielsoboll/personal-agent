@@ -6,7 +6,6 @@ import AutofillSafeTextInput from '@/components/AutofillSafeTextInput'
 import IosContactAutofillDecoy from '@/components/IosContactAutofillDecoy'
 import OnboardingShell, {
   FormStickyFooter,
-  PageIntro,
   PrimaryButton,
   formBottomSpacerClass,
 } from '@/components/onboarding/OnboardingShell'
@@ -83,26 +82,29 @@ export default function FallNeuClient() {
     >
       <form
         ref={formRef}
-        className={`flex flex-1 flex-col gap-8 ${formBottomSpacerClass}`}
+        className={`flex flex-1 flex-col gap-5 ${formBottomSpacerClass}`}
         onSubmit={handleSubmit}
       >
-        <PageIntro title="Wie soll der Fall heißen?" description="Kurz und klar — zum Wiederfinden." />
+        <h2 className="text-3xl font-bold tracking-tight text-balance leading-tight">
+          Wie soll der Fall heißen?
+        </h2>
 
-        <label className="relative block space-y-2">
+        <label className="relative block">
           <IosContactAutofillDecoy />
-          <span className="text-sm font-medium text-muted">Fallname</span>
+          <span className="sr-only">Fallname</span>
           <AutofillSafeTextInput
             id="behoerdenpost-case-title"
             required
+            autoFocus
             enterKeyHint="go"
             placeholder="z. B. Unterhalt"
-            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2"
+            className="h-[4.25rem] w-full rounded-2xl border-2 border-border bg-surface px-4 text-2xl font-semibold text-foreground outline-none ring-accent placeholder:text-lg placeholder:font-medium placeholder:text-muted focus:border-accent focus:ring-2 [font-size:22px]"
             autofillProps={caseTitleInputProps()}
           />
         </label>
 
         {error ? (
-          <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+          <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-base text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
             {error}
           </p>
         ) : null}
