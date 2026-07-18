@@ -3,8 +3,8 @@
 import { FormEvent, useRef, useState } from 'react'
 
 import AutofillSafeTextInput from '@/components/AutofillSafeTextInput'
-import BrandMark from '@/components/brand/BrandMark'
 import IosContactAutofillDecoy from '@/components/IosContactAutofillDecoy'
+import { IconBrandMark } from '@/components/icons/BehoerdenIcons'
 import OnboardingShell, {
   FormStickyFooter,
   PrimaryButton,
@@ -86,9 +86,12 @@ export default function FallNeuClient() {
         className={`flex flex-1 flex-col gap-5 ${formBottomSpacerClass}`}
         onSubmit={handleSubmit}
       >
-        <h2 className="text-3xl font-bold tracking-tight text-balance leading-tight">
-          Wie soll der Fall heißen?
-        </h2>
+        <div className="flex items-start gap-3.5">
+          <BrandMark variant="intro" />
+          <h2 className="min-w-0 flex-1 pt-0.5 text-3xl font-bold tracking-tight text-balance leading-tight">
+            Wie soll der Fall heißen?
+          </h2>
+        </div>
 
         <label className="relative block">
           <IosContactAutofillDecoy />
