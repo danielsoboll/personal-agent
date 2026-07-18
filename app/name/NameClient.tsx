@@ -138,16 +138,18 @@ export default function NameClient() {
         onSubmit={handleSubmit}
       >
         <PageIntro
+          large
           title="Wie ist dein Vorname?"
-          description={`Fall „${caseTitle}“ — wir nutzen deinen Vornamen nur lokal, damit Erklärungen und Antworten zu deiner Situation passen.`}
+          description={`Für Fall „${caseTitle}“ — nur lokal auf dem Gerät.`}
         />
 
-        <label className="block space-y-2">
-          <span className="text-sm font-medium text-muted">Vorname</span>
+        <label className="block space-y-2.5">
+          <span className="text-base font-semibold text-foreground">Vorname</span>
           <input
             type="text"
             name="name"
             required
+            autoFocus
             defaultValue={defaultName}
             autoComplete="given-name"
             autoCorrect="off"
@@ -155,7 +157,7 @@ export default function NameClient() {
             spellCheck={false}
             enterKeyHint="go"
             placeholder="z. B. Lukas"
-            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2 [font-size:16px]"
+            className="h-16 w-full rounded-2xl border-2 border-border bg-surface px-4 text-xl font-semibold text-foreground outline-none ring-accent placeholder:font-medium placeholder:text-muted focus:border-accent focus:ring-2 [font-size:20px]"
           />
         </label>
 

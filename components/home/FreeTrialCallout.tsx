@@ -11,8 +11,7 @@ export default function FreeTrialCallout({ className = '' }: FreeTrialCalloutPro
         Jetzt kostenlos für den ersten Fall prüfen!
       </p>
       <p className="mt-2 text-sm leading-6 text-orange-900/85 dark:text-orange-100/85">
-        Fotografieren, auswerten lassen und nächste Schritte verstehen — der erste Fall ist gratis. Daten werden nur
-        zur KI-Auswertung übermittelt.
+        Dokument wählen, auswerten, nächste Schritte sehen — erster Fall gratis.
       </p>
     </div>
   )

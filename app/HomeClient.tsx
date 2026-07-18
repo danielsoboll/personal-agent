@@ -87,7 +87,7 @@ export default function HomeClient() {
             <PageIntro
               showBrand={false}
               title="Briefe, Anträge und E-Mails besser verstehen"
-              description="Behördenpost und wichtige Schreiben verstehen — mit klaren nächsten Schritten, direkt auf dem Handy."
+              description="Mit klaren nächsten Schritten — direkt auf dem Handy."
             />
             <HomeHeroFlow />
             <FreeTrialCallout />
@@ -101,7 +101,7 @@ export default function HomeClient() {
             <PageIntro
               showBrand={false}
               title="Deine Fälle"
-              description="Wähle einen bestehenden Fall oder lege einen neuen an. Jeder Fall bleibt getrennt auf deinem Handy gespeichert."
+              description="Fall öffnen oder neu anlegen — jeder Fall getrennt auf dem Handy."
             />
             <PrivacyNote variant="storage" />
             <ul className="space-y-3">

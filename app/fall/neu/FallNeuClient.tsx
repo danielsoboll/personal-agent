@@ -88,19 +88,21 @@ export default function FallNeuClient() {
         onSubmit={handleSubmit}
       >
         <PageIntro
+          large
           title="Wie soll der Fall heißen?"
-          description="Gib deinem Fall einen Namen, damit du ihn später wiederfindest — zum Beispiel nach dem Thema oder Absender."
+          description="Kurz und klar — zum Wiederfinden, z. B. nach Thema oder Absender."
         />
 
-        <label className="relative block space-y-2">
+        <label className="relative block space-y-2.5">
           <IosContactAutofillDecoy />
-          <span className="text-sm font-medium text-muted">Fallname</span>
+          <span className="text-base font-semibold text-foreground">Fallname</span>
           <AutofillSafeTextInput
             id="behoerdenpost-case-title"
             required
+            autoFocus
             enterKeyHint="go"
             placeholder="z. B. Unterhalt Neuberechnung"
-            className="h-14 w-full rounded-2xl border border-border bg-surface px-4 text-base text-foreground outline-none ring-accent focus:ring-2"
+            className="h-16 w-full rounded-2xl border-2 border-border bg-surface px-4 text-xl font-semibold text-foreground outline-none ring-accent placeholder:font-medium placeholder:text-muted focus:border-accent focus:ring-2 [font-size:20px]"
             autofillProps={caseTitleInputProps()}
           />
         </label>
