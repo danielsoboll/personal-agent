@@ -9,6 +9,7 @@ import HomePlusTeaser from '@/components/home/HomePlusTeaser'
 import FreeTrialCallout from '@/components/home/FreeTrialCallout'
 import { statusBadgeClassName } from '@/lib/caseStatus'
 import { buttonStyles } from '@/lib/buttonStyles'
+import { deleteCaseCompletely } from '@/lib/caseDelete'
 import {
   type CaseListItem,
   listCasesForHome,
@@ -30,6 +31,9 @@ export default function HomeClient() {
   const plus = usePlusDiscoverHeader()
   const [cases, setCases] = useState<CaseListItem[]>([])
   const [ready, setReady] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
 
   const loadCases = useCallback(async () => {
     const nextCases = await listCasesForHome()
@@ -55,6 +59,20 @@ export default function HomeClient() {
     event.stopPropagation()
     await toggleCaseDone(caseItem.id)
     await loadCases()
+  }
+
+  async function handleConfirmDelete(caseItem: CaseListItem) {
+    setDeletingId(caseItem.id)
+    setDeleteError('')
+    try {
+      await deleteCaseCompletely(caseItem.id)
+      setConfirmDeleteId(null)
+      await loadCases()
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : 'Fall konnte nicht gelöscht werden.')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const hasCases = ready && cases.length > 0
@@ -105,57 +123,112 @@ export default function HomeClient() {
             />
             <PrivacyNote variant="storage" />
             <ul className="space-y-3">
-              {cases.map((caseItem) => (
-                <li key={caseItem.id} className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => openCase(caseItem)}
-                    className={`${buttonStyles.caseListItem} min-w-0 flex-1`}
-                  >
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold tabular-nums text-accent">
-                      {caseItem.caseNumber}
-                    </span>
+              {cases.map((caseItem) => {
+                const isEmpty = !caseItem.latestReview
+                const confirming = confirmDeleteId === caseItem.id
+                const deleting = deletingId === caseItem.id
 
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-base font-semibold leading-snug">{caseItem.title}</p>
-                      <p className="truncate text-sm text-muted">{formatCaseDateShort(caseItem.updatedAt)}</p>
+                return (
+                  <li key={caseItem.id} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openCase(caseItem)}
+                        className={`${buttonStyles.caseListItem} min-w-0 flex-1`}
+                      >
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-sm font-semibold tabular-nums text-accent">
+                          {caseItem.caseNumber}
+                        </span>
+
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-base font-semibold leading-snug">{caseItem.title}</p>
+                          <p className="truncate text-sm text-muted">{formatCaseDateShort(caseItem.updatedAt)}</p>
+                        </div>
+
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClassName(caseItem.displayStatus.tone)}`}
+                        >
+                          {caseItem.displayStatus.label}
+                        </span>
+
+                        <span className="shrink-0 text-lg text-muted" aria-hidden>
+                          ›
+                        </span>
+                      </button>
+
+                      {isEmpty ? (
+                        <button
+                          type="button"
+                          title="Fall löschen"
+                          aria-label={`Fall „${caseItem.title}“ löschen`}
+                          disabled={deleting}
+                          onClick={() => {
+                            setDeleteError('')
+                            setConfirmDeleteId(confirming ? null : caseItem.id)
+                          }}
+                          className={`${buttonStyles.caseDoneToggle} border-red-300 text-red-600 hover:border-red-400 hover:text-red-700 dark:border-red-900 dark:text-red-300`}
+                        >
+                          ✕
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          title={
+                            caseItem.userStatus === 'vorerst_erledigt'
+                              ? 'Vorerst erledigt aufheben'
+                              : 'Als vorerst erledigt markieren'
+                          }
+                          aria-label={
+                            caseItem.userStatus === 'vorerst_erledigt'
+                              ? 'Vorerst erledigt aufheben'
+                              : 'Als vorerst erledigt markieren'
+                          }
+                          onClick={(event) => void handleToggleDone(caseItem, event)}
+                          className={`${buttonStyles.caseDoneToggle} ${
+                            caseItem.userStatus === 'vorerst_erledigt'
+                              ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
+                              : 'border-border text-muted hover:border-accent hover:text-accent'
+                          }`}
+                        >
+                          {caseItem.userStatus === 'vorerst_erledigt' ? '✓' : '○'}
+                        </button>
+                      )}
                     </div>
 
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClassName(caseItem.displayStatus.tone)}`}
-                    >
-                      {caseItem.displayStatus.label}
-                    </span>
-
-                    <span className="shrink-0 text-lg text-muted" aria-hidden>
-                      ›
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    title={
-                      caseItem.userStatus === 'vorerst_erledigt'
-                        ? 'Vorerst erledigt aufheben'
-                        : 'Als vorerst erledigt markieren'
-                    }
-                    aria-label={
-                      caseItem.userStatus === 'vorerst_erledigt'
-                        ? 'Vorerst erledigt aufheben'
-                        : 'Als vorerst erledigt markieren'
-                    }
-                    onClick={(event) => void handleToggleDone(caseItem, event)}
-                    className={`${buttonStyles.caseDoneToggle} ${
-                      caseItem.userStatus === 'vorerst_erledigt'
-                        ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200'
-                        : 'border-border text-muted hover:border-accent hover:text-accent'
-                    }`}
-                  >
-                    {caseItem.userStatus === 'vorerst_erledigt' ? '✓' : '○'}
-                  </button>
-                </li>
-              ))}
+                    {confirming ? (
+                      <div className="rounded-2xl border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/30">
+                        <p className="text-sm text-red-900 dark:text-red-100">
+                          Fall „{caseItem.title}“ löschen?
+                        </p>
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            disabled={deleting}
+                            onClick={() => void handleConfirmDelete(caseItem)}
+                            className={buttonStyles.dangerSolid}
+                          >
+                            {deleting ? 'Wird gelöscht …' : 'Ja'}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={deleting}
+                            onClick={() => setConfirmDeleteId(null)}
+                            className={buttonStyles.dangerCancel}
+                          >
+                            Nein
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </li>
+                )
+              })}
             </ul>
+            {deleteError ? (
+              <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+                {deleteError}
+              </p>
+            ) : null}
             {plus.visible && !plus.plusActive ? (
               <HomePlusTeaser onDiscover={plus.openPlusDiscover} />
             ) : null}

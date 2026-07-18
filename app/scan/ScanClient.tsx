@@ -6,6 +6,7 @@ import { ChangeEvent, useEffect, useMemo, useRef, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
 import OnboardingShell, { PageIntro, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { analyzeCurrentPhotos, requestDocumentPeek } from '@/lib/analyzeClient'
@@ -33,8 +34,11 @@ import {
   DOCUMENT_FILE_ACCEPT,
   GALLERY_ACCEPT,
   documentFallbackAccept,
+  getFolderPickHint,
+  hasFolderFilePicker,
   pickDocuments,
   type DocumentPickSource,
+  type FolderPickHint,
 } from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
@@ -79,6 +83,10 @@ export default function ScanClient() {
   const [peekBusy, setPeekBusy] = useState(false)
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
   const [fileSourceOpen, setFileSourceOpen] = useState(false)
+  const [folderHint, setFolderHint] = useState<{
+    source: DocumentPickSource
+    hint: FolderPickHint
+  } | null>(null)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
@@ -268,6 +276,7 @@ export default function ScanClient() {
     event.target.value = ''
     if (!file) return
     setFileSourceOpen(false)
+    setFolderHint(null)
     await ingestFiles([file])
   }
 
@@ -286,21 +295,45 @@ export default function ScanClient() {
   async function handlePickDocuments(source: DocumentPickSource) {
     if (analyzing || busy || !canAddMore) return
 
-    const picked = await pickDocuments({ multiple: true, source })
-    if (picked === null) return
-    if (picked === 'fallback') {
-      openDocumentFallbackInput(source)
+    // Fotomediathek: immer direkt die Fotos-App, nie „Auf meinem iPhone“.
+    if (source === 'gallery') {
+      setFolderHint(null)
+      openDocumentFallbackInput('gallery')
       return
     }
 
-    setFileSourceOpen(false)
-    await ingestFiles(picked)
+    // Android/Chrome: Downloads / Dateien mit echtem Startordner.
+    const picked = await pickDocuments({ multiple: true, source })
+    if (picked === null) return
+    if (picked !== 'fallback') {
+      setFolderHint(null)
+      setFileSourceOpen(false)
+      await ingestFiles(picked)
+      return
+    }
+
+    // iPhone u. a.: kein startIn möglich — kurz den Zielordner nennen, dann Dateien öffnen.
+    const hint = getFolderPickHint(source)
+    if (hint && !hasFolderFilePicker()) {
+      setFolderHint({ source, hint })
+      return
+    }
+
+    openDocumentFallbackInput(source)
+  }
+
+  function confirmFolderHintAndOpen() {
+    if (!folderHint) return
+    const source = folderHint.source
+    setFolderHint(null)
+    openDocumentFallbackInput(source)
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
     setFileSourceOpen(false)
+    setFolderHint(null)
     await ingestFiles(files)
   }
 
@@ -392,7 +425,30 @@ export default function ScanClient() {
         }
         footer={
           <div className="space-y-2">
-            {fileSourceOpen ? (
+            {folderHint ? (
+              <>
+                <p className="px-1 text-center text-sm font-semibold text-foreground">
+                  Ziel: {folderHint.hint.folderLabel}
+                </p>
+                <p className="px-1 text-center text-xs leading-5 text-muted">{folderHint.hint.steps}</p>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={confirmFolderHintAndOpen}
+                  className={buttonStyles.primaryActive}
+                >
+                  Weiter zu „{folderHint.hint.folderLabel}“
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => setFolderHint(null)}
+                  className={`${buttonStyles.accentSoft} w-full`}
+                >
+                  Zurück
+                </button>
+              </>
+            ) : fileSourceOpen ? (
               <>
                 <p className="px-1 text-center text-xs text-muted">Wo liegt das Dokument?</p>
                 <button
@@ -422,15 +478,10 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('browse')}
-                  className={buttonStyles.secondary}
-                >
-                  PDF suchen
-                </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => setFileSourceOpen(false)}
+                  onClick={() => {
+                    setFolderHint(null)
+                    setFileSourceOpen(false)
+                  }}
                   className={`${buttonStyles.accentSoft} w-full`}
                 >
                   Zurück
@@ -451,7 +502,10 @@ export default function ScanClient() {
                     <button
                       type="button"
                       disabled={isInteractionLocked}
-                      onClick={() => setFileSourceOpen(true)}
+                      onClick={() => {
+                        setFolderHint(null)
+                        setFileSourceOpen(true)
+                      }}
                       className={buttonStyles.secondary}
                     >
                       Dokument hochladen
@@ -589,6 +643,18 @@ export default function ScanClient() {
             <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
               {error}
             </p>
+          ) : null}
+
+          {activeCase && photos.length === 0 && !fileSourceOpen && !folderHint ? (
+            <div className="border-t border-border pt-6">
+              <DeleteCaseSection
+                caseId={activeCase.id}
+                caseTitle={activeCase.title}
+                disabled={isInteractionLocked}
+                onDeleted={() => router.replace('/')}
+                onError={setError}
+              />
+            </div>
           ) : null}
         </section>
       </OnboardingShell>
