@@ -5,6 +5,7 @@ const LABELS: Record<DocumentKind, string> = {
   gericht: 'Gerichtsschreiben',
   anwalt: 'Anwaltsschreiben',
   versicherung: 'Versicherungsschreiben',
+  formular: 'Formular',
   sonstiges: 'Schreiben',
 }
 

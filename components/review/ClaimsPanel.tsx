@@ -16,18 +16,23 @@ export default function ClaimsPanel({
   draftBusy = false,
   onRequestReplyDraft,
 }: ClaimsPanelProps) {
-  if (claims.length === 0 && points.length === 0) return null
+  const visibleClaims = claims.slice(0, 3)
+  const visiblePoints = points.slice(0, 3)
+
+  if (visibleClaims.length === 0 && visiblePoints.length === 0 && !onRequestReplyDraft) {
+    return null
+  }
 
   return (
-    <div className="space-y-5">
-      {claims.length > 0 ? (
+    <div className="space-y-4">
+      {visibleClaims.length > 0 ? (
         <section className="space-y-2">
-          <h3 className="text-lg font-semibold tracking-tight">Was behauptet wird</h3>
-          <ul className="space-y-2">
-            {claims.map((claim) => (
+          <h3 className="text-base font-semibold tracking-tight">Was behauptet wird</h3>
+          <ul className="space-y-1.5">
+            {visibleClaims.map((claim) => (
               <li
                 key={claim.id}
-                className="rounded-2xl border border-border bg-surface px-4 py-3 text-base leading-7 text-foreground"
+                className="rounded-xl border border-border bg-surface px-3.5 py-2.5 text-sm leading-6 text-foreground"
               >
                 {claim.text}
               </li>
@@ -36,33 +41,33 @@ export default function ClaimsPanel({
         </section>
       ) : null}
 
-      {points.length > 0 ? (
-        <section className="space-y-3">
-          <h3 className="text-lg font-semibold tracking-tight">Wo du ansetzen kannst</h3>
-          <ul className="space-y-2">
-            {points.map((point) => (
+      {visiblePoints.length > 0 ? (
+        <section className="space-y-2.5">
+          <h3 className="text-base font-semibold tracking-tight">Wo du ansetzen kannst</h3>
+          <ul className="space-y-1.5">
+            {visiblePoints.map((point) => (
               <li
                 key={point.id}
-                className="rounded-2xl border-2 border-accent/30 bg-accent-soft/60 px-4 py-3"
+                className="rounded-xl border border-accent/30 bg-accent-soft/60 px-3.5 py-2.5"
               >
-                <p className="text-base font-semibold leading-7 text-foreground">{point.claim}</p>
-                <p className="mt-1 text-sm leading-6 text-muted">{point.why}</p>
-                <p className="mt-2 text-sm font-semibold text-accent">{point.suggestedAction}</p>
+                <p className="text-sm font-semibold leading-6 text-foreground">{point.claim}</p>
+                <p className="mt-0.5 text-sm leading-5 text-muted">{point.why}</p>
+                <p className="mt-1.5 text-sm font-semibold text-accent">{point.suggestedAction}</p>
               </li>
             ))}
           </ul>
-
-          {onRequestReplyDraft ? (
-            <button
-              type="button"
-              disabled={draftBusy}
-              onClick={onRequestReplyDraft}
-              className={buttonStyles.primaryActive}
-            >
-              {draftBusy ? 'Wird vorbereitet …' : 'Antwortschreiben machen'}
-            </button>
-          ) : null}
         </section>
+      ) : null}
+
+      {onRequestReplyDraft ? (
+        <button
+          type="button"
+          disabled={draftBusy}
+          onClick={onRequestReplyDraft}
+          className={buttonStyles.primaryActive}
+        >
+          {draftBusy ? 'Wird vorbereitet …' : 'Antwortschreiben erstellen'}
+        </button>
       ) : null}
     </div>
   )

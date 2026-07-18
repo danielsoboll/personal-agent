@@ -135,6 +135,11 @@ export async function verifyPlusCheckoutSession(sessionId: string): Promise<Veri
 
   if (result.plusActive) {
     applyVerifiedCheckout(result)
+    void import('@/lib/billingRecoveryClient')
+      .then(({ fetchBillingRecoveryCode }) => fetchBillingRecoveryCode())
+      .catch(() => {
+        /* Code wird spätestens im Admin angelegt */
+      })
   }
 
   return result
@@ -171,6 +176,14 @@ export async function syncPlusBillingFromStripe(): Promise<PlusBillingSyncResult
     plusUntil: payload.plusUntil ?? null,
     cancelAtPeriodEnd: payload.cancelAtPeriodEnd === true,
   })
+
+  if (plusActive) {
+    void import('@/lib/billingRecoveryClient')
+      .then(({ fetchBillingRecoveryCode }) => fetchBillingRecoveryCode())
+      .catch(() => {
+        /* optional */
+      })
+  }
 
   return {
     synced: payload.synced === true,

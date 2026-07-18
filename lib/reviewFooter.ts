@@ -61,12 +61,12 @@ export function documentChoiceHint(
   }
 
   if (showAllCapturedButton) {
-    return 'Noch Fotos zum aktuellen Schreiben, ältere Unterlagen — oder weiter, wenn alles da ist.'
+    return 'Noch Dokumente zum aktuellen Schreiben, weitere Unterlagen — oder weiter, wenn alles da ist.'
   }
 
   if (review.intent === 'initial') {
-    return 'Weitere Fotos zum aktuellen Schreiben oder ältere Unterlagen für den Hintergrund.'
+    return 'Weitere Dokumente zum aktuellen Schreiben oder zusätzliche Unterlagen für den Hintergrund.'
   }
 
-  return 'Weitere Fotos zum aktuellen Schreiben oder ältere Unterlagen hinzufügen.'
+  return 'Weitere Dokumente zum aktuellen Schreiben oder zusätzliche Unterlagen hinzufügen.'
 }

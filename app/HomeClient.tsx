@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 
 import HomeHeroFlow from '@/components/home/HomeHeroFlow'
 import HomePlusTeaser from '@/components/home/HomePlusTeaser'
-import FreeTrialCallout from '@/components/home/FreeTrialCallout'
+import FreeCaseLimitSheet from '@/components/home/FreeCaseLimitSheet'
 import { statusBadgeClassName } from '@/lib/caseStatus'
 import { buttonStyles } from '@/lib/buttonStyles'
 import { deleteCaseCompletely } from '@/lib/caseDelete'
@@ -17,7 +17,8 @@ import {
   toggleCaseDone,
 } from '@/lib/localCases'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
-import { ensurePlusDiscoverFromCaseCount } from '@/lib/plusEngagement'
+import { ensurePlusDiscoverFromHomeCases, unlockPlusDiscoverNow } from '@/lib/plusEngagement'
+import { isAtFreeCaseLimit } from '@/lib/freeCaseLimit'
 import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import PrivacyTrustPoints from '@/components/onboarding/PrivacyTrustPoints'
 import LegalFooterNav from '@/components/legal/LegalFooterNav'
@@ -34,10 +35,12 @@ export default function HomeClient() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState('')
+  const [freeLimitOpen, setFreeLimitOpen] = useState(false)
+  const [freeLimitBusy, setFreeLimitBusy] = useState(false)
 
   const loadCases = useCallback(async () => {
     const nextCases = await listCasesForHome()
-    ensurePlusDiscoverFromCaseCount(nextCases.length)
+    ensurePlusDiscoverFromHomeCases(nextCases)
     setCases(nextCases)
     setReady(true)
   }, [])
@@ -76,23 +79,40 @@ export default function HomeClient() {
   }
 
   const hasCases = ready && cases.length > 0
+  const atFreeLimit = ready && isAtFreeCaseLimit(cases.length)
+  const primaryCase = cases[0]
+
+  function handleNewCaseClick() {
+    if (!atFreeLimit) {
+      router.push('/fall/neu')
+      return
+    }
+    unlockPlusDiscoverNow()
+    setFreeLimitOpen(true)
+  }
+
+  async function handleFreeLimitDelete() {
+    if (!primaryCase) return
+    setFreeLimitBusy(true)
+    setDeleteError('')
+    try {
+      await deleteCaseCompletely(primaryCase.id)
+      setFreeLimitOpen(false)
+      await loadCases()
+      router.push('/fall/neu')
+    } catch (caught) {
+      setDeleteError(caught instanceof Error ? caught.message : 'Fall konnte nicht gelöscht werden.')
+    } finally {
+      setFreeLimitBusy(false)
+    }
+  }
 
   return (
     <OnboardingShell
       title="Behördenpost"
-      headerAction={
-        <div className="flex shrink-0 items-center gap-2">
-          <Link href="/bibliothek" className={buttonStyles.header}>
-            <span className="sm:hidden" aria-label="Bibliothek">
-              📄
-            </span>
-            <span className="hidden sm:inline">Bibliothek</span>
-          </Link>
-          {plus.headerAction}
-        </div>
-      }
+      headerAction={plus.headerAction}
       footer={
-        <PrimaryButton href="/fall/neu">
+        <PrimaryButton type="button" onClick={handleNewCaseClick}>
           {hasCases ? 'Neuen Fall anlegen' : 'Jetzt Dokument fotografieren'}
         </PrimaryButton>
       }
@@ -105,13 +125,15 @@ export default function HomeClient() {
             <PageIntro
               showBrand={false}
               title="Briefe, Anträge und E-Mails besser verstehen"
-              description="Mit klaren nächsten Schritten — direkt auf dem Handy."
+              description={
+                <>
+                  Für den ersten Fall kannst du alle zugehörigen Dokumente kostenlos erfassen und eine Fallakte
+                  aufbauen. Darauf basiert die Bewertung des gesamten Kontexts — nicht wie bei einem reinen
+                  Chatbot.
+                </>
+              }
             />
             <HomeHeroFlow />
-            <FreeTrialCallout />
-            {plus.visible && !plus.plusActive ? (
-              <HomePlusTeaser onDiscover={plus.openPlusDiscover} />
-            ) : null}
             <PrivacyTrustPoints />
           </>
         ) : (
@@ -119,7 +141,7 @@ export default function HomeClient() {
             <PageIntro
               showBrand={false}
               title="Deine Fälle"
-              description="Fall öffnen oder neu anlegen — jeder Fall getrennt auf dem Handy."
+              description="Fall öffnen oder neu anlegen — kostenlos einen Fall gleichzeitig, mit PLUS mehrere parallel."
             />
             <PrivacyNote variant="storage" />
             <ul className="space-y-3">
@@ -243,6 +265,18 @@ export default function HomeClient() {
         </div>
       </section>
       {plus.portals}
+      {freeLimitOpen && primaryCase ? (
+        <FreeCaseLimitSheet
+          caseTitle={primaryCase.title}
+          busy={freeLimitBusy}
+          onDeleteCase={() => void handleFreeLimitDelete()}
+          onDiscoverPlus={() => {
+            setFreeLimitOpen(false)
+            plus.openPlusDiscover()
+          }}
+          onClose={() => setFreeLimitOpen(false)}
+        />
+      ) : null}
     </OnboardingShell>
   )
 }

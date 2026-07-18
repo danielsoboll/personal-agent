@@ -4,7 +4,7 @@ import Link from 'next/link'
 const TRUST_POINTS = [
   'Deine Fälle und Bewertungen werden nur auf deinem Handy gespeichert',
   'Nur zur KI-Auswertung übermittelt — bei uns nicht dauerhaft gespeichert',
-  'Verarbeitete Fotos werden nach der Prüfung gelöscht',
+  'Verarbeitete Dokumente werden nach der Prüfung gelöscht',
   'Wir verkaufen deine Daten nicht',
 ] as const
 

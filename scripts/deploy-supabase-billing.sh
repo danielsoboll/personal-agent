@@ -26,6 +26,7 @@ npx supabase functions deploy create-customer-portal-session --yes
 npx supabase functions deploy verify-checkout-session --yes
 npx supabase functions deploy sync-family-billing --yes
 npx supabase functions deploy stripe-webhook --yes
+npx supabase functions deploy billing-recovery --yes
 npx supabase functions deploy log-activity --yes
 
 echo ""

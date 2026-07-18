@@ -75,8 +75,9 @@ export async function POST(request: Request) {
     question: effectiveQuestion,
     attachmentCount: attachments.length,
     pdfCount,
+    requestWordDocument: Boolean(body.requestWordDocument),
     currentReview: body.currentReview,
-    priorMessages: body.priorMessages?.map((message) => ({
+    priorMessages: body.priorMessages?.slice(-8).map((message) => ({
       role: message.role,
       userText: message.userText,
       content: message.content,
@@ -106,8 +107,13 @@ export async function POST(request: Request) {
 
   if (!completion.ok) {
     console.error('OpenAI clarify failed:', completion.error)
+    const detail = completion.error?.trim()
     return NextResponse.json(
-      { error: 'Nachfrage konnte nicht beantwortet werden. Bitte später erneut versuchen.' },
+      {
+        error: detail
+          ? `Nachfrage fehlgeschlagen: ${detail}`
+          : 'Nachfrage konnte nicht beantwortet werden. Bitte später erneut versuchen.',
+      },
       { status: 502 },
     )
   }
@@ -144,6 +150,7 @@ export async function POST(request: Request) {
     primaryDeadlineLabel: parsed.updatedPrimaryDeadlineLabel,
     keyClaims: parsed.updatedKeyClaims,
     contestablePoints: parsed.updatedContestablePoints,
+    replyDraftRecommended: parsed.updatedReplyDraftRecommended,
   })
 
   return NextResponse.json({
@@ -158,6 +165,7 @@ export async function POST(request: Request) {
     primaryDeadlineLabel: decision.primaryDeadlineLabel,
     keyClaims: decision.keyClaims,
     contestablePoints: decision.contestablePoints,
+    replyDraftRecommended: decision.replyDraftRecommended,
     ...(wordDocument ? { wordDocument } : {}),
   } satisfies ClarifyResponseBody)
 }

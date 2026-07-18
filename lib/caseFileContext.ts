@@ -83,7 +83,7 @@ function buildAktuellBlock(records: CaseFileRecord[]): string {
   }
 
   if (lines.length === 0) {
-    return 'Noch keine gespeicherte Einordnung — nur aus den neuen Fotos ableiten.'
+    return 'Noch keine gespeicherte Einordnung — nur aus den neuen Dokumenten ableiten.'
   }
 
   return lines.join('\n\n')

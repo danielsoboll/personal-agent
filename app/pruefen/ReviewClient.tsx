@@ -12,6 +12,7 @@ import ClaimsPanel from '@/components/review/ClaimsPanel'
 import ReviewChangesBanner from '@/components/review/ReviewChangesBanner'
 import ChatHistorySheet from '@/components/review/ChatHistorySheet'
 import DeleteCaseSection from '@/components/review/DeleteCaseSection'
+import { IconAi } from '@/components/icons/BehoerdenIcons'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
 import { logUserActivity } from '@/lib/activityLog'
@@ -208,7 +209,11 @@ export default function ReviewClient() {
     }
   }
 
-  async function handleChatSubmit(input: { userText?: string; files?: File[] }) {
+  async function handleChatSubmit(input: {
+    userText?: string
+    files?: File[]
+    requestWordDocument?: boolean
+  }) {
     if (!activeCase || !review) return
 
     setError('')
@@ -217,10 +222,15 @@ export default function ReviewClient() {
     try {
       const previous = review
       const result = await submitChatMessage(input)
+
+      if (input.requestWordDocument && !result.wordDocument) {
+        throw new Error('Der Entwurf konnte nicht erstellt werden. Bitte erneut versuchen.')
+      }
+
       const now = Date.now()
       const attachmentMeta: FollowUpAttachmentMeta[] = (input.files ?? []).map((file) => {
         const kind = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'
-        return { fileName: file.name || (kind === 'pdf' ? 'Dokument.pdf' : 'Foto.jpg'), kind } as FollowUpAttachmentMeta
+        return { fileName: file.name || (kind === 'pdf' ? 'Dokument.pdf' : 'Dokument.jpg'), kind } as FollowUpAttachmentMeta
       })
 
       const pdfCount = attachmentMeta.filter((item) => item.kind === 'pdf').length
@@ -260,6 +270,7 @@ export default function ReviewClient() {
         primaryDeadlineLabel: result.primaryDeadlineLabel,
         keyClaims: result.keyClaims,
         contestablePoints: result.contestablePoints,
+        replyDraftRecommended: result.replyDraftRecommended,
         followUpMessages: nextMessages,
         analyzedAt: now,
       }
@@ -294,9 +305,10 @@ export default function ReviewClient() {
   }
 
   async function handleRequestReplyDraft() {
-    if (!review?.contestablePoints?.length) return
+    if (!review?.replyDraftRecommended) return
 
-    const pointsText = review.contestablePoints
+    const pointsText = (review.contestablePoints ?? [])
+      .slice(0, 3)
       .map(
         (point, index) =>
           `${index + 1}. ${point.claim} — Warum: ${point.why}. Aktion: ${point.suggestedAction}`,
@@ -305,15 +317,19 @@ export default function ReviewClient() {
 
     const question = [
       'Bitte erstelle einen höflichen Entwurf eines Antwortschreibens als Word-Dokument.',
-      'Gehe besonders auf diese Prüfpunkte ein:',
-      pointsText,
+      pointsText
+        ? `Gehe besonders auf diese Prüfpunkte ein:\n${pointsText}`
+        : 'Nutze die aktuelle Auswertung und die Fallakte.',
       'Sachlich, klar, ohne unnötige Fachsprache.',
     ].join('\n')
 
     setReplyDraftBusy(true)
-    setChatOpen(true)
+    setError('')
     try {
-      await handleChatSubmit({ userText: question })
+      await handleChatSubmit({ userText: question, requestWordDocument: true })
+      setChatOpen(true)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'Antwortschreiben fehlgeschlagen.')
     } finally {
       setReplyDraftBusy(false)
     }
@@ -371,18 +387,21 @@ export default function ReviewClient() {
   const showDocumentChoice = footer.showDocumentChoice
   const showOptionalDocumentChoice = footer.showOptionalDocumentChoice
   const showFinalButton = footer.showFinalButton
-  const steps: StructuredStep[] = review?.structuredSteps?.length
-    ? review.structuredSteps
-    : review?.nextSteps
-        ?.split('\n')
-        .map((line) => line.replace(/^\d+\.\s*/, '').trim())
-        .filter(Boolean)
-        .map((text, index) => ({ id: `legacy_${index}`, text })) ?? []
+  const steps: StructuredStep[] = (
+    review?.structuredSteps?.length
+      ? review.structuredSteps
+      : review?.nextSteps
+          ?.split('\n')
+          .map((line) => line.replace(/^\d+\.\s*/, '').trim())
+          .filter(Boolean)
+          .map((text, index) => ({ id: `legacy_${index}`, text })) ?? []
+  ).slice(0, 4)
 
   return (
     <>
       {busy ? <AnalyzingOverlay message="Wird bearbeitet …" /> : null}
-      {followUpBusy ? <AnalyzingOverlay message="Chat wird beantwortet …" /> : null}
+      {replyDraftBusy ? <AnalyzingOverlay message="Antwortschreiben wird erstellt …" /> : null}
+      {followUpBusy && !replyDraftBusy ? <AnalyzingOverlay message="Chat wird beantwortet …" /> : null}
 
       <OnboardingShell
         title="Auswertung"
@@ -408,7 +427,7 @@ export default function ReviewClient() {
                       ) : null}
                       {footer.showHistoricalButton ? (
                         <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                          Ältere Unterlagen
+                          Weitere Dokumente hochladen
                         </SecondaryButton>
                       ) : null}
                     </>
@@ -427,7 +446,7 @@ export default function ReviewClient() {
                       ) : null}
                       {footer.showHistoricalButton ? (
                         <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                          Ältere Unterlagen
+                          Weitere Dokumente hochladen
                         </SecondaryButton>
                       ) : null}
                     </>
@@ -466,29 +485,21 @@ export default function ReviewClient() {
               />
 
               {shouldShowSummary(review.summary, review.assessment) ? (
-                <div className="rounded-2xl border border-accent/25 bg-accent-soft p-5">
-                  <p className="text-sm font-semibold text-accent">Kurze Zusammenfassung</p>
-                  <p className="mt-2 whitespace-pre-line text-base leading-7 text-foreground">
+                <div className="rounded-2xl border border-accent/25 bg-accent-soft p-4">
+                  <p className="text-sm font-semibold text-accent">Kurzfassung</p>
+                  <p className="mt-1.5 whitespace-pre-line text-base leading-7 text-foreground">
                     {displaySummary(review.summary)}
                   </p>
                 </div>
               ) : null}
 
               <div className="space-y-2">
-                <h2 className="text-xl font-semibold tracking-tight">Was das für dich bedeutet</h2>
-                <p className="leading-8 text-foreground">{review.assessment}</p>
+                <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+                  <IconAi size={22} className="shrink-0 text-accent" />
+                  KI-Bewertung
+                </h2>
+                <p className="text-lg leading-8 text-foreground">{review.assessment}</p>
               </div>
-
-              <ClaimsPanel
-                claims={review.keyClaims}
-                points={review.contestablePoints}
-                draftBusy={replyDraftBusy || followUpBusy}
-                onRequestReplyDraft={
-                  (review.contestablePoints?.length ?? 0) > 0
-                    ? () => void handleRequestReplyDraft()
-                    : undefined
-                }
-              />
 
               <DocumentsStatusPanel
                 status={review.documentsStatus}
@@ -496,10 +507,19 @@ export default function ReviewClient() {
                 requestedDocuments={review.requestedDocuments}
               />
 
+              <ClaimsPanel
+                claims={review.keyClaims}
+                points={review.contestablePoints}
+                draftBusy={replyDraftBusy || followUpBusy}
+                onRequestReplyDraft={
+                  review.replyDraftRecommended ? () => void handleRequestReplyDraft() : undefined
+                }
+              />
+
               {steps.length > 0 ? (
-                <div className="space-y-3">
-                  <h3 className="text-xl font-semibold tracking-tight">Nächste Schritte</h3>
-                  <ul className="space-y-2">
+                <div className="space-y-2.5">
+                  <h3 className="text-lg font-semibold tracking-tight">Nächste Schritte</h3>
+                  <ul className="space-y-1.5">
                     {steps.map((step, index) => {
                       const stepKey = step.id?.trim() || `legacy_${index}`
                       const done = doneStepIds.includes(stepKey)
@@ -510,17 +530,17 @@ export default function ReviewClient() {
                             aria-pressed={done}
                             disabled={busy || followUpBusy}
                             onClick={() => handleToggleStepDone(stepKey)}
-                            className={`${PRESSABLE_3D} flex w-full items-center gap-4 rounded-2xl border-2 px-4 py-4 text-left transition ${
+                            className={`${PRESSABLE_3D} flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition ${
                               done
                                 ? 'border-emerald-500 bg-emerald-50 dark:border-emerald-700 dark:bg-emerald-950/30'
-                                : 'border-accent/50 bg-surface hover:border-accent'
+                                : 'border-border bg-surface hover:border-accent/60'
                             }`}
                           >
                             <span
-                              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border-2 text-2xl font-bold ${
+                              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border-2 text-base font-bold ${
                                 done
                                   ? 'border-emerald-600 bg-emerald-600 text-white'
-                                  : 'border-accent bg-white text-transparent dark:bg-slate-900'
+                                  : 'border-slate-400 bg-surface text-transparent dark:border-slate-300 dark:bg-slate-800'
                               }`}
                               aria-hidden
                             >
@@ -528,14 +548,14 @@ export default function ReviewClient() {
                             </span>
                             <span className="min-w-0 flex-1">
                               <span
-                                className={`block text-base font-semibold leading-7 ${
+                                className={`block text-sm font-medium leading-5 ${
                                   done ? 'text-muted line-through' : 'text-foreground'
                                 }`}
                               >
                                 {step.text}
                               </span>
                               {step.deadline ? (
-                                <span className="mt-1 block text-sm font-medium text-amber-800 dark:text-amber-200">
+                                <span className="mt-0.5 block text-xs font-medium text-amber-800 dark:text-amber-200">
                                   Bis {formatDeadlineShort(step.deadline)}
                                 </span>
                               ) : null}
@@ -547,9 +567,9 @@ export default function ReviewClient() {
                   </ul>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-border bg-surface p-5">
-                  <h3 className="text-xl font-semibold">Nächste Schritte</h3>
-                  <p className="mt-3 whitespace-pre-wrap text-base leading-7 text-foreground">{review.nextSteps}</p>
+                <div className="rounded-xl border border-border bg-surface p-4">
+                  <h3 className="text-lg font-semibold">Nächste Schritte</h3>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-foreground">{review.nextSteps}</p>
                 </div>
               )}
 

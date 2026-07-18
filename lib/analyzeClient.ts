@@ -34,7 +34,7 @@ export async function analyzeCurrentPhotos(options: {
 
   const photos = await listDocumentPhotos(activeCase.id)
   if (photos.length === 0) {
-    throw new Error('Keine Fotos zum Prüfen vorhanden.')
+    throw new Error('Keine Dokumente zum Prüfen vorhanden.')
   }
 
   const existingCaseFile = await getCaseFileContent(activeCase.id)
@@ -243,6 +243,7 @@ export async function buildWordDocument(content: FollowUpWordDocument): Promise<
 export async function submitChatMessage(options: {
   userText?: string
   files?: File[]
+  requestWordDocument?: boolean
 }): Promise<ClarifyResponseBody> {
   const activeCase = await getActiveCase()
   if (!activeCase?.latestReview) {
@@ -288,7 +289,13 @@ export async function submitChatMessage(options: {
   }
 
   const review = activeCase.latestReview
-  const priorMessages: FollowUpMessage[] = review.followUpMessages ?? []
+  const priorMessages: FollowUpMessage[] = (review.followUpMessages ?? []).slice(-8).map((message) => ({
+    role: message.role,
+    userText: message.userText,
+    content: message.content,
+    attachments: message.attachments,
+    at: message.at,
+  }))
 
   const body: ClarifyRequestBody = {
     userName: activeCase.userName,
@@ -297,6 +304,7 @@ export async function submitChatMessage(options: {
     caseFileContent: rawCaseFile,
     question: trimmedText,
     attachments,
+    requestWordDocument: options.requestWordDocument || undefined,
     currentReview: {
       summary: review.summary,
       assessment: review.assessment,

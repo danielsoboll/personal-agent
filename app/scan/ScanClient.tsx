@@ -10,6 +10,7 @@ import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { analyzeCurrentPhotos, requestDocumentPeek } from '@/lib/analyzeClient'
 import { logUserActivity } from '@/lib/activityLog'
+import { recordCaseReviewCompleted } from '@/lib/plusEngagement'
 import { scheduleCaseFileReorganizeAfterAnalyze } from '@/lib/caseFileReorganizeClient'
 import type { AnalyzeIntent, DocumentPeekResult } from '@/lib/analyzeTypes'
 import {
@@ -103,7 +104,7 @@ export default function ScanClient() {
   const copy = useMemo(() => {
     if (intent === 'current_more') {
       return {
-        title: 'Weitere Fotos zum aktuellen Schreiben',
+        title: 'Weitere Dokumente zum aktuellen Schreiben',
         heading: 'Ergänze das aktuelle Schreiben',
         hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — Foto oder Datei.`,
       }
@@ -111,8 +112,8 @@ export default function ScanClient() {
 
     if (intent === 'historical') {
       return {
-        title: 'Ältere Dokumente erfassen',
-        heading: 'Ältere Unterlagen für den Hintergrund',
+        title: 'Weitere Dokumente hochladen',
+        heading: 'Weitere Unterlagen ergänzen',
         hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — Foto oder Datei.`,
       }
     }
@@ -351,6 +352,7 @@ export default function ScanClient() {
         intent,
         photoCount,
       })
+      recordCaseReviewCompleted()
 
       await clearDocumentPhotos(activeCase.id)
 

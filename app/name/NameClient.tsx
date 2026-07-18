@@ -17,9 +17,10 @@ import {
   getDraftFromUrl,
   setDraftCaseTitle,
 } from '@/lib/draftCase'
-import { createCase } from '@/lib/localCases'
+import { isAtFreeCaseLimit } from '@/lib/freeCaseLimit'
+import { createCase, listCases } from '@/lib/localCases'
 import { getStoredProfileName, setStoredProfileName } from '@/lib/localProfile'
-import { recordCaseCreated } from '@/lib/plusEngagement'
+import { recordCaseCreated, unlockPlusDiscoverNow } from '@/lib/plusEngagement'
 
 function readNameFromForm(form: HTMLFormElement): string {
   const fromFormData = String(new FormData(form).get('name') ?? '').trim()
@@ -57,6 +58,13 @@ export default function NameClient() {
       void (async () => {
         try {
           setSubmitting(true)
+          const existing = await listCases()
+          if (isAtFreeCaseLimit(existing.length)) {
+            unlockPlusDiscoverNow()
+            clearDraftCaseTitle()
+            router.replace('/')
+            return
+          }
           const created = await createCase(draftTitle, storedName)
           clearDraftCaseTitle()
           recordCaseCreated()
@@ -91,6 +99,16 @@ export default function NameClient() {
     setSubmitting(true)
 
     try {
+      const existing = await listCases()
+      if (isAtFreeCaseLimit(existing.length)) {
+        unlockPlusDiscoverNow()
+        setError(
+          'Kostenlos kannst du einen Fall gleichzeitig nutzen. Lösche den bisherigen Fall auf der Startseite — oder hol dir PLUS.',
+        )
+        setSubmitting(false)
+        return
+      }
+
       setStoredProfileName(trimmed)
       const created = await createCase(title, trimmed)
       clearDraftCaseTitle()

@@ -80,9 +80,19 @@ function parseOpenAiError(status: number, errorText: string): string {
 
 function isRetryableModelError(status: number, error: string): boolean {
   const lower = error.toLowerCase()
+  // Keine Schema-/Content-Fehler als „falsches Modell“ werten — sonst maskiert der Fallback die echte Ursache.
+  if (
+    lower.includes('schema') ||
+    lower.includes('pattern') ||
+    lower.includes('invalid_json') ||
+    lower.includes('json_schema') ||
+    lower.includes('insufficient permissions') ||
+    lower.includes('does not have access')
+  ) {
+    return false
+  }
   return (
     status === 404 ||
-    status === 400 ||
     lower.includes('model') ||
     lower.includes('reasoning_effort') ||
     lower.includes('unsupported parameter') ||

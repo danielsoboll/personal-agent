@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 
 import DeleteAllSection from '@/components/admin/DeleteAllSection'
 import AdminPwaInstallSection from '@/components/admin/AdminPwaInstallSection'
+import AdminRecoverySection from '@/components/admin/AdminRecoverySection'
 import OnboardingShell from '@/components/onboarding/OnboardingShell'
 import { buttonStyles } from '@/lib/buttonStyles'
 import { getStoredProfileName, setStoredProfileName } from '@/lib/localProfile'
@@ -81,6 +82,8 @@ export default function AdminClient() {
         </form>
 
         <AdminPwaInstallSection />
+
+        <AdminRecoverySection />
 
         {error ? (
           <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/30 dark:text-red-100">

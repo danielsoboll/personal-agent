@@ -6,7 +6,7 @@ type AnalyzingOverlayProps = {
 }
 
 export default function AnalyzingOverlay({
-  message = 'Fotos werden geprüft …',
+  message = 'Dokumente werden geprüft …',
 }: AnalyzingOverlayProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 px-6 backdrop-blur-sm">

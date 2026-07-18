@@ -40,7 +40,7 @@ export function buildReviewChanges(
   }
 
   if (!textsEqual(previous.assessment, next.assessment)) {
-    changes.push({ id: 'assessment', text: 'Die Einordnung („Was das für dich bedeutet“) wurde aktualisiert.' })
+    changes.push({ id: 'assessment', text: 'Die KI-Bewertung wurde aktualisiert.' })
   }
 
   const prevSteps = (previous.structuredSteps ?? []).map((step) => step.text.trim()).filter(Boolean)

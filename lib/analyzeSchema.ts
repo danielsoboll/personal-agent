@@ -25,7 +25,7 @@ export const ANALYZE_RESULT_SCHEMA = {
     assessment: {
       type: 'string' as const,
       description:
-        'Was das Schreiben bedeutet — Du-Form, ausführliche Einordnung: Absenderwille, Bedeutung, Risiko bei Nicht-Reaktion',
+        'Was das Schreiben bedeutet — Du-Form, knapp (3–5 Sätze, max. ~450 Zeichen): Absenderwille, Bedeutung, Risiko bei Nicht-Reaktion',
     },
     nextSteps: { type: 'string' as const, description: 'Nummerierte Liste der nächsten Schritte' },
     structuredSteps: {
@@ -51,16 +51,21 @@ export const ANALYZE_RESULT_SCHEMA = {
     },
     ...DECISION_OUTPUT_PROPERTIES,
     needsMoreDocuments: { type: 'boolean' as const },
-    requestedDocuments: { type: 'string' as const },
     documentsStatus: {
       type: 'string' as const,
       enum: ['not_needed', 'recommended', 'required'],
       description:
-        'not_needed = genug Kontext; recommended = zusätzliche Unterlagen wären hilfreich; required = ohne weitere Unterlagen keine belastbare Einordnung',
+        'Üblich recommended (weitere Unterlagen helfen, mit Beispielen). required nur wenn ohne sie keine Einordnung möglich. not_needed nur wenn die vorliegenden Dokumente allein klar genügen.',
     },
     documentsComment: {
       type: 'string' as const,
-      description: 'Kurzer deutscher Kommentar zur Unterlagen-Einschätzung für den Nutzer',
+      description:
+        '1–2 kurze Sätze zur Unterlagen-Einschätzung, z. B. „Weitere Unterlagen sind sinnvoll.“ plus knapper Grund',
+    },
+    requestedDocuments: {
+      type: 'string' as const,
+      description:
+        'Bei recommended/required konkrete Beispiele als Komma-Liste (z. B. „früherer Bescheid, Kontoauszug, Mietvertrag“) — nie leer bei recommended/required',
     },
     isComplete: { type: 'boolean' as const },
     documentChoiceRequired: { type: 'boolean' as const },
@@ -96,6 +101,7 @@ export type ParsedAnalyzePayload = {
   primaryDeadlineLabel?: string
   keyClaims?: { id: string; text: string }[]
   contestablePoints?: { id: string; claim: string; why: string; suggestedAction: string }[]
+  replyDraftRecommended?: boolean
   needsMoreDocuments: boolean
   requestedDocuments: string
   documentsStatus: DocumentsStatus
@@ -149,6 +155,7 @@ export function normalizeDocumentsFields(payload: {
 export function normalizeStructuredSteps(steps: StructuredStep[]): StructuredStep[] {
   return steps
     .filter((step) => step.text?.trim())
+    .slice(0, 4)
     .map((step, index) => {
       const normalized: StructuredStep = {
         id: step.id?.trim() || `schritt_${index + 1}`,
@@ -223,6 +230,7 @@ export const CLARIFY_SCHEMA = {
     updatedPrimaryDeadlineLabel: DECISION_OUTPUT_PROPERTIES.primaryDeadlineLabel,
     updatedKeyClaims: DECISION_OUTPUT_PROPERTIES.keyClaims,
     updatedContestablePoints: DECISION_OUTPUT_PROPERTIES.contestablePoints,
+    updatedReplyDraftRecommended: DECISION_OUTPUT_PROPERTIES.replyDraftRecommended,
     wordDocumentRequested: { type: 'boolean' as const },
     wordDocumentTitle: { type: 'string' as const },
     wordDocumentSubject: { type: 'string' as const },
@@ -244,6 +252,7 @@ export const CLARIFY_SCHEMA = {
     'updatedPrimaryDeadlineLabel',
     'updatedKeyClaims',
     'updatedContestablePoints',
+    'updatedReplyDraftRecommended',
     'wordDocumentRequested',
     'wordDocumentTitle',
     'wordDocumentSubject',
@@ -264,6 +273,7 @@ export type ClarifyPayload = {
   updatedPrimaryDeadlineLabel?: string
   updatedKeyClaims?: { id: string; text: string }[]
   updatedContestablePoints?: { id: string; claim: string; why: string; suggestedAction: string }[]
+  updatedReplyDraftRecommended?: boolean
   wordDocumentRequested: boolean
   wordDocumentTitle: string
   wordDocumentSubject: string

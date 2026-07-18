@@ -13,7 +13,7 @@ async function clearStore(storeName: LocalStoreName): Promise<void> {
   await runLocalTransaction(storeName, 'readwrite', (store) => store.clear())
 }
 
-const PLUS_ENGAGEMENT_KEY = 'behoerdenpost.plusEngagement.v1'
+const PLUS_ENGAGEMENT_KEY = 'behoerdenpost.plusEngagement.v2'
 const PLUS_ACTIVE_KEY = 'behoerdenpost.plus.active.v1'
 
 /** Entfernt alle lokalen App-Daten vom Gerät (Fälle, Fotos, Bibliothek, Profil). */

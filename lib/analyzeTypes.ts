@@ -10,7 +10,7 @@ export type StructuredStep = {
   priority?: 'hoch' | 'mittel' | 'niedrig'
 }
 
-export type DocumentKind = 'behoerde' | 'gericht' | 'anwalt' | 'versicherung' | 'sonstiges'
+export type DocumentKind = 'behoerde' | 'gericht' | 'anwalt' | 'versicherung' | 'formular' | 'sonstiges'
 
 export type KeyClaim = {
   id: string
@@ -76,6 +76,8 @@ export type AnalyzeResult = {
   keyClaims?: KeyClaim[]
   /** Prüf-/Angriffspunkte */
   contestablePoints?: ContestablePoint[]
+  /** KI: formales Antwortschreiben jetzt sinnvoll → Button anzeigen */
+  replyDraftRecommended?: boolean
   /** @deprecated Ableitung aus documentsStatus — required = true */
   needsMoreDocuments: boolean
   /** Konkrete Vorschläge, wenn recommended oder required */
@@ -173,6 +175,8 @@ export type ClarifyRequestBody = {
   /** Leer erlaubt, wenn attachments gesetzt — dann Standardfrage. */
   question: string
   attachments?: AnalyzeAttachment[]
+  /** Button „Antwortschreiben“: Entwurf zwingend als wordDocument liefern. */
+  requestWordDocument?: boolean
   currentReview: Pick<
     AnalyzeResult,
     'summary' | 'assessment' | 'nextSteps' | 'structuredSteps' | 'phase'
@@ -192,5 +196,6 @@ export type ClarifyResponseBody = {
   primaryDeadlineLabel?: string
   keyClaims: KeyClaim[]
   contestablePoints: ContestablePoint[]
+  replyDraftRecommended?: boolean
   wordDocument?: FollowUpWordDocument
 }

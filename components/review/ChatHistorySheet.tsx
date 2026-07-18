@@ -43,7 +43,7 @@ function AttachmentChips({ attachments }: { attachments: FollowUpAttachmentMeta[
       {attachments.map((attachment, index) => (
         <span
           key={`${attachment.fileName}-${index}`}
-          className="rounded-full bg-white/20 px-2.5 py-1 text-[0.7rem] font-medium text-white"
+          className="rounded-full bg-white/25 px-2.5 py-1 text-xs font-medium text-white"
         >
           {attachment.kind === 'pdf' ? '📄' : '📷'} {attachment.fileName}
         </span>
@@ -144,22 +144,22 @@ export default function ChatHistorySheet({
           aria-modal="true"
           aria-labelledby="chat-history-title"
         >
-          <div className="flex h-11 shrink-0 items-center gap-2 border-b border-border/70 px-3">
+          <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg px-2 py-1.5 text-sm font-medium text-accent hover:bg-accent-soft"
+              className="rounded-lg px-2 py-1.5 text-base font-medium text-accent hover:bg-accent-soft"
             >
               ← Zurück
             </button>
-            <h2 id="chat-history-title" className="truncate text-sm font-semibold tracking-tight">
+            <h2 id="chat-history-title" className="truncate text-base font-semibold tracking-tight text-foreground">
               Chatverlauf
             </h2>
           </div>
 
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
             {normalizedMessages.length === 0 ? (
-              <p className="rounded-2xl border border-border bg-accent-soft/40 px-4 py-3 text-sm leading-7 text-muted">
+              <p className="rounded-2xl border border-border bg-accent-soft/50 px-4 py-3 text-base leading-7 text-foreground/80">
                 Frage stellen oder Datei anhängen — beides zusammen geht auch.
               </p>
             ) : (
@@ -171,38 +171,38 @@ export default function ChatHistorySheet({
 
                     return (
                       <li key={`${message.at}-${index}`} className="flex flex-col items-end gap-1">
-                        <div className="max-w-[88%] rounded-2xl rounded-br-md bg-accent px-4 py-3 text-sm leading-7 text-white shadow-sm">
+                        <div className="max-w-[88%] rounded-2xl rounded-br-md border border-blue-950/20 bg-accent px-4 py-3 text-base leading-7 text-white shadow-sm dark:border-sky-300/20">
                           {userText ? <p className="whitespace-pre-wrap">{userText}</p> : null}
                           <AttachmentChips attachments={attachments} />
                           {!userText && attachments.length === 0 ? (
-                            <p className="italic opacity-90">Nachfrage mit Anhang</p>
+                            <p className="italic text-white/90">Nachfrage mit Anhang</p>
                           ) : null}
                         </div>
                         {message.contextSummary ? (
-                          <p className="max-w-[88%] text-right text-[0.68rem] leading-5 text-muted">
+                          <p className="max-w-[88%] text-right text-xs leading-5 text-foreground/65">
                             {message.contextSummary}
                           </p>
                         ) : null}
-                        <p className="text-[0.65rem] text-muted">{formatTime(message.at)}</p>
+                        <p className="text-xs text-foreground/55">{formatTime(message.at)}</p>
                       </li>
                     )
                   }
 
                   return (
                     <li key={`${message.at}-${index}`} className="flex flex-col items-start gap-1">
-                      <div className="max-w-[88%] rounded-2xl rounded-bl-md border border-border bg-surface px-4 py-3 text-sm leading-7 text-foreground shadow-sm">
+                      <div className="max-w-[88%] rounded-2xl rounded-bl-md border border-border bg-slate-100 px-4 py-3 text-base leading-7 text-foreground shadow-sm dark:border-slate-600 dark:bg-slate-800">
                         <p className="whitespace-pre-wrap">{message.content}</p>
                         {message.wordDocument ? (
-                          <div className="mt-3 space-y-2 rounded-xl border border-accent/25 bg-accent-soft/40 p-3">
+                          <div className="mt-3 space-y-2 rounded-xl border border-accent/30 bg-accent-soft/60 p-3 dark:bg-accent-soft/25">
                             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-accent">
                               Schreiben-Entwurf
                             </p>
-                            <p className="text-sm font-medium text-foreground">{message.wordDocument.title}</p>
-                            <p className="whitespace-pre-wrap text-sm leading-6 text-muted">
+                            <p className="text-base font-medium text-foreground">{message.wordDocument.title}</p>
+                            <p className="whitespace-pre-wrap text-sm leading-6 text-foreground/75">
                               {message.wordDocument.previewText}
                             </p>
                             {message.wordDocument.savedFileName ? (
-                              <p className="text-xs text-muted">
+                              <p className="text-sm text-foreground/70">
                                 „{message.wordDocument.savedFileName}“ in der Bibliothek gespeichert.
                               </p>
                             ) : onSaveWordDocument ? (
@@ -218,7 +218,7 @@ export default function ChatHistorySheet({
                           </div>
                         ) : null}
                       </div>
-                      <p className="text-[0.65rem] text-muted">{formatTime(message.at)}</p>
+                      <p className="text-xs text-foreground/55">{formatTime(message.at)}</p>
                     </li>
                   )
                 })}
@@ -232,14 +232,14 @@ export default function ChatHistorySheet({
                 {pending.map((item) => (
                   <span
                     key={item.id}
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-accent-soft/50 px-3 py-1.5 text-xs font-medium text-foreground"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-accent-soft/50 px-3 py-1.5 text-sm font-medium text-foreground"
                   >
                     {item.kind === 'pdf' ? '📄' : '📷'} {item.fileName}
                     <button
                       type="button"
                       aria-label={`${item.fileName} entfernen`}
                       onClick={() => setPending((current) => current.filter((entry) => entry.id !== item.id))}
-                      className="text-muted hover:text-foreground"
+                      className="text-foreground/60 hover:text-foreground"
                     >
                       ✕
                     </button>
@@ -254,7 +254,7 @@ export default function ChatHistorySheet({
                 disabled={busy || disabled || pending.length >= MAX_CHAT_ATTACHMENTS}
                 onClick={() => uploadRef.current?.click()}
                 aria-label="Anhang hinzufügen"
-                className={`${buttonStyles.header} h-10 w-10 shrink-0 px-0 py-0 text-base`}
+                className={`${buttonStyles.header} h-11 w-11 shrink-0 px-0 py-0 text-lg`}
               >
                 +
               </button>
@@ -267,16 +267,16 @@ export default function ChatHistorySheet({
                 rows={1}
                 maxLength={2000}
                 disabled={busy || disabled}
-                className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-2xl border-2 border-border bg-surface px-3.5 py-2.5 text-sm leading-6 text-foreground shadow-sm placeholder:text-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-60"
+                className="max-h-40 min-h-11 flex-1 resize-none overflow-y-auto rounded-2xl border-2 border-border bg-surface px-3.5 py-2.5 text-base leading-6 text-foreground shadow-sm placeholder:text-foreground/45 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/25 disabled:opacity-60"
               />
 
               <button
                 type="submit"
                 disabled={!canSend}
-                className={`h-11 shrink-0 rounded-2xl px-4 text-sm font-semibold ${
+                className={`h-11 shrink-0 rounded-2xl px-4 text-base font-semibold ${
                   canSend
                     ? 'border-2 border-blue-950 bg-gradient-to-b from-blue-700 via-accent to-blue-950 text-white'
-                    : 'cursor-not-allowed border-2 border-border bg-slate-100 text-muted opacity-80 dark:bg-slate-800'
+                    : 'cursor-not-allowed border-2 border-border bg-slate-100 text-foreground/50 opacity-80 dark:bg-slate-800'
                 }`}
               >
                 {busy ? '…' : 'Senden'}

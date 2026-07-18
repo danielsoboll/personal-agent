@@ -33,7 +33,8 @@ export const PLUS_CHECKOUT_UNAVAILABLE =
 
 export const PLUS_MOTIVATION_TITLE = 'Dein dauerhafter Helfer — nicht nur für einen Brief'
 export const PLUS_MOTIVATION_INTRO =
-  'Mit Historie, mehr Fällen und echtem Gedächtnis — damit du nicht jedes Mal bei null anfängst wie in einem nackten Chatbot.'
+  'Mit Historie, mehr Fällen und echtem Gedächtnis — damit du nicht jedes Mal bei null anfängst wie in einem reinen Chatbot.'
+
 
 export const PLUS_SHEET = {
   titleFree: PLUS_MOTIVATION_TITLE,
@@ -72,7 +73,7 @@ export const PLUS_FEATURES: PlusFeature[] = [
     emoji: '🤖',
     title: 'Dauerhafter KI-Agent',
     description:
-      'Behördenpost merkt sich deine Fälle, Fallakten und Verlauf — du startest nicht bei jeder Frage bei null wie in einem nackten Chatbot.',
+      'Behördenpost merkt sich deine Fälle, Fallakten und Verlauf — du startest nicht bei jeder Frage bei null wie in einem reinen Chatbot.',
   },
   {
     id: 'cases',

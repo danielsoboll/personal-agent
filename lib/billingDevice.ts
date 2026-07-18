@@ -18,3 +18,11 @@ export function getOrCreateBillingDeviceId(): string {
   window.localStorage.setItem(BILLING_DEVICE_ID_KEY, created)
   return created
 }
+
+/** Nach Recovery: gespeicherte Geräte-ID vom alten Handy übernehmen. */
+export function setBillingDeviceId(deviceId: string): void {
+  if (typeof window === 'undefined') return
+  const trimmed = deviceId.trim()
+  if (!trimmed) return
+  window.localStorage.setItem(BILLING_DEVICE_ID_KEY, trimmed)
+}

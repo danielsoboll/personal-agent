@@ -7,7 +7,7 @@
 export const DEFAULT_OPENAI_MODEL = 'gpt-5.6'
 
 /** Fallback falls das neueste Modell (noch) nicht freigeschaltet ist. */
-export const FALLBACK_OPENAI_MODEL = 'gpt-4o'
+export const FALLBACK_OPENAI_MODEL = 'gpt-5.4'
 
 export function resolveOpenAiModel(): string {
   const fromEnv = process.env.OPENAI_MODEL?.trim()

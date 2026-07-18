@@ -9,6 +9,7 @@ export const DOCUMENT_KIND_VALUES = [
   'gericht',
   'anwalt',
   'versicherung',
+  'formular',
   'sonstiges',
 ] as const satisfies readonly DocumentKind[]
 
@@ -63,13 +64,20 @@ export const DECISION_OUTPUT_PROPERTIES = {
   },
   keyClaims: {
     type: 'array' as const,
-    description: 'Wesentliche Behauptungen/Forderungen der Gegenseite oder des Absenders (0–6)',
+    description:
+      '0–3 Punkte: nur die wichtigsten Behauptungen/Forderungen bzw. bei Formularen kritische leere Felder (kurz)',
     items: KEY_CLAIM_SCHEMA,
   },
   contestablePoints: {
     type: 'array' as const,
-    description: 'Prüf-/Angriffspunkte mit kurzem Warum und vorgeschlagener Handlung (0–6)',
+    description:
+      '0–3 Punkte: nur die wichtigsten Angriffspunkte bzw. bei Formularen bereits ausgefüllte Felder prüfen',
     items: CONTESTABLE_POINT_SCHEMA,
+  },
+  replyDraftRecommended: {
+    type: 'boolean' as const,
+    description:
+      'true nur wenn ein formales Antwortschreiben jetzt sinnvoll ist (Widerspruch, Einspruch, Stellungnahme, Fristverlängerung, Antwort an Behörde/Gericht/Versicherung/Gegenseite); sonst false',
   },
 } as const
 
@@ -79,6 +87,7 @@ export const DECISION_OUTPUT_REQUIRED = [
   'primaryDeadlineLabel',
   'keyClaims',
   'contestablePoints',
+  'replyDraftRecommended',
 ] as const
 
 export function normalizeDocumentKind(value: unknown): DocumentKind {
@@ -92,7 +101,7 @@ export function normalizeKeyClaims(claims: KeyClaim[] | undefined): KeyClaim[] {
   if (!Array.isArray(claims)) return []
   return claims
     .filter((claim) => claim?.text?.trim())
-    .slice(0, 6)
+    .slice(0, 3)
     .map((claim, index) => ({
       id: claim.id?.trim() || `claim_${index + 1}`,
       text: claim.text.trim(),
@@ -103,7 +112,7 @@ export function normalizeContestablePoints(points: ContestablePoint[] | undefine
   if (!Array.isArray(points)) return []
   return points
     .filter((point) => point?.claim?.trim() && point?.why?.trim())
-    .slice(0, 6)
+    .slice(0, 3)
     .map((point, index) => ({
       id: point.id?.trim() || `punkt_${index + 1}`,
       claim: point.claim.trim(),
@@ -127,12 +136,14 @@ export function normalizeDecisionFields(payload: {
   primaryDeadlineLabel?: unknown
   keyClaims?: KeyClaim[]
   contestablePoints?: ContestablePoint[]
+  replyDraftRecommended?: unknown
 }): {
   documentKind: DocumentKind
   primaryDeadline?: string
   primaryDeadlineLabel?: string
   keyClaims: KeyClaim[]
   contestablePoints: ContestablePoint[]
+  replyDraftRecommended: boolean
 } {
   const primaryDeadline = normalizePrimaryDeadline(payload.primaryDeadline)
   const primaryDeadlineLabel =
@@ -144,5 +155,6 @@ export function normalizeDecisionFields(payload: {
     ...(primaryDeadline && primaryDeadlineLabel ? { primaryDeadlineLabel } : {}),
     keyClaims: normalizeKeyClaims(payload.keyClaims),
     contestablePoints: normalizeContestablePoints(payload.contestablePoints),
+    replyDraftRecommended: payload.replyDraftRecommended === true,
   }
 }

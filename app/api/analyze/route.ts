@@ -227,6 +227,7 @@ export async function POST(request: Request) {
       primaryDeadlineLabel: result.primaryDeadlineLabel,
       keyClaims: result.keyClaims,
       contestablePoints: result.contestablePoints,
+      replyDraftRecommended: result.replyDraftRecommended,
       needsMoreDocuments: result.needsMoreDocuments,
       requestedDocuments: result.requestedDocuments,
       documentsStatus: result.documentsStatus,

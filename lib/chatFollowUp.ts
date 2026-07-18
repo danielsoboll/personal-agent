@@ -13,8 +13,8 @@ export function buildAttachmentMetaSummary(attachments: FollowUpAttachmentMeta[]
   const images = attachments.length - pdfs
 
   const parts: string[] = []
-  if (images === 1) parts.push('1 Foto')
-  else if (images > 1) parts.push(`${images} Fotos`)
+  if (images === 1) parts.push('1 Dokument')
+  else if (images > 1) parts.push(`${images} Dokumente`)
   if (pdfs === 1) parts.push('1 PDF')
   else if (pdfs > 1) parts.push(`${pdfs} PDFs`)
 
@@ -25,7 +25,7 @@ export function buildDefaultContextSummary(attachmentCount: number, pdfCount: nu
   const imageCount = attachmentCount - pdfCount
   const attachmentPart = buildAttachmentMetaSummary(
     [
-      ...Array.from({ length: imageCount }, () => ({ fileName: 'Foto', kind: 'image' as const })),
+      ...Array.from({ length: imageCount }, () => ({ fileName: 'Dokument', kind: 'image' as const })),
       ...Array.from({ length: pdfCount }, () => ({ fileName: 'PDF', kind: 'pdf' as const })),
     ],
   )

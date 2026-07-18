@@ -2,6 +2,8 @@ import Stripe from 'https://esm.sh/stripe@14.25.0?target=deno'
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
 import { getStripe } from './billingStripe.ts'
+import { generateUniqueRecoveryCode } from './recoveryCode.ts'
+import { generateUniqueRecoveryCode } from './recoveryCode.ts'
 
 export type BillingDeviceRow = {
   device_id: string
@@ -190,7 +192,38 @@ export async function syncBillingDeviceFromSubscription(
   const patch = buildBillingDevicePatchFromSubscription(subscription, customerId)
   await upsertBillingDeviceRow(admin, deviceId, patch)
   await syncLinkedProfile(admin, deviceId, patch)
-  return rowToStatus(deviceId, patch)
+  const status = rowToStatus(deviceId, patch)
+
+  if (status.plusActive) {
+    await ensureRecoveryCodeOnDevice(admin, deviceId)
+  }
+
+  return status
+}
+
+async function ensureRecoveryCodeOnDevice(admin: SupabaseClient, deviceId: string): Promise<void> {
+  const { data, error } = await admin
+    .from('billing_devices')
+    .select('rec_code')
+    .eq('device_id', deviceId)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('ensureRecoveryCodeOnDevice read failed', error.message)
+    return
+  }
+  if (typeof data?.rec_code === 'string' && data.rec_code.trim()) return
+
+  try {
+    const recCode = await generateUniqueRecoveryCode(admin)
+    const { error: updateError } = await admin
+      .from('billing_devices')
+      .update({ rec_code: recCode, rec_code_ok: false, updated_at: new Date().toISOString() })
+      .eq('device_id', deviceId)
+    if (updateError) console.warn('ensureRecoveryCodeOnDevice update failed', updateError.message)
+  } catch (caught) {
+    console.warn('ensureRecoveryCodeOnDevice failed', caught)
+  }
 }
 
 export async function resolveBillingDeviceIdFromStripe(
@@ -200,9 +233,7 @@ export async function resolveBillingDeviceIdFromStripe(
   customerId?: string | null,
   clientReferenceId?: string | null,
 ): Promise<string | null> {
-  const fromMeta = readBillingDeviceId(metadata, clientReferenceId)
-  if (fromMeta) return fromMeta
-
+  // Nach Recovery zeigt Metadata ggf. noch aufs alte Gerät — DB hat Vorrang.
   if (subscriptionId) {
     const { data } = await admin
       .from('billing_devices')
@@ -221,7 +252,7 @@ export async function resolveBillingDeviceIdFromStripe(
     if (data?.device_id) return data.device_id as string
   }
 
-  return null
+  return readBillingDeviceId(metadata, clientReferenceId)
 }
 
 export async function syncBillingDeviceFromCheckoutSession(

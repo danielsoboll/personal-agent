@@ -14,9 +14,10 @@ import OnboardingShell, {
 import { logUserActivity } from '@/lib/activityLog'
 import { clearDraftCaseTitle, setDraftCaseTitle } from '@/lib/draftCase'
 import { CASE_TITLE_FIELD_NAME, caseTitleInputProps } from '@/lib/formInputAutofill'
-import { createCase } from '@/lib/localCases'
+import { isAtFreeCaseLimit } from '@/lib/freeCaseLimit'
+import { createCase, listCases } from '@/lib/localCases'
 import { getStoredProfileName } from '@/lib/localProfile'
-import { recordCaseCreated } from '@/lib/plusEngagement'
+import { recordCaseCreated, unlockPlusDiscoverNow } from '@/lib/plusEngagement'
 
 function readTitleFromForm(form: HTMLFormElement): string {
   const fromFormData = String(new FormData(form).get(CASE_TITLE_FIELD_NAME) ?? '').trim()
@@ -43,6 +44,16 @@ export default function FallNeuClient() {
     setSubmitting(true)
 
     try {
+      const existing = await listCases()
+      if (isAtFreeCaseLimit(existing.length)) {
+        unlockPlusDiscoverNow()
+        setError(
+          'Kostenlos kannst du einen Fall gleichzeitig nutzen. Lösche den bisherigen Fall auf der Startseite — oder hol dir PLUS.',
+        )
+        setSubmitting(false)
+        return
+      }
+
       const profileName = getStoredProfileName()
       if (profileName) {
         const created = await createCase(title, profileName)

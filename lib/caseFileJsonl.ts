@@ -216,7 +216,7 @@ export function createMinimalCaseFileContent(name: string, fall: string): string
   return createAktuellSectionCaseFile({
     name,
     fall,
-    anfrage: 'Fall angelegt — noch keine Fotos geprüft.',
+    anfrage: 'Fall angelegt — noch keine Dokumente geprüft.',
     resultat: {
       summary: '',
       assessment: '',

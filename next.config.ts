@@ -21,6 +21,10 @@ const allowedDevOrigins = getAllowedDevOrigins()
 const nextConfig: NextConfig = {
   allowedDevOrigins,
   devIndicators: false,
+  images: {
+    // Icon-Pfade nutzen Cache-Busting (?v=…) — Next 16 verlangt dafür localPatterns.
+    localPatterns: [{ pathname: '/**' }],
+  },
 }
 
 export default nextConfig

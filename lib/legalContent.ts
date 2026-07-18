@@ -58,7 +58,7 @@ export const IMPRESSUM_SECTIONS: LegalSection[] = [
   {
     title: 'Angebot',
     paragraphs: [
-      `${LEGAL_APP_NAME} ist eine webbasierte Progressive Web App (PWA), die Nutzerinnen und Nutzern hilft, Briefe, Anträge und Behördenpost zu fotografieren, einzuordnen und nächste Schritte zu verstehen. Fälle und Fallakten werden primär lokal auf dem Gerät gespeichert; zur Auswertung werden Fotos an eine KI-Schnittstelle übermittelt. Optional ist ein kostenpflichtiger Tarif „${LEGAL_PLUS_NAME}“ vorgesehen.`,
+      `${LEGAL_APP_NAME} ist eine webbasierte Progressive Web App (PWA), die Nutzerinnen und Nutzern hilft, Briefe, Anträge und Behördenpost zu fotografieren, einzuordnen und nächste Schritte zu verstehen. Fälle und Fallakten werden primär lokal auf dem Gerät gespeichert; zur Auswertung werden Dokumente an eine KI-Schnittstelle übermittelt. Optional ist ein kostenpflichtiger Tarif „${LEGAL_PLUS_NAME}“ vorgesehen.`,
       'Vertragsbedingungen für die Nutzung und das PLUS-Abo finden Sie in unseren AGB — einschließlich Hinweisen zum Widerrufsrecht bei digitalen Diensten. Datenschutz und Haftung sind unter den jeweiligen Seiten abrufbar.',
     ],
   },
@@ -109,7 +109,7 @@ export const DATENSCHUTZ_SECTIONS: LegalSection[] = [
     title: '2. Überblick',
     paragraphs: [
       `${LEGAL_APP_NAME} hilft Ihnen, Post und Behördenschreiben zu verstehen: Sie legen Fälle an, fotografieren Dokumente und erhalten Einordnungen sowie nächste Schritte.`,
-      'Ihre Fälle, Fallakten (JSONL), Bewertungen und erstellte Word-Schreiben werden standardmäßig lokal auf Ihrem Gerät gespeichert (IndexedDB, localStorage). Zur Auswertung werden Fotos und Fallinformationen über unsere Server an OpenAI (API) übermittelt.',
+      'Ihre Fälle, Fallakten (JSONL), Bewertungen und erstellte Word-Schreiben werden standardmäßig lokal auf Ihrem Gerät gespeichert (IndexedDB, localStorage). Zur Auswertung werden Dokumente und Fallinformationen über unsere Server an OpenAI (API) übermittelt.',
       'Diese Datenschutzerklärung erläutert, welche Daten verarbeitet werden, zu welchem Zweck, auf welcher Rechtsgrundlage und welche Rechte Sie haben.',
     ],
   },
@@ -119,7 +119,7 @@ export const DATENSCHUTZ_SECTIONS: LegalSection[] = [
     listItems: [
       'Profil- und Falldaten (Vorname, Fallname, Fallnummer, Status, Zeitstempel)',
       'Fallakte und Bewertungen (interne JSONL-Struktur, Zusammenfassungen, Schritte, Fristen — abgeleitet aus Ihren Dokumenten)',
-      'Fotos von Briefen und Unterlagen (temporär lokal, zur Auswertung an die KI übermittelt; verarbeitete Fotos werden lokal gelöscht)',
+      'Dokumente von Briefen und Unterlagen (temporär lokal, zur Auswertung an die KI übermittelt; verarbeitete Dokumente werden lokal gelöscht)',
       'Generierte Word-Dokumente in der Bibliothek (lokal auf dem Gerät)',
       'Technische Einstellungen (Theme, Entwürfe, aktiver Fall) in localStorage',
       'Bei PLUS-Abschluss (geplant): Stripe-Kunden- und Abo-Kennungen, Zahlungsstatus (keine vollständigen Kartendaten bei uns)',
@@ -130,7 +130,7 @@ export const DATENSCHUTZ_SECTIONS: LegalSection[] = [
   {
     title: '4. KI-Auswertung über OpenAI',
     paragraphs: [
-      'Zur Analyse senden wir Fotos, Ihren Vornamen, Fallnamen und — bei Folgeprüfungen — Inhalte der lokalen Fallakte an die OpenAI API. OpenAI verarbeitet diese Daten als Auftragsverarbeiter, soweit wir einen Auftragsverarbeitungsvertrag (DPA) abgeschlossen haben.',
+      'Zur Analyse senden wir Dokumente, Ihren Vornamen, Fallnamen und — bei Folgeprüfungen — Inhalte der lokalen Fallakte an die OpenAI API. OpenAI verarbeitet diese Daten als Auftragsverarbeiter, soweit wir einen Auftragsverarbeitungsvertrag (DPA) abgeschlossen haben.',
       'Für die OpenAI API gilt standardmäßig: API-Daten werden nicht zum Training der Modelle verwendet. OpenAI kann Inhalte bis zu 30 Tage speichern, um Missbrauch zu erkennen und den Dienst zu betreiben. Eine kürzere Speicherung (Zero Data Retention) ist ggf. auf Anfrage möglich.',
       'OpenAI kann als US-Anbieter Daten in Drittländer übermitteln. Die Übermittlung erfolgt auf Grundlage geeigneter Garantien (z. B. Standardvertragsklauseln), soweit erforderlich.',
       'Weitere Informationen: https://openai.com/enterprise-privacy/ und https://developers.openai.com/api/docs/guides/your-data',
@@ -141,7 +141,7 @@ export const DATENSCHUTZ_SECTIONS: LegalSection[] = [
     paragraphs: ['Wir verarbeiten Daten, um'],
     listItems: [
       `${LEGAL_APP_NAME} bereitzustellen und Fälle auf Ihrem Gerät zu verwalten`,
-      'Fotos und Fallakten per KI auszuwerten und verständliche Schritte anzuzeigen',
+      'Dokumente und Fallakten per KI auszuwerten und verständliche Schritte anzuzeigen',
       'Word-Schreiben vorzubereiten und lokal in der Bibliothek zu speichern',
       'das PLUS-Abo zu verwalten, zu verlängern und den Leistungsumfang freizuschalten (sofern gebucht)',
       'Stabilität, Sicherheit und Weiterentwicklung der App sicherzustellen',
@@ -161,7 +161,7 @@ export const DATENSCHUTZ_SECTIONS: LegalSection[] = [
   {
     title: '7. Speicherung auf Ihrem Gerät (TDDDG, IndexedDB, localStorage)',
     paragraphs: [
-      'Fälle, Fallakten, Bewertungen, Bibliotheksdokumente und — bis zur Verarbeitung — Fotos werden lokal in IndexedDB gespeichert. Vorname, Theme und der aktive Fall werden in localStorage zwischengespeichert.',
+      'Fälle, Fallakten, Bewertungen, Bibliotheksdokumente und — bis zur Verarbeitung — Dokumente werden lokal in IndexedDB gespeichert. Vorname, Theme und der aktive Fall werden in localStorage zwischengespeichert.',
       'Diese lokale Speicherung dient der App-Funktion auf Ihrem Gerät. Sie können lokale Daten über Browser- oder Geräteeinstellungen löschen; dabei gehen Ihre Fälle auf diesem Gerät verloren.',
       'Technisch notwendige Cookies oder vergleichbare Speicher können für den Betrieb der PWA erforderlich sein (§ 25 Abs. 2 Nr. 2 TDDDG).',
     ],
