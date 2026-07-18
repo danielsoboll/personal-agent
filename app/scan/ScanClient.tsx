@@ -45,7 +45,7 @@ function parseIntent(value: string | null): AnalyzeIntent {
   return 'initial'
 }
 
-function openCamera(input: HTMLInputElement | null) {
+function openFileInput(input: HTMLInputElement | null) {
   if (!input) return
   window.setTimeout(() => input.click(), 150)
 }
@@ -56,7 +56,7 @@ export default function ScanClient() {
   const router = useRouter()
   const plus = usePlusDiscoverHeader()
   const searchParams = useSearchParams()
-  const inputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const uploadInputRef = useRef<HTMLInputElement>(null)
   const peekRequestIdRef = useRef(0)
   const peekPromiseRef = useRef<Promise<DocumentPeekResult | null> | null>(null)
@@ -80,22 +80,22 @@ export default function ScanClient() {
       return {
         title: 'Weitere Fotos zum aktuellen Schreiben',
         heading: 'Ergänze das aktuelle Schreiben',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — aus der Mediathek oder als Datei.`,
       }
     }
 
     if (intent === 'historical') {
       return {
         title: 'Ältere Dokumente erfassen',
-        heading: 'Fotografiere ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Foto aufnehmen oder Datei hochladen (Bild/PDF).`,
+        heading: 'Ältere Unterlagen für den Hintergrund',
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — aus der Mediathek oder als Datei.`,
       }
     }
 
     return {
       title: 'Dokument erfassen',
-      heading: 'Fotografiere oder lade dein Dokument hoch',
-      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente. PDFs werden direkt ausgewertet — Fotos und Dateien kannst du vor dem Prüfen antippen, um sie zu entfernen.`,
+      heading: 'Dokument hinzufügen',
+      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente — aus der Mediathek oder als Datei.`,
     }
   }, [intent])
 
@@ -200,50 +200,6 @@ export default function ScanClient() {
     ])
 
     return raced ?? peekResult ?? undefined
-  }
-
-  async function saveDocumentBlob(
-    blob: Blob,
-    meta?: { fileName?: string; mimeType?: string; kind?: StoredPhoto['kind'] },
-  ): Promise<boolean> {
-    setBusy(true)
-    setError('')
-
-    try {
-      const saved = await addDocumentPhoto(blob, maxPhotos, undefined, meta)
-      const previewUrl = saved.kind === 'pdf' ? null : createPhotoPreviewUrl(saved.blob)
-      const committed: PhotoPreview = { ...saved, previewUrl }
-      setPhotos((current) => [...current, committed])
-      return true
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Datei konnte nicht gespeichert werden.')
-      return false
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function handlePhotoSelected(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-
-    if (!file || analyzing || busy) return
-
-    if (photos.length >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Dokumente möglich.`)
-      return
-    }
-
-    const saved = await saveDocumentBlob(file, {
-      fileName: file.name || 'Foto.jpg',
-      mimeType: file.type || 'image/jpeg',
-      kind: 'image',
-    })
-    if (!saved) return
-
-    if (photos.length + 1 >= maxPhotos) {
-      setError(`Maximal ${maxPhotos} Dokumente erreicht. Tippe auf Prüfen.`)
-    }
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
@@ -387,18 +343,18 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openCamera(inputRef.current)}
+                  onClick={() => openFileInput(galleryInputRef.current)}
                   className={buttonStyles.secondary}
                 >
-                  Neues Foto
+                  Aus Mediathek
                 </button>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => uploadInputRef.current?.click()}
+                  onClick={() => openFileInput(uploadInputRef.current)}
                   className={buttonStyles.secondary}
                 >
-                  Datei hochladen
+                  Datei auswählen
                 </button>
               </>
             ) : null}
@@ -471,24 +427,24 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openCamera(inputRef.current)}
+                  onClick={() => openFileInput(galleryInputRef.current)}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
-                    📷
+                    🖼️
                   </span>
-                  <span>{busy ? 'Wird gespeichert …' : 'Foto aufnehmen'}</span>
+                  <span>{busy ? 'Wird gespeichert …' : 'Aus Mediathek'}</span>
                 </button>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => uploadInputRef.current?.click()}
+                  onClick={() => openFileInput(uploadInputRef.current)}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
-                    📄
+                    📁
                   </span>
-                  <span>{busy ? 'Wird verarbeitet …' : 'Datei hochladen'}</span>
+                  <span>{busy ? 'Wird verarbeitet …' : 'Datei auswählen'}</span>
                 </button>
               </>
             ) : null}
@@ -496,18 +452,16 @@ export default function ScanClient() {
 
           <p className="text-sm text-muted">
             {photos.length} von {maxPhotos} Dokumenten
-            {photos.length === 0
-              ? ' — Foto aufnehmen oder Datei hochladen (JPG, PNG, PDF).'
-              : ' — tippe auf ein Dokument, um es vor dem Prüfen zu entfernen.'}
+            {photos.length > 0 ? ' — tippe zum Entfernen' : ''}
           </p>
 
           <input
-            ref={inputRef}
+            ref={galleryInputRef}
             type="file"
-            accept="image/*"
-            capture="environment"
+            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+            multiple
             className="hidden"
-            onChange={(event) => void handlePhotoSelected(event)}
+            onChange={(event) => void handleFilesSelected(event)}
           />
 
           <input
