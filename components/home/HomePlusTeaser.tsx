@@ -1,6 +1,6 @@
 'use client'
 
-import { PLUS_CTA_LABEL, PLUS_MOTIVATION_INTRO } from '@/lib/plusFeatures'
+import { PLUS_CTA_LABEL, PLUS_MOTIVATION_INTRO, PLUS_MOTIVATION_TITLE } from '@/lib/plusFeatures'
 import { PLUS_HOME_TEASER_CLASS, PLUS_HOME_TEASER_CTA_CLASS } from '@/lib/plusShell'
 
 type HomePlusTeaserProps = {
@@ -13,7 +13,7 @@ export default function HomePlusTeaser({ onDiscover, className = '' }: HomePlusT
   return (
     <section className={`${PLUS_HOME_TEASER_CLASS} ${className}`} aria-label="Behördenpost PLUS">
       <p className="text-sm font-bold leading-snug text-amber-950 dark:text-amber-100">
-        Dein dauerhafter Helfer — nicht nur für einen Brief
+        {PLUS_MOTIVATION_TITLE}
       </p>
       <p className="mt-1.5 text-xs leading-5 text-amber-900/85 dark:text-amber-200/85">
         {PLUS_MOTIVATION_INTRO}

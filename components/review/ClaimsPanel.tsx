@@ -22,7 +22,7 @@ export default function ClaimsPanel({
     <div className="space-y-5">
       {claims.length > 0 ? (
         <section className="space-y-2">
-          <h3 className="text-lg font-semibold tracking-tight">Was behauptet wird</h3>
+          <h3 className="text-lg font-semibold tracking-tight">Behauptungen</h3>
           <ul className="space-y-2">
             {claims.map((claim) => (
               <li
@@ -38,7 +38,7 @@ export default function ClaimsPanel({
 
       {points.length > 0 ? (
         <section className="space-y-3">
-          <h3 className="text-lg font-semibold tracking-tight">Wo du ansetzen kannst</h3>
+          <h3 className="text-lg font-semibold tracking-tight">Prüfpunkte</h3>
           <ul className="space-y-2">
             {points.map((point) => (
               <li

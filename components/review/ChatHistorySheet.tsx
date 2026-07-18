@@ -10,7 +10,7 @@ import {
   normalizeFollowUpMessage,
 } from '@/lib/chatFollowUp'
 import type { FollowUpAttachmentMeta, FollowUpMessage, FollowUpWordDocument } from '@/lib/analyzeTypes'
-import { UPLOAD_ACCEPT, prepareUploadFile } from '@/lib/documentUpload'
+import { UPLOAD_ACCEPT, displayDocumentLabel, prepareUploadFile } from '@/lib/documentUpload'
 
 type PendingAttachment = FollowUpAttachmentMeta & {
   id: string
@@ -45,7 +45,8 @@ function AttachmentChips({ attachments }: { attachments: FollowUpAttachmentMeta[
           key={`${attachment.fileName}-${index}`}
           className="rounded-full bg-white/20 px-2.5 py-1 text-[0.7rem] font-medium text-white"
         >
-          {attachment.kind === 'pdf' ? '📄' : '📷'} {attachment.fileName}
+          {attachment.kind === 'pdf' ? '📄' : '📷'}{' '}
+          {displayDocumentLabel(attachment.fileName, attachment.kind)}
         </span>
       ))}
     </div>
@@ -159,8 +160,8 @@ export default function ChatHistorySheet({
 
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
             {normalizedMessages.length === 0 ? (
-              <p className="rounded-2xl border border-border bg-accent-soft/40 px-4 py-3 text-sm leading-7 text-muted">
-                Stelle eine Frage oder lade ergänzende Unterlagen hoch — beides zusammen geht auch.
+              <p className="rounded-2xl border border-border bg-accent-soft/40 px-4 py-3 text-sm leading-6 text-muted">
+                Frage stellen oder Datei anhängen.
               </p>
             ) : (
               <ul className="space-y-4 pb-2">
@@ -234,10 +235,10 @@ export default function ChatHistorySheet({
                     key={item.id}
                     className="inline-flex items-center gap-2 rounded-full border border-border bg-accent-soft/50 px-3 py-1.5 text-xs font-medium text-foreground"
                   >
-                    {item.kind === 'pdf' ? '📄' : '📷'} {item.fileName}
+                    {item.kind === 'pdf' ? '📄' : '📷'} {displayDocumentLabel(item.fileName, item.kind)}
                     <button
                       type="button"
-                      aria-label={`${item.fileName} entfernen`}
+                      aria-label={`${displayDocumentLabel(item.fileName, item.kind)} entfernen`}
                       onClick={() => setPending((current) => current.filter((entry) => entry.id !== item.id))}
                       className="text-muted hover:text-foreground"
                     >

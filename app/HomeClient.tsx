@@ -18,7 +18,6 @@ import {
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
 import { ensurePlusDiscoverFromCaseCount } from '@/lib/plusEngagement'
 import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
-import PrivacyTrustPoints from '@/components/onboarding/PrivacyTrustPoints'
 import LegalFooterNav from '@/components/legal/LegalFooterNav'
 
 function formatCaseDateShort(timestamp: number): string {
@@ -75,7 +74,7 @@ export default function HomeClient() {
       }
       footer={
         <PrimaryButton href="/fall/neu">
-          {hasCases ? 'Neuen Fall anlegen' : 'Jetzt Dokument fotografieren'}
+          {hasCases ? 'Neuen Fall anlegen' : 'Dokument hinzufügen'}
         </PrimaryButton>
       }
     >
@@ -84,26 +83,17 @@ export default function HomeClient() {
           <p className="text-sm text-muted">Fälle werden geladen …</p>
         ) : !hasCases ? (
           <>
-            <PageIntro
-              showBrand={false}
-              title="Briefe, Anträge und E-Mails besser verstehen"
-              description="Behördenpost und wichtige Schreiben verstehen — mit klaren nächsten Schritten, direkt auf dem Handy."
-            />
+            <PageIntro showBrand={false} title="Schreiben besser verstehen" />
             <HomeHeroFlow />
             <FreeTrialCallout />
             {plus.visible && !plus.plusActive ? (
               <HomePlusTeaser onDiscover={plus.openPlusDiscover} />
             ) : null}
-            <PrivacyTrustPoints />
+            <PrivacyNote variant="storage" />
           </>
         ) : (
           <>
-            <PageIntro
-              showBrand={false}
-              title="Deine Fälle"
-              description="Wähle einen bestehenden Fall oder lege einen neuen an. Jeder Fall bleibt getrennt auf deinem Handy gespeichert."
-            />
-            <PrivacyNote variant="storage" />
+            <PageIntro showBrand={false} title="Deine Fälle" />
             <ul className="space-y-3">
               {cases.map((caseItem) => (
                 <li key={caseItem.id} className="flex items-center gap-2">

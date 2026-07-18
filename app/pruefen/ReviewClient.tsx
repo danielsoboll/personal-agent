@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
-import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
 import DeadlineBanner from '@/components/review/DeadlineBanner'
 import ClaimsPanel from '@/components/review/ClaimsPanel'
@@ -37,7 +37,7 @@ import { displaySummary, shouldShowSummary } from '@/lib/reviewDisplay'
 import { formatDeadlineShort } from '@/lib/deadlineDisplay'
 import { buildReviewChanges, type ReviewChangeItem } from '@/lib/reviewDiff'
 import { loadDoneStepIds, toggleDoneStepId } from '@/lib/stepProgress'
-import { documentChoiceHint, reviewFooterState } from '@/lib/reviewFooter'
+import { reviewFooterState } from '@/lib/reviewFooter'
 import {
   getActiveCase,
   saveCaseFileContent,
@@ -368,9 +368,6 @@ export default function ReviewClient() {
   }
 
   const footer = reviewFooterState(review)
-  const showDocumentChoice = footer.showDocumentChoice
-  const showOptionalDocumentChoice = footer.showOptionalDocumentChoice
-  const showFinalButton = footer.showFinalButton
   const steps: StructuredStep[] = review?.structuredSteps?.length
     ? review.structuredSteps
     : review?.nextSteps
@@ -398,12 +395,12 @@ export default function ReviewClient() {
                     <>
                       {footer.showAllCapturedButton ? (
                         <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
-                          Alle Dokumente erfasst — weiter
+                          Fertig — weiter
                         </PrimaryButton>
                       ) : null}
                       {footer.showCurrentMoreButton ? (
                         <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                          Weitere Fotos (aktuell)
+                          Noch was zum aktuellen Schreiben
                         </SecondaryButton>
                       ) : null}
                       {footer.showHistoricalButton ? (
@@ -422,12 +419,12 @@ export default function ReviewClient() {
                       ) : null}
                       {footer.showCurrentMoreButton ? (
                         <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                          Optional: Weitere Unterlagen
+                          Noch eine Datei
                         </SecondaryButton>
                       ) : null}
                       {footer.showHistoricalButton ? (
                         <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                          Optional: Ältere Unterlagen
+                          Ältere Unterlagen
                         </SecondaryButton>
                       ) : null}
                     </>
@@ -438,11 +435,11 @@ export default function ReviewClient() {
                     </PrimaryButton>
                   ) : null}
                   {review.phase === 'final' ? (
-                    <PrimaryButton href="/scan">Neues Schreiben fotografieren</PrimaryButton>
+                    <PrimaryButton href="/scan">Neues Schreiben hinzufügen</PrimaryButton>
                   ) : null}
                 </>
               ) : (
-                <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
+                <PrimaryButton href="/scan">Dokument hinzufügen</PrimaryButton>
               )}
             </div>
           ) : null
@@ -467,7 +464,7 @@ export default function ReviewClient() {
 
               {shouldShowSummary(review.summary, review.assessment) ? (
                 <div className="rounded-2xl border border-accent/25 bg-accent-soft p-5">
-                  <p className="text-sm font-semibold text-accent">Kurze Zusammenfassung</p>
+                  <p className="text-sm font-semibold text-accent">Kurzfassung</p>
                   <p className="mt-2 whitespace-pre-line text-base leading-7 text-foreground">
                     {displaySummary(review.summary)}
                   </p>
@@ -475,7 +472,7 @@ export default function ReviewClient() {
               ) : null}
 
               <div className="space-y-2">
-                <h2 className="text-xl font-semibold tracking-tight">Was das für dich bedeutet</h2>
+                <h2 className="text-xl font-semibold tracking-tight">Bedeutung</h2>
                 <p className="leading-8 text-foreground">{review.assessment}</p>
               </div>
 
@@ -553,17 +550,6 @@ export default function ReviewClient() {
                 </div>
               )}
 
-              {(showDocumentChoice || showOptionalDocumentChoice) && review ? (
-                <p className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm leading-7 text-muted">
-                  {documentChoiceHint(review, footer.showAllCapturedButton, showOptionalDocumentChoice)}
-                </p>
-              ) : null}
-
-              {showFinalButton ? (
-                <p className="text-sm leading-6 text-muted">Unten: „Bewertung einholen“ tippen.</p>
-              ) : null}
-
-
               <button
                 type="button"
                 disabled={busy || wordDocBusyAt !== null}
@@ -602,12 +588,7 @@ export default function ReviewClient() {
             <>
               <PageIntro
                 title="Noch keine Auswertung"
-                description={
-                  <>
-                    Fotografiere zuerst ein Schreiben und tippe auf Prüfen. Danach siehst du hier die Bewertung
-                    und nächsten Schritte für „{activeCase?.title}“.
-                  </>
-                }
+                description="Füge zuerst ein Schreiben hinzu und tippe auf Prüfen."
               />
               <div className="border-t border-border pt-6">
                 {activeCase ? (
@@ -620,7 +601,6 @@ export default function ReviewClient() {
                   />
                 ) : null}
               </div>
-              <PrivacyNote variant="analysis" />
             </>
           )}
         </section>

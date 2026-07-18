@@ -50,23 +50,3 @@ export function reviewFooterState(review: AnalyzeResult | null): ReviewFooterSta
     showFinalButton,
   }
 }
-
-export function documentChoiceHint(
-  review: AnalyzeResult,
-  showAllCapturedButton: boolean,
-  optional = false,
-): string {
-  if (optional) {
-    return 'Die KI sieht aktuell keine weiteren Pflicht-Unterlagen — du kannst trotzdem optional ergänzen, falls du noch etwas hinzufügen möchtest.'
-  }
-
-  if (showAllCapturedButton) {
-    return 'Wähle, wie es weitergeht: Ergänzungsfotos zum aktuellen Schreiben, ältere Unterlagen für den Hintergrund — oder signalisiere, dass alle relevanten Dokumente erfasst sind.'
-  }
-
-  if (review.intent === 'initial') {
-    return 'Du kannst ergänzende Fotos zum aktuellen Schreiben hochladen oder ältere Unterlagen für den Hintergrund erfassen.'
-  }
-
-  return 'Du kannst weitere Fotos zum aktuellen Schreiben oder ältere Unterlagen hinzufügen.'
-}

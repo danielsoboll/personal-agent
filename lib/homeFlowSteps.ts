@@ -12,20 +12,20 @@ export type HomeFlowStep = {
 export const HOME_FLOW_STEPS: HomeFlowStep[] = [
   {
     number: 1,
-    emoji: '📷',
-    label: 'Foto machen',
+    emoji: '📄',
+    label: 'Dokument wählen',
     imageSrc: BRAND_MARK_SRC,
     imageAlt: BRAND_MARK_ALT,
   },
   {
     number: 2,
     emoji: '🤖',
-    label: 'KI versteht & bewertet',
+    label: 'KI prüft',
   },
   {
     number: 3,
     emoji: '✅',
-    label: 'Das solltest du jetzt tun',
+    label: 'Nächste Schritte',
     imageSrc: '/home/home-step-understood.png',
     imageAlt: 'Person mit Verstanden-Ausdruck und Idee',
   },

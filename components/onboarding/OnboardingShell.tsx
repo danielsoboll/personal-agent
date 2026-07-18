@@ -176,10 +176,10 @@ export function PrivacyNote({ variant = 'storage' }: { variant?: 'storage' | 'an
   const text = variant === 'analysis' ? PRIVACY_ANALYSIS_SHORT : PRIVACY_STORAGE_SHORT
 
   return (
-    <p className="rounded-2xl border border-accent/20 bg-accent-soft px-4 py-3 text-sm leading-6 text-foreground">
+    <p className="rounded-xl border border-accent/20 bg-accent-soft px-3 py-2 text-sm leading-5 text-foreground">
       {text}{' '}
       <Link href="/datenschutz" className="font-medium text-accent underline-offset-4 hover:underline">
-        Datenschutzerklärung
+        Mehr
       </Link>
     </p>
   )

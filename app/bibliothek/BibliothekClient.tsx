@@ -58,23 +58,17 @@ export default function BibliothekClient() {
       backNav={{ href: '/', label: 'Zurück zur Fallübersicht' }}
     >
       <section className="flex flex-1 flex-col gap-6">
-        <PageIntro
-          title="Deine Dokumente"
-          description="Hier findest du Word-Schreiben, die du aus dem Chat als Entwurf gespeichert hast. Tippe auf ein Dokument, um es erneut herunterzuladen."
-        />
+        <PageIntro title="Gespeicherte Schreiben" description="Tippen zum Öffnen." />
 
         {!ready ? (
-          <p className="text-sm text-muted">Bibliothek wird geladen …</p>
+          <p className="text-sm text-muted">Wird geladen …</p>
         ) : documents.length === 0 ? (
           <div className="flex flex-col items-center gap-4 rounded-2xl border-2 border-border bg-gradient-to-b from-surface via-slate-50 to-slate-100/80 px-5 py-8 text-center ring-1 ring-border/25 dark:from-slate-900 dark:via-slate-900 dark:to-slate-950">
             <span className="text-4xl" aria-hidden>
               📄
             </span>
-            <p className="text-base font-semibold text-foreground">Noch keine Schreiben</p>
-            <p className="max-w-sm text-sm leading-7 text-muted">
-              Wenn die KI im Chat ein formales Schreiben vorschlägt, kannst du es als Word speichern — es landet dann
-              hier.
-            </p>
+            <p className="text-base font-semibold text-foreground">Noch nichts gespeichert</p>
+            <p className="max-w-sm text-sm leading-6 text-muted">Aus dem Chat speichern — landet hier.</p>
             <PrimaryButton href="/pruefen">Zur Auswertung</PrimaryButton>
           </div>
         ) : (
