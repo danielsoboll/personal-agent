@@ -29,7 +29,11 @@ import {
   type StoredPhoto,
 } from '@/lib/localDocuments'
 import { prepareUploadFiles, displayDocumentLabel } from '@/lib/documentUpload'
-import { DOCUMENT_FILE_ACCEPT, pickDocuments } from '@/lib/pickDocuments'
+import {
+  DOCUMENT_FILE_ACCEPT,
+  canUseFolderPicker,
+  pickDocuments,
+} from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
@@ -46,8 +50,13 @@ function parseIntent(value: string | null): AnalyzeIntent {
   return 'initial'
 }
 
-function openFileInput(input: HTMLInputElement | null) {
+/** Kamera: kurzer Delay ok. Dokument-Picker: sync=true (iOS User-Geste). */
+function openFileInput(input: HTMLInputElement | null, options?: { sync?: boolean }) {
   if (!input) return
+  if (options?.sync) {
+    input.click()
+    return
+  }
   window.setTimeout(() => input.click(), 150)
 }
 
@@ -262,18 +271,25 @@ export default function ScanClient() {
     await ingestFiles([file])
   }
 
-  /** Ein Tipp: Android → Downloads-Ordner, iPhone → Dateien mit wählbaren PDFs. */
-  async function handleDocumentUpload() {
+  /** Ein Tipp → direkt System-Picker (Downloads/Dateien), kein App-Menü. */
+  function handleDocumentUpload() {
     if (analyzing || busy || !canAddMore) return
 
-    const picked = await pickDocuments({ multiple: true, source: 'downloads' })
-    if (picked === null) return
-    if (picked === 'fallback') {
-      openFileInput(uploadInputRef.current)
+    // iPhone: sofort in derselben Geste — sonst kein brauchbarer Dateien-Dialog
+    if (!canUseFolderPicker()) {
+      openFileInput(uploadInputRef.current, { sync: true })
       return
     }
 
-    await ingestFiles(picked)
+    void (async () => {
+      const picked = await pickDocuments({ multiple: true, source: 'downloads' })
+      if (picked === null) return
+      if (picked === 'fallback') {
+        openFileInput(uploadInputRef.current, { sync: true })
+        return
+      }
+      await ingestFiles(picked)
+    })()
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
@@ -383,7 +399,7 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => void handleDocumentUpload()}
+                  onClick={handleDocumentUpload}
                   className={buttonStyles.secondary}
                 >
                   Dokument hochladen
@@ -459,9 +475,7 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => {
-                    openFileInput(cameraInputRef.current)
-                  }}
+                  onClick={() => openFileInput(cameraInputRef.current)}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
@@ -472,7 +486,7 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => void handleDocumentUpload()}
+                  onClick={handleDocumentUpload}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
