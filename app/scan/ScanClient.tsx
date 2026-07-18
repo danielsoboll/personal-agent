@@ -30,9 +30,11 @@ import {
 } from '@/lib/localDocuments'
 import { prepareUploadFiles, displayDocumentLabel } from '@/lib/documentUpload'
 import {
-  DOCUMENT_FILE_ACCEPT,
-  canUseFolderPicker,
+  DOCUMENT_UPLOAD_ACCEPT,
+  canOpenWellKnownFolders,
   pickDocuments,
+  systemUploadAccept,
+  type DocumentPickSource,
 } from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
@@ -50,14 +52,9 @@ function parseIntent(value: string | null): AnalyzeIntent {
   return 'initial'
 }
 
-/** Kamera: kurzer Delay ok. Dokument-Picker: sync=true (iOS User-Geste). */
-function openFileInput(input: HTMLInputElement | null, options?: { sync?: boolean }) {
-  if (!input) return
-  if (options?.sync) {
-    input.click()
-    return
-  }
-  window.setTimeout(() => input.click(), 150)
+/** Sofort klicken — setTimeout bricht auf iOS die User-Geste. */
+function openFileInput(input: HTMLInputElement | null) {
+  input?.click()
 }
 
 const PEEK_WAIT_MS = 12_000
@@ -80,10 +77,18 @@ export default function ScanClient() {
   const [peekResult, setPeekResult] = useState<DocumentPeekResult | null>(null)
   const [peekBusy, setPeekBusy] = useState(false)
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
+  const [fileSourceOpen, setFileSourceOpen] = useState(false)
+  const [folderPickerAvailable, setFolderPickerAvailable] = useState(false)
+  const [uploadAccept, setUploadAccept] = useState<string | undefined>(DOCUMENT_UPLOAD_ACCEPT)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
   const canAddMore = photos.length < maxPhotos
+
+  useEffect(() => {
+    setFolderPickerAvailable(canOpenWellKnownFolders())
+    setUploadAccept(systemUploadAccept())
+  }, [])
 
   const copy = useMemo(() => {
     if (intent === 'current_more') {
@@ -268,33 +273,41 @@ export default function ScanClient() {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
+    setFileSourceOpen(false)
     await ingestFiles([file])
   }
 
-  /** Ein Tipp → direkt System-Picker (Downloads/Dateien), kein App-Menü. */
+  /** iPhone: direkt System-Dialog (2 Tipps). Android: Menü Downloads/Dokumente. */
   function handleDocumentUpload() {
     if (analyzing || busy || !canAddMore) return
+    if (folderPickerAvailable) {
+      setFileSourceOpen(true)
+      return
+    }
+    openFileInput(uploadInputRef.current)
+  }
 
-    // iPhone: sofort in derselben Geste — sonst kein brauchbarer Dateien-Dialog
-    if (!canUseFolderPicker()) {
-      openFileInput(uploadInputRef.current, { sync: true })
+  async function handlePickDocuments(source: DocumentPickSource) {
+    if (analyzing || busy || !canAddMore) return
+
+    const picked = await pickDocuments({
+      multiple: true,
+      source: source === 'downloads' ? 'downloads' : 'documents',
+    })
+    if (picked === null) return
+    if (picked !== 'fallback') {
+      setFileSourceOpen(false)
+      await ingestFiles(picked)
       return
     }
 
-    void (async () => {
-      const picked = await pickDocuments({ multiple: true, source: 'downloads' })
-      if (picked === null) return
-      if (picked === 'fallback') {
-        openFileInput(uploadInputRef.current, { sync: true })
-        return
-      }
-      await ingestFiles(picked)
-    })()
+    openFileInput(uploadInputRef.current)
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
+    setFileSourceOpen(false)
     await ingestFiles(files)
   }
 
@@ -386,39 +399,70 @@ export default function ScanClient() {
         }
         footer={
           <div className="space-y-2">
-            {canAddMore && photos.length > 0 ? (
+            {fileSourceOpen && folderPickerAvailable ? (
               <>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openFileInput(cameraInputRef.current)}
+                  onClick={() => void handlePickDocuments('documents')}
                   className={buttonStyles.secondary}
                 >
-                  Neues Foto
+                  Dokumente
                 </button>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={handleDocumentUpload}
+                  onClick={() => void handlePickDocuments('downloads')}
                   className={buttonStyles.secondary}
                 >
-                  Dokument hochladen
+                  Downloads
+                </button>
+                <button
+                  type="button"
+                  disabled={isInteractionLocked}
+                  onClick={() => setFileSourceOpen(false)}
+                  className={`${buttonStyles.accentSoft} w-full`}
+                >
+                  Zurück
                 </button>
               </>
-            ) : null}
-            <button
-              type="button"
-              disabled={isInteractionLocked || photos.length === 0}
-              aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
-              onClick={() => void handleReview()}
-              className={
-                isInteractionLocked || photos.length === 0
-                  ? buttonStyles.primaryInactive
-                  : buttonStyles.primaryActive
-              }
-            >
-              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
-            </button>
+            ) : (
+              <>
+                {canAddMore && photos.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      disabled={isInteractionLocked}
+                      onClick={() => openFileInput(cameraInputRef.current)}
+                      className={buttonStyles.secondary}
+                    >
+                      Neues Foto
+                    </button>
+                    <button
+                      type="button"
+                      disabled={isInteractionLocked}
+                      onClick={handleDocumentUpload}
+                      className={buttonStyles.secondary}
+                    >
+                      Dokument hochladen
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  disabled={isInteractionLocked || photos.length === 0}
+                  aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
+                  onClick={() => void handleReview()}
+                  className={
+                    isInteractionLocked || photos.length === 0
+                      ? buttonStyles.primaryInactive
+                      : buttonStyles.primaryActive
+                  }
+                >
+                  Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
+                </button>
+              </>
+            )}
           </div>
         }
       >
@@ -516,7 +560,7 @@ export default function ScanClient() {
           <input
             ref={uploadInputRef}
             type="file"
-            accept={DOCUMENT_FILE_ACCEPT}
+            accept={uploadAccept}
             multiple
             className="hidden"
             onChange={(event) => void handleFilesSelected(event)}

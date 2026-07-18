@@ -1,11 +1,19 @@
-/** Fotos aus der Mediathek — ohne Kamera (`capture`). */
+/** Fotos aus der Mediathek — ohne `capture` (Kamera bleibt die Foto-Kachel). */
 export const GALLERY_ACCEPT =
   'image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
 
+/** System-Dialog: PDF + Bilder (Android/Desktop). */
+export const DOCUMENT_UPLOAD_ACCEPT =
+  'application/pdf,.pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif'
+
 /**
- * Nur PDF — damit iOS Dateien nicht ausgraut (PDF+Bilder im accept = WebKit-Bug).
+ * iPhone: kein accept — sonst greyt iOS PDFs aus, sobald PDF und Bilder
+ * kombiniert werden (WebKit-Bug). Filterung bleibt in prepareUploadFiles.
  */
-export const DOCUMENT_FILE_ACCEPT = 'application/pdf,.pdf'
+export function systemUploadAccept(): string | undefined {
+  if (isAppleTouchDevice()) return undefined
+  return DOCUMENT_UPLOAD_ACCEPT
+}
 
 export type DocumentPickSource = 'downloads' | 'documents' | 'browse'
 
@@ -24,7 +32,7 @@ type OpenFilePickerWindow = Window & {
   showOpenFilePicker?: (options?: OpenFilePickerOptions) => Promise<FileSystemFileHandle[]>
 }
 
-const DOCUMENT_ACCEPT_TYPES: Array<{
+const FOLDER_ACCEPT_TYPES: Array<{
   description?: string
   accept: Record<string, string[]>
 }> = [
@@ -47,28 +55,36 @@ export function isAppleTouchDevice(): boolean {
   return navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1
 }
 
-/** Android/Desktop-Chrome: Ordner-Picker. iPhone: nie. */
-export function canUseFolderPicker(): boolean {
+/**
+ * Nur wenn der Browser wirklich in Downloads/Dokumente springen kann.
+ * iPhone/Safari: false → kein eigenes Menü, direkt System-Dialog (2 Tipps).
+ */
+export function canOpenWellKnownFolders(): boolean {
   if (typeof window === 'undefined' || isAppleTouchDevice()) return false
   return typeof (window as OpenFilePickerWindow).showOpenFilePicker === 'function'
 }
 
+/** @deprecated Alias — gleich canOpenWellKnownFolders */
+export function canUseFolderPicker(): boolean {
+  return canOpenWellKnownFolders()
+}
+
 /**
- * Ordner wählen (nur wo File System Access API geht).
- * `null` = abgebrochen, `'fallback'` = Datei-Input.
+ * Ordner-Picker (Android/Desktop-Chrome).
+ * `null` = abgebrochen, `'fallback'` = System-Input.
  */
 export async function pickDocuments(options?: {
   multiple?: boolean
   source?: DocumentPickSource
 }): Promise<File[] | 'fallback' | null> {
-  const source = options?.source ?? 'downloads'
-  if (source === 'browse' || !canUseFolderPicker()) return 'fallback'
+  const source = options?.source ?? 'documents'
+  if (source === 'browse' || !canOpenWellKnownFolders()) return 'fallback'
 
   const picker = (window as OpenFilePickerWindow).showOpenFilePicker
   if (!picker) return 'fallback'
 
-  const startIn = source === 'documents' ? 'documents' : 'downloads'
-  const id = source === 'documents' ? 'behoerdenpost-dateien' : 'behoerdenpost-downloads'
+  const startIn = source === 'downloads' ? 'downloads' : 'documents'
+  const id = source === 'downloads' ? 'behoerdenpost-downloads' : 'behoerdenpost-dokumente'
 
   try {
     const handles = await picker({
@@ -76,7 +92,7 @@ export async function pickDocuments(options?: {
       excludeAcceptAllOption: false,
       startIn,
       id,
-      types: DOCUMENT_ACCEPT_TYPES,
+      types: FOLDER_ACCEPT_TYPES,
     })
     return Promise.all(handles.map((handle) => handle.getFile()))
   } catch (caught) {
