@@ -28,7 +28,12 @@ import {
   removeDocumentPhoto,
   type StoredPhoto,
 } from '@/lib/localDocuments'
-import { UPLOAD_ACCEPT, prepareUploadFile } from '@/lib/documentUpload'
+import { prepareUploadFile } from '@/lib/documentUpload'
+import {
+  DOCUMENT_FILE_ACCEPT,
+  GALLERY_ACCEPT,
+  pickDocumentsFromDownloads,
+} from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
@@ -202,10 +207,7 @@ export default function ScanClient() {
     return raced ?? peekResult ?? undefined
   }
 
-  async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? [])
-    event.target.value = ''
-
+  async function ingestFiles(files: File[]) {
     if (files.length === 0 || analyzing || busy) return
 
     setBusy(true)
@@ -248,6 +250,25 @@ export default function ScanClient() {
     } finally {
       setBusy(false)
     }
+  }
+
+  async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? [])
+    event.target.value = ''
+    await ingestFiles(files)
+  }
+
+  async function handlePickDocuments() {
+    if (analyzing || busy || !canAddMore) return
+
+    const picked = await pickDocumentsFromDownloads({ multiple: true })
+    if (picked === null) return
+    if (picked === 'fallback') {
+      openFileInput(uploadInputRef.current)
+      return
+    }
+
+    await ingestFiles(picked)
   }
 
   async function handleRemovePhoto(id: string) {
@@ -351,10 +372,10 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openFileInput(uploadInputRef.current)}
+                  onClick={() => void handlePickDocuments()}
                   className={buttonStyles.secondary}
                 >
-                  Datei auswählen
+                  Dateien durchsuchen
                 </button>
               </>
             ) : null}
@@ -438,27 +459,37 @@ export default function ScanClient() {
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => openFileInput(uploadInputRef.current)}
+                  onClick={() => void handlePickDocuments()}
                   className={buttonStyles.photoCaptureTile}
                 >
                   <span className="text-3xl leading-none" aria-hidden>
                     📁
                   </span>
-                  <span>{busy ? 'Wird verarbeitet …' : 'Datei auswählen'}</span>
+                  <span>{busy ? 'Wird verarbeitet …' : 'Dateien durchsuchen'}</span>
                 </button>
               </>
             ) : null}
           </div>
 
-          <p className="text-sm text-muted">
-            {photos.length} von {maxPhotos} Dokumenten
-            {photos.length > 0 ? ' — tippe zum Entfernen' : ''}
-          </p>
+          {photos.length === 0 ? (
+            <div className="rounded-2xl border-2 border-accent/35 bg-accent-soft/50 px-4 py-3">
+              <p className="text-sm font-semibold text-foreground">Bei Dateien so:</p>
+              <ol className="mt-2 space-y-1.5 text-sm font-semibold leading-6 text-foreground">
+                <li>1. Durchsuchen</li>
+                <li>2. Downloads</li>
+                <li>3. Datei tippen</li>
+              </ol>
+            </div>
+          ) : (
+            <p className="text-sm text-muted">
+              {photos.length} von {maxPhotos} — tippe zum Entfernen
+            </p>
+          )}
 
           <input
             ref={galleryInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.heic,.heif"
+            accept={GALLERY_ACCEPT}
             multiple
             className="hidden"
             onChange={(event) => void handleFilesSelected(event)}
@@ -467,7 +498,7 @@ export default function ScanClient() {
           <input
             ref={uploadInputRef}
             type="file"
-            accept={UPLOAD_ACCEPT}
+            accept={DOCUMENT_FILE_ACCEPT}
             multiple
             className="hidden"
             onChange={(event) => void handleFilesSelected(event)}
