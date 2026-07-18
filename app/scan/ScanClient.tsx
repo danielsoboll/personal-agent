@@ -28,7 +28,7 @@ import {
   removeDocumentPhoto,
   type StoredPhoto,
 } from '@/lib/localDocuments'
-import { prepareUploadFile } from '@/lib/documentUpload'
+import { prepareUploadFile, displayDocumentLabel } from '@/lib/documentUpload'
 import {
   DOCUMENT_FILE_ACCEPT,
   GALLERY_ACCEPT,
@@ -85,7 +85,7 @@ export default function ScanClient() {
       return {
         title: 'Weitere Fotos zum aktuellen Schreiben',
         heading: 'Ergänze das aktuelle Schreiben',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — aus der Mediathek oder als Datei.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Aus der Mediathek oder Dateien durchsuchen.`,
       }
     }
 
@@ -93,14 +93,14 @@ export default function ScanClient() {
       return {
         title: 'Ältere Dokumente erfassen',
         heading: 'Ältere Unterlagen für den Hintergrund',
-        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — aus der Mediathek oder als Datei.`,
+        hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente. Aus der Mediathek oder Dateien durchsuchen.`,
       }
     }
 
     return {
       title: 'Dokument erfassen',
       heading: 'Dokument hinzufügen',
-      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente — aus der Mediathek oder als Datei.`,
+      hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente. Aus der Mediathek oder Dateien durchsuchen — tippen zum Entfernen vor dem Prüfen.`,
     }
   }, [intent])
 
@@ -408,7 +408,7 @@ export default function ScanClient() {
                 key={photo.id}
                 type="button"
                 disabled={isInteractionLocked}
-                aria-label={`${photo.kind === 'pdf' ? 'PDF' : 'Foto'} ${index + 1} entfernen`}
+                aria-label={`${photo.kind === 'pdf' ? 'Datei' : 'Foto'} ${index + 1} entfernen`}
                 onClick={() => void handleRemovePhoto(photo.id)}
                 className={`${PRESSABLE_3D} relative overflow-hidden rounded-2xl border border-border bg-surface text-left transition hover:border-red-300 hover:ring-2 hover:ring-red-200/80 disabled:opacity-60`}
               >
@@ -418,10 +418,10 @@ export default function ScanClient() {
                       📄
                     </span>
                     <span className="line-clamp-4 text-center text-xs font-semibold leading-5 text-foreground">
-                      {truncateFileName(photo.fileName ?? 'Dokument.pdf')}
+                      {truncateFileName(displayDocumentLabel(photo.fileName, 'pdf'))}
                     </span>
                     <span className="rounded-full bg-accent/10 px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.12em] text-accent">
-                      PDF
+                      Datei
                     </span>
                   </div>
                 ) : (

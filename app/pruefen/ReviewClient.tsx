@@ -398,12 +398,12 @@ export default function ReviewClient() {
                     <>
                       {footer.showAllCapturedButton ? (
                         <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
-                          Alle Dokumente erfasst — weiter
+                          Fertig — weiter
                         </PrimaryButton>
                       ) : null}
                       {footer.showCurrentMoreButton ? (
                         <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                          Weitere Fotos (aktuell)
+                          Noch was zum aktuellen Schreiben
                         </SecondaryButton>
                       ) : null}
                       {footer.showHistoricalButton ? (
@@ -422,12 +422,12 @@ export default function ReviewClient() {
                       ) : null}
                       {footer.showCurrentMoreButton ? (
                         <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                          Optional: Weitere Unterlagen
+                          Noch eine Datei
                         </SecondaryButton>
                       ) : null}
                       {footer.showHistoricalButton ? (
                         <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                          Optional: Ältere Unterlagen
+                          Ältere Unterlagen
                         </SecondaryButton>
                       ) : null}
                     </>

@@ -31,9 +31,17 @@ export function inferDocumentKind(mimeType: string, fileName?: string): Document
   return 'image'
 }
 
+/** Anzeigename ohne Technik-Endungen. */
+export function displayDocumentLabel(fileName: string | undefined, kind: DocumentKind): string {
+  const raw = fileName?.trim()
+  if (!raw) return kind === 'pdf' ? 'Datei' : 'Foto'
+  const withoutExt = raw.replace(/\.(pdf|jpe?g|png|webp|heic|heif)$/i, '').trim()
+  return withoutExt || (kind === 'pdf' ? 'Datei' : 'Foto')
+}
+
 export function validateUploadFile(file: File): void {
   if (!isImageFile(file) && !isPdfFile(file)) {
-    throw new Error('Bitte wähle ein Bild (JPG, PNG) oder eine PDF-Datei.')
+    throw new Error('Bitte wähle ein Foto oder eine Datei vom Schreiben.')
   }
 
   if (file.size > MAX_UPLOAD_BYTES) {

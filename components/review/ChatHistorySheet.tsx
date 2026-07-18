@@ -160,7 +160,7 @@ export default function ChatHistorySheet({
           <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
             {normalizedMessages.length === 0 ? (
               <p className="rounded-2xl border border-border bg-accent-soft/40 px-4 py-3 text-sm leading-7 text-muted">
-                Stelle eine Frage oder lade ergänzende Unterlagen hoch — beides zusammen geht auch.
+                Frage stellen oder Datei anhängen — beides zusammen geht auch.
               </p>
             ) : (
               <ul className="space-y-4 pb-2">

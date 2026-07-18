@@ -33,13 +33,13 @@ export default function AdminPwaInstallSection() {
   }
 
   return (
-    <section className="space-y-4 rounded-2xl border border-border bg-surface p-5">
+    <section className="space-y-3 rounded-2xl border border-border bg-surface p-5">
       <div>
-        <h2 className="text-base font-semibold tracking-tight">App zum Home-Bildschirm</h2>
-        <p className="mt-2 text-sm leading-7 text-muted">
+        <h2 className="text-base font-semibold tracking-tight">Zum Home-Bildschirm</h2>
+        <p className="mt-1 text-sm leading-6 text-muted">
           {standalone || confirmed
-            ? `${APP_NAME} ist als App eingerichtet — oder du hast das Hinzufügen bestätigt.`
-            : `Lege ${APP_NAME} auf den Home-Bildschirm — schneller Start ohne Browser-Leiste.`}
+            ? 'Schon als App eingerichtet.'
+            : `Lege ${APP_NAME} auf den Home-Bildschirm — schneller Start.`}
         </p>
       </div>
 
@@ -53,9 +53,7 @@ export default function AdminPwaInstallSection() {
           onInstalled={handleDone}
         />
       ) : (
-        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">
-          ✓ {APP_NAME} läuft als App auf dem Home-Bildschirm.
-        </p>
+        <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">✓ Schon eingerichtet</p>
       )}
     </section>
   )

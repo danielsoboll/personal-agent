@@ -57,16 +57,16 @@ export function documentChoiceHint(
   optional = false,
 ): string {
   if (optional) {
-    return 'Die KI sieht aktuell keine weiteren Pflicht-Unterlagen — du kannst trotzdem optional ergänzen, falls du noch etwas hinzufügen möchtest.'
+    return 'Keine Pflicht-Unterlagen mehr — optional kannst du trotzdem noch etwas ergänzen.'
   }
 
   if (showAllCapturedButton) {
-    return 'Wähle, wie es weitergeht: Ergänzungsfotos zum aktuellen Schreiben, ältere Unterlagen für den Hintergrund — oder signalisiere, dass alle relevanten Dokumente erfasst sind.'
+    return 'Noch Fotos zum aktuellen Schreiben, ältere Unterlagen — oder weiter, wenn alles da ist.'
   }
 
   if (review.intent === 'initial') {
-    return 'Du kannst ergänzende Fotos zum aktuellen Schreiben hochladen oder ältere Unterlagen für den Hintergrund erfassen.'
+    return 'Weitere Fotos zum aktuellen Schreiben oder ältere Unterlagen für den Hintergrund.'
   }
 
-  return 'Du kannst weitere Fotos zum aktuellen Schreiben oder ältere Unterlagen hinzufügen.'
+  return 'Weitere Fotos zum aktuellen Schreiben oder ältere Unterlagen hinzufügen.'
 }

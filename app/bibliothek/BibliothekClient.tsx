@@ -60,7 +60,7 @@ export default function BibliothekClient() {
       <section className="flex flex-1 flex-col gap-6">
         <PageIntro
           title="Deine Dokumente"
-          description="Hier findest du Word-Schreiben, die du aus dem Chat als Entwurf gespeichert hast. Tippe auf ein Dokument, um es erneut herunterzuladen."
+          description="Gespeicherte Word-Entwürfe aus dem Chat — tippen zum Öffnen."
         />
 
         {!ready ? (
@@ -72,8 +72,7 @@ export default function BibliothekClient() {
             </span>
             <p className="text-base font-semibold text-foreground">Noch keine Schreiben</p>
             <p className="max-w-sm text-sm leading-7 text-muted">
-              Wenn die KI im Chat ein formales Schreiben vorschlägt, kannst du es als Word speichern — es landet dann
-              hier.
+              Wenn die KI im Chat ein formales Schreiben vorschlägt, kannst du es speichern — es landet hier.
             </p>
             <PrimaryButton href="/pruefen">Zur Auswertung</PrimaryButton>
           </div>
