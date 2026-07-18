@@ -173,7 +173,7 @@ export async function pdfBlobToImageBlobs(blob: Blob): Promise<Blob[]> {
 }
 
 /**
- * Bild bleibt Bild; PDF wird seitenweise zu JPEG.
+ * Bild bleibt Bild; PDF bleibt eine PDF-Datei (keine Seiten-Fotos).
  * Erkennt PDFs auch ohne MIME/.pdf (iOS Dateien / iCloud).
  */
 export async function prepareUploadFiles(file: File): Promise<PreparedUploadFile[]> {
@@ -193,23 +193,18 @@ export async function prepareUploadFiles(file: File): Promise<PreparedUploadFile
   }
 
   if (treatAsPdf) {
-    try {
-      const pages = await pdfBlobToImageBlobs(file)
-      if (pages.length === 0) {
-        throw new Error('Die PDF-Datei enthält keine Seiten.')
-      }
-
-      const baseName = file.name.replace(/\.pdf$/i, '').trim() || 'Dokument'
-      return pages.map((blob, index) => ({
+    const mimeType = 'application/pdf'
+    const blob =
+      file.type === mimeType ? file : new Blob([await file.arrayBuffer()], { type: mimeType })
+    const fileName = PDF_EXTENSION.test(file.name) ? file.name : `${file.name || 'Dokument'}.pdf`
+    return [
+      {
         blob,
-        fileName: pages.length === 1 ? `${baseName}.jpg` : `${baseName}-Seite-${index + 1}.jpg`,
-        mimeType: 'image/jpeg',
-        kind: 'image' as const,
-      }))
-    } catch (caught) {
-      const detail = caught instanceof Error ? caught.message : 'Unbekannter Fehler'
-      throw new Error(`PDF konnte nicht verarbeitet werden: ${detail}`)
-    }
+        fileName,
+        mimeType,
+        kind: 'pdf',
+      },
+    ]
   }
 
   const mimeType = file.type && file.type.startsWith('image/') ? file.type : 'image/jpeg'

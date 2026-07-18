@@ -17,7 +17,7 @@ import type {
 } from '@/lib/analyzeTypes'
 import { blobToDataUrl, compressImageForAnalysis } from '@/lib/compressImage'
 import { MAX_CHAT_ATTACHMENTS } from '@/lib/chatFollowUp'
-import { prepareUploadFiles, pdfBlobToImageBlobs } from '@/lib/documentUpload'
+import { prepareUploadFiles } from '@/lib/documentUpload'
 import { enrichCaseFileForAssessment, hasHistorieRecords } from '@/lib/caseFileJsonl'
 import { getActiveCase, getCaseFileContent } from '@/lib/localCases'
 import { listDocumentPhotos } from '@/lib/localDocuments'
@@ -48,18 +48,11 @@ export async function analyzeCurrentPhotos(options: {
   const attachments: AnalyzeAttachment[] = []
   for (const photo of photos) {
     if (photo.kind === 'pdf') {
-      const pages = await pdfBlobToImageBlobs(photo.blob)
-      for (const [index, page] of pages.entries()) {
-        const compressed = await compressImageForAnalysis(page)
-        attachments.push({
-          kind: 'image',
-          dataUrl: await blobToDataUrl(compressed),
-          fileName:
-            pages.length === 1
-              ? photo.fileName?.replace(/\.pdf$/i, '.jpg') || 'Dokument.jpg'
-              : `${(photo.fileName || 'Dokument').replace(/\.pdf$/i, '')}-Seite-${index + 1}.jpg`,
-        })
-      }
+      attachments.push({
+        kind: 'pdf',
+        dataUrl: await blobToDataUrl(photo.blob),
+        fileName: photo.fileName,
+      })
       continue
     }
 
@@ -116,15 +109,10 @@ export async function requestDocumentPeek(options: {
 
   let attachment: AnalyzeAttachment
   if (options.photo.kind === 'pdf') {
-    const pages = await pdfBlobToImageBlobs(options.photo.blob)
-    if (pages.length === 0) {
-      throw new Error('Die PDF-Datei enthält keine Seiten.')
-    }
-    const compressed = await compressImageForAnalysis(pages[0])
     attachment = {
-      kind: 'image',
-      dataUrl: await blobToDataUrl(compressed),
-      fileName: options.photo.fileName?.replace(/\.pdf$/i, '.jpg') || 'Dokument.jpg',
+      kind: 'pdf',
+      dataUrl: await blobToDataUrl(options.photo.blob),
+      fileName: options.photo.fileName || 'Dokument.pdf',
     }
   } else {
     const compressed = await compressImageForAnalysis(options.photo.blob)
@@ -281,6 +269,15 @@ export async function submitChatMessage(options: {
   for (const file of files) {
     const preparedList = await prepareUploadFiles(file)
     for (const prepared of preparedList) {
+      if (prepared.kind === 'pdf') {
+        attachments.push({
+          kind: 'pdf',
+          dataUrl: await blobToDataUrl(prepared.blob),
+          fileName: prepared.fileName,
+        })
+        continue
+      }
+
       const compressed = await compressImageForAnalysis(prepared.blob)
       attachments.push({
         kind: 'image',

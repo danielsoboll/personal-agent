@@ -258,7 +258,7 @@ export default function ScanClient() {
           })
           newPreviews.push({
             ...saved,
-            previewUrl: createPhotoPreviewUrl(saved.blob),
+            previewUrl: saved.kind === 'pdf' ? null : createPhotoPreviewUrl(saved.blob),
           })
           added += 1
           remaining -= 1
