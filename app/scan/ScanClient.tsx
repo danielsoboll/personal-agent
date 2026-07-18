@@ -34,8 +34,11 @@ import {
   isAppleTouchDevice,
   pickDocuments,
   systemUploadAccept,
-  type DocumentPickSource,
 } from '@/lib/pickDocuments'
+import {
+  canUseNativeDocumentsPicker,
+  pickDocumentsNative,
+} from '@/lib/documentsPickerNative'
 import { getStoredProfileName } from '@/lib/localProfile'
 
 type PhotoPreview = StoredPhoto & {
@@ -86,20 +89,22 @@ export default function ScanClient() {
   const [peekResult, setPeekResult] = useState<DocumentPeekResult | null>(null)
   const [peekBusy, setPeekBusy] = useState(false)
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
-  const [fileSourceOpen, setFileSourceOpen] = useState(false)
   const [folderPickerAvailable, setFolderPickerAvailable] = useState(false)
   /** Start ohne accept — erst nach Mount setzen (iPhone: weiter ohne accept). */
   const [uploadAccept, setUploadAccept] = useState<string | undefined>(undefined)
   const [showIcloudHint, setShowIcloudHint] = useState(false)
+  const [nativeDocumentsPicker, setNativeDocumentsPicker] = useState(false)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
   const canAddMore = photos.length < maxPhotos
 
   useEffect(() => {
+    const native = canUseNativeDocumentsPicker()
     setFolderPickerAvailable(canOpenWellKnownFolders())
     setUploadAccept(systemUploadAccept())
-    setShowIcloudHint(isAppleTouchDevice())
+    setNativeDocumentsPicker(native)
+    setShowIcloudHint(isAppleTouchDevice() && !native)
   }, [])
 
   const copy = useMemo(() => {
@@ -285,42 +290,49 @@ export default function ScanClient() {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
-    setFileSourceOpen(false)
     await ingestFiles([file])
   }
 
-  /** iPhone: direkt System-Dialog (2 Tipps). Android: Menü Downloads/Dokumente. */
+  /** Native iOS → Dokumente/iCloud. Android FSA → Dokumente. Sonst Dateien-Dialog. */
   function handleDocumentUpload() {
     if (analyzing || busy || !canAddMore) return
-    if (folderPickerAvailable) {
-      setFileSourceOpen(true)
+
+    if (nativeDocumentsPicker) {
+      void (async () => {
+        try {
+          const files = await pickDocumentsNative(true)
+          if (files === null || files.length === 0) return
+          await ingestFiles(files)
+        } catch (caught) {
+          setError(
+            caught instanceof Error
+              ? caught.message
+              : 'Dokumente konnten nicht geöffnet werden.',
+          )
+        }
+      })()
       return
     }
-    openFileInput(uploadInputRef.current)
-  }
 
-  async function handlePickDocuments(source: DocumentPickSource) {
-    if (analyzing || busy || !canAddMore) return
-    if (source === 'gallery') return
+    if (!folderPickerAvailable) {
+      openFileInput(uploadInputRef.current)
+      return
+    }
 
-    const picked = await pickDocuments({
-      multiple: true,
-      source: source === 'documents' ? 'documents' : 'downloads',
-    })
-    if (picked === null) return
-    if (picked !== 'fallback') {
-      setFileSourceOpen(false)
+    void (async () => {
+      const picked = await pickDocuments({ multiple: true, source: 'documents' })
+      if (picked === null) return
+      if (picked === 'fallback') {
+        openFileInput(uploadInputRef.current)
+        return
+      }
       await ingestFiles(picked)
-      return
-    }
-
-    openFileInput(uploadInputRef.current)
+    })()
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
-    setFileSourceOpen(false)
     await ingestFiles(files)
   }
 
@@ -412,79 +424,48 @@ export default function ScanClient() {
         }
         footer={
           <div className="space-y-2">
-            {fileSourceOpen && folderPickerAvailable ? (
+            {canAddMore && photos.length > 0 ? (
               <>
                 <button
                   type="button"
                   disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('documents')}
+                  onClick={() => openFileInput(cameraInputRef.current)}
                   className={buttonStyles.secondary}
                 >
-                  Dokumente
+                  Neues Foto
                 </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('downloads')}
-                  className={buttonStyles.secondary}
-                >
-                  Downloads
-                </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => setFileSourceOpen(false)}
-                  className={`${buttonStyles.accentSoft} w-full`}
-                >
-                  Zurück
-                </button>
+                {folderPickerAvailable || nativeDocumentsPicker ? (
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={handleDocumentUpload}
+                    className={buttonStyles.secondary}
+                  >
+                    Dokument hochladen
+                  </button>
+                ) : (
+                  <label
+                    htmlFor={UPLOAD_INPUT_ID}
+                    className={`${buttonStyles.secondary} ${isInteractionLocked ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
+                  >
+                    Dokument hochladen
+                  </label>
+                )}
               </>
-            ) : (
-              <>
-                {canAddMore && photos.length > 0 ? (
-                  <>
-                    <button
-                      type="button"
-                      disabled={isInteractionLocked}
-                      onClick={() => openFileInput(cameraInputRef.current)}
-                      className={buttonStyles.secondary}
-                    >
-                      Neues Foto
-                    </button>
-                    {folderPickerAvailable ? (
-                      <button
-                        type="button"
-                        disabled={isInteractionLocked}
-                        onClick={handleDocumentUpload}
-                        className={buttonStyles.secondary}
-                      >
-                        Dokument hochladen
-                      </button>
-                    ) : (
-                      <label
-                        htmlFor={UPLOAD_INPUT_ID}
-                        className={`${buttonStyles.secondary} ${isInteractionLocked ? 'pointer-events-none opacity-50' : 'cursor-pointer'}`}
-                      >
-                        Dokument hochladen
-                      </label>
-                    )}
-                  </>
-                ) : null}
-                <button
-                  type="button"
-                  disabled={isInteractionLocked || photos.length === 0}
-                  aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
-                  onClick={() => void handleReview()}
-                  className={
-                    isInteractionLocked || photos.length === 0
-                      ? buttonStyles.primaryInactive
-                      : buttonStyles.primaryActive
-                  }
-                >
-                  Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
-                </button>
-              </>
-            )}
+            ) : null}
+            <button
+              type="button"
+              disabled={isInteractionLocked || photos.length === 0}
+              aria-disabled={isInteractionLocked || photos.length === 0 || undefined}
+              onClick={() => void handleReview()}
+              className={
+                isInteractionLocked || photos.length === 0
+                  ? buttonStyles.primaryInactive
+                  : buttonStyles.primaryActive
+              }
+            >
+              Jetzt prüfen{photos.length > 0 ? ` (${photos.length} Dokument${photos.length === 1 ? '' : 'e'})` : ''}
+            </button>
           </div>
         }
       >
@@ -549,7 +530,7 @@ export default function ScanClient() {
                   </span>
                   <span>{busy ? 'Wird gespeichert …' : 'Foto aufnehmen'}</span>
                 </button>
-                {folderPickerAvailable ? (
+                {folderPickerAvailable || nativeDocumentsPicker ? (
                   <button
                     type="button"
                     disabled={isInteractionLocked}

@@ -8,9 +8,13 @@
     "build": "npm run generate:app-icons && next build",
     "start": "next start -H 0.0.0.0 -p 3002",
     "lint": "eslint",
-    "generate:app-icons": "node scripts/generate-app-icons.mjs"
+    "generate:app-icons": "node scripts/generate-app-icons.mjs",
+    "cap:sync": "npx cap sync ios",
+    "cap:open": "npx cap open ios"
   },
   "dependencies": {
+    "@capacitor/core": "^8.4.2",
+    "@capacitor/ios": "^8.4.2",
     "@supabase/supabase-js": "^2.105.4",
     "docx": "^9.7.1",
     "next": "16.2.4",
@@ -19,6 +23,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.4.2",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
