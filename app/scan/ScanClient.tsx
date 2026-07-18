@@ -32,13 +32,11 @@ import {
 import { prepareUploadFiles, displayDocumentLabel } from '@/lib/documentUpload'
 import {
   DOCUMENT_FILE_ACCEPT,
+  DOCUMENT_UPLOAD_ACCEPT,
   GALLERY_ACCEPT,
-  documentFallbackAccept,
-  getFolderPickHint,
-  hasFolderFilePicker,
+  canOpenWellKnownFolders,
   pickDocuments,
   type DocumentPickSource,
-  type FolderPickHint,
 } from '@/lib/pickDocuments'
 import { getStoredProfileName } from '@/lib/localProfile'
 
@@ -56,9 +54,9 @@ function parseIntent(value: string | null): AnalyzeIntent {
   return 'initial'
 }
 
+/** Sofort klicken — setTimeout bricht auf iOS oft die User-Geste und öffnet den falschen Dialog. */
 function openFileInput(input: HTMLInputElement | null) {
-  if (!input) return
-  window.setTimeout(() => input.click(), 150)
+  input?.click()
 }
 
 const PEEK_WAIT_MS = 12_000
@@ -68,8 +66,9 @@ export default function ScanClient() {
   const plus = usePlusDiscoverHeader()
   const searchParams = useSearchParams()
   const cameraInputRef = useRef<HTMLInputElement>(null)
-  const uploadInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+  const androidFileInputRef = useRef<HTMLInputElement>(null)
   const peekRequestIdRef = useRef(0)
   const peekPromiseRef = useRef<Promise<DocumentPeekResult | null> | null>(null)
   const [photos, setPhotos] = useState<PhotoPreview[]>([])
@@ -83,14 +82,15 @@ export default function ScanClient() {
   const [peekBusy, setPeekBusy] = useState(false)
   const [peekPhotoId, setPeekPhotoId] = useState<string | null>(null)
   const [fileSourceOpen, setFileSourceOpen] = useState(false)
-  const [folderHint, setFolderHint] = useState<{
-    source: DocumentPickSource
-    hint: FolderPickHint
-  } | null>(null)
+  const [folderPickerAvailable, setFolderPickerAvailable] = useState(false)
 
   const intent = parseIntent(searchParams.get('intent'))
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
   const canAddMore = photos.length < maxPhotos
+
+  useEffect(() => {
+    setFolderPickerAvailable(canOpenWellKnownFolders())
+  }, [])
 
   const copy = useMemo(() => {
     if (intent === 'current_more') {
@@ -276,64 +276,38 @@ export default function ScanClient() {
     event.target.value = ''
     if (!file) return
     setFileSourceOpen(false)
-    setFolderHint(null)
     await ingestFiles([file])
-  }
-
-  function openDocumentFallbackInput(source: DocumentPickSource) {
-    if (source === 'gallery') {
-      openFileInput(galleryInputRef.current)
-      return
-    }
-
-    const input = uploadInputRef.current
-    if (!input) return
-    input.accept = documentFallbackAccept(source)
-    openFileInput(input)
   }
 
   async function handlePickDocuments(source: DocumentPickSource) {
     if (analyzing || busy || !canAddMore) return
 
-    // Fotomediathek: immer direkt die Fotos-App, nie „Auf meinem iPhone“.
     if (source === 'gallery') {
-      setFolderHint(null)
-      openDocumentFallbackInput('gallery')
+      openFileInput(galleryInputRef.current)
       return
     }
 
-    // Android/Chrome: Downloads / Dateien mit echtem Startordner.
+    if (source === 'file') {
+      openFileInput(pdfInputRef.current)
+      return
+    }
+
+    // Android/Desktop: echter Ordner (Downloads / Dateien)
     const picked = await pickDocuments({ multiple: true, source })
     if (picked === null) return
     if (picked !== 'fallback') {
-      setFolderHint(null)
       setFileSourceOpen(false)
       await ingestFiles(picked)
       return
     }
 
-    // iPhone u. a.: kein startIn möglich — kurz den Zielordner nennen, dann Dateien öffnen.
-    const hint = getFolderPickHint(source)
-    if (hint && !hasFolderFilePicker()) {
-      setFolderHint({ source, hint })
-      return
-    }
-
-    openDocumentFallbackInput(source)
-  }
-
-  function confirmFolderHintAndOpen() {
-    if (!folderHint) return
-    const source = folderHint.source
-    setFolderHint(null)
-    openDocumentFallbackInput(source)
+    openFileInput(androidFileInputRef.current)
   }
 
   async function handleFilesSelected(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? [])
     event.target.value = ''
     setFileSourceOpen(false)
-    setFolderHint(null)
     await ingestFiles(files)
   }
 
@@ -425,68 +399,74 @@ export default function ScanClient() {
         }
         footer={
           <div className="space-y-2">
-            {folderHint ? (
-              <>
-                <p className="px-1 text-center text-sm font-semibold text-foreground">
-                  Ziel: {folderHint.hint.folderLabel}
-                </p>
-                <p className="px-1 text-center text-xs leading-5 text-muted">{folderHint.hint.steps}</p>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={confirmFolderHintAndOpen}
-                  className={buttonStyles.primaryActive}
-                >
-                  Weiter zu „{folderHint.hint.folderLabel}“
-                </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => setFolderHint(null)}
-                  className={`${buttonStyles.accentSoft} w-full`}
-                >
-                  Zurück
-                </button>
-              </>
-            ) : fileSourceOpen ? (
-              <>
-                <p className="px-1 text-center text-xs text-muted">Wo liegt das Dokument?</p>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('gallery')}
-                  className={buttonStyles.secondary}
-                >
-                  Fotomediathek
-                </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('downloads')}
-                  className={buttonStyles.secondary}
-                >
-                  Downloads
-                </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => void handlePickDocuments('documents')}
-                  className={buttonStyles.secondary}
-                >
-                  Dateien
-                </button>
-                <button
-                  type="button"
-                  disabled={isInteractionLocked}
-                  onClick={() => {
-                    setFolderHint(null)
-                    setFileSourceOpen(false)
-                  }}
-                  className={`${buttonStyles.accentSoft} w-full`}
-                >
-                  Zurück
-                </button>
-              </>
+            {fileSourceOpen ? (
+              folderPickerAvailable ? (
+                <>
+                  <p className="px-1 text-center text-xs text-muted">Wo liegt das Dokument?</p>
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={() => void handlePickDocuments('gallery')}
+                    className={buttonStyles.secondary}
+                  >
+                    Fotomediathek
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={() => void handlePickDocuments('downloads')}
+                    className={buttonStyles.secondary}
+                  >
+                    Downloads
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={() => void handlePickDocuments('documents')}
+                    className={buttonStyles.secondary}
+                  >
+                    Dateien
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={() => setFileSourceOpen(false)}
+                    className={`${buttonStyles.accentSoft} w-full`}
+                  >
+                    Zurück
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="px-1 text-center text-xs text-muted">
+                    Fotos oder PDF — Kamera nur über „Foto aufnehmen“
+                  </p>
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={() => void handlePickDocuments('gallery')}
+                    className={buttonStyles.secondary}
+                  >
+                    Fotos aus Mediathek
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={() => void handlePickDocuments('file')}
+                    className={buttonStyles.secondary}
+                  >
+                    PDF aus Dateien
+                  </button>
+                  <button
+                    type="button"
+                    disabled={isInteractionLocked}
+                    onClick={() => setFileSourceOpen(false)}
+                    className={`${buttonStyles.accentSoft} w-full`}
+                  >
+                    Zurück
+                  </button>
+                </>
+              )
             ) : (
               <>
                 {canAddMore && photos.length > 0 ? (
@@ -502,10 +482,7 @@ export default function ScanClient() {
                     <button
                       type="button"
                       disabled={isInteractionLocked}
-                      onClick={() => {
-                        setFolderHint(null)
-                        setFileSourceOpen(true)
-                      }}
+                      onClick={() => setFileSourceOpen(true)}
                       className={buttonStyles.secondary}
                     >
                       Dokument hochladen
@@ -631,9 +608,18 @@ export default function ScanClient() {
           />
 
           <input
-            ref={uploadInputRef}
+            ref={pdfInputRef}
             type="file"
             accept={DOCUMENT_FILE_ACCEPT}
+            multiple
+            className="hidden"
+            onChange={(event) => void handleFilesSelected(event)}
+          />
+
+          <input
+            ref={androidFileInputRef}
+            type="file"
+            accept={DOCUMENT_UPLOAD_ACCEPT}
             multiple
             className="hidden"
             onChange={(event) => void handleFilesSelected(event)}
@@ -645,7 +631,7 @@ export default function ScanClient() {
             </p>
           ) : null}
 
-          {activeCase && photos.length === 0 && !fileSourceOpen && !folderHint ? (
+          {activeCase && photos.length === 0 && !fileSourceOpen ? (
             <div className="border-t border-border pt-6">
               <DeleteCaseSection
                 caseId={activeCase.id}
