@@ -105,7 +105,7 @@ export function recordCaseCreated(): void {
 
 type HomeCaseHint = {
   latestReview?: unknown
-  userStatus?: string
+  userStatus?: string | null
 }
 
 /**
