@@ -20,11 +20,24 @@ export function isPdfMimeType(mimeType: string): boolean {
 }
 
 export function isPdfFile(file: File): boolean {
-  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+  if (file.type === 'application/pdf') return true
+  if (file.name.toLowerCase().endsWith('.pdf')) return true
+  // iOS liefert oft leeren oder generischen MIME-Typ
+  if (!file.type || file.type === 'application/octet-stream') {
+    return file.name.toLowerCase().endsWith('.pdf')
+  }
+  return false
 }
 
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|webp|heic|heif)$/i
+
 function isImageFile(file: File): boolean {
-  return file.type.startsWith('image/') || IMAGE_TYPES.has(file.type)
+  if (file.type.startsWith('image/') || IMAGE_TYPES.has(file.type)) return true
+  // iOS Dateien-App: oft type="" oder octet-stream trotz gültigem Foto
+  if (!file.type || file.type === 'application/octet-stream' || file.type === 'application/x-octet-stream') {
+    return IMAGE_EXTENSIONS.test(file.name)
+  }
+  return false
 }
 
 export function inferDocumentKind(mimeType: string, fileName?: string): DocumentKind {
@@ -48,6 +61,10 @@ export function validateUploadFile(file: File): void {
 
   if (file.size > MAX_UPLOAD_BYTES) {
     throw new Error('Die Datei ist zu gross (max. 20 MB).')
+  }
+
+  if (file.size === 0) {
+    throw new Error('Die Datei ist leer oder konnte nicht gelesen werden.')
   }
 }
 
