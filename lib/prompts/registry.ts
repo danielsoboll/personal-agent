@@ -14,7 +14,7 @@ import {
 import { CASE_FILE_JSONL_EXAMPLE, CASE_FILE_JSONL_MINIMAL_EXAMPLE } from '@/lib/caseFileJsonl'
 import type { AnalyzeIntent } from '@/lib/analyzeTypes'
 
-export const PROMPT_VERSION = '2026-07-19.1'
+export const PROMPT_VERSION = '2026-07-19.3'
 
 /** Wie eine direkte ChatGPT-Nachricht mit angehängten Dokumenten. */
 export const CORE_USER_QUESTIONS = `Beantworte zuerst inhaltlich — so gut wie ChatGPT mit denselben Unterlagen:
@@ -155,7 +155,7 @@ Ordne deine inhaltliche Antwort in die **3 Bereiche der App**:
 - primaryDeadlineLabel: z. B. „Einspruchsfrist“, „Abgabefrist Formular“ — oder null
 - keyClaims: 0–3 Behauptungen/Forderungen ODER bei Formularen kritische leere Felder — nur die wichtigsten. Sonst []
 - contestablePoints: 0–3 Punkte mit claim, why (1 Satz), suggestedAction. Bei Formularen: bereits ausgefüllte Stellen prüfen. Nur was aus dem Text folgt — nichts erfinden. Sonst []
-- replyDraftRecommended: true NUR wenn ein formales Antwortschreiben jetzt sinnvoll ist (z. B. Widerspruch, Einspruch, Stellungnahme, Fristverlängerung, Antwort an Behörde/Gericht/Versicherung/Gegenseite). false bei Formularen zum Ausfüllen, rein informativen Schreiben, Telefon/Zahlung/Upload als Nächstes, oder wenn erst Unterlagen fehlen.
+- replyDraftRecommended: immer false (Antwortschreiben vorübergehend deaktiviert)
 - documentKind exakt einer von: behoerde, gericht, anwalt, versicherung, formular, sonstiges (ohne Umlaute)
 - documentsStatus idealerweise: not_needed | recommended | required
 - phase: interim (Scan) oder final (Bewertung)
@@ -169,7 +169,15 @@ Dieselben Inhalte landen in resultat (summary, assessment, next_steps) für Bere
 - requestedDocuments: bei recommended/required konkrete Beispiele (Komma-Liste), z. B. „früherer Bescheid, Kontoauszug März, Mietvertrag“ — bei recommended/required nie leer lassen.
 
 Keine technischen Begriffe (JSONL, Fallakte, KI) in Nutzertexten.
-Länge: summary und assessment strikt kurz halten — die App ist mobil; lange Fließtexte sind Fehler.`
+Länge: summary und assessment strikt kurz halten — die App ist mobil; lange Fließtexte sind Fehler.
+
+**5. fallakteFindings (Timeline für die Nutzer-Fallakte)**
+- events: 0–8 Ereignisse NUR aus diesem Upload — chronologisch, sachlich, keine Rechtsbewertung.
+- eventType: z. B. documents_requested, application_submitted, deadline_set, decision_issued, document_received, documents_submitted, inquiry_received, payment_demanded, other
+- datePrecision: day nur bei klarem Kalendertag; sonst month/year/unknown — dann eventDate=null und eventDateLabel setzen (z. B. „März 2026“)
+- sourceType: explicit_document_fact (ausdrücklich im Text) | derived (aus dem Dokument klar ableitbar) | app_inferred (Vermutung — sparsam)
+- Keine rechtlichen Schlussfolgerungen („rechtswidrig“, „Anspruch sicher“). Nur Ereignisse und organisatorische Ableitungen.
+- requiresUserConfirmation: meist true`
 
 export const CASE_SCOPE_RULES = `Fall-Trennung (WICHTIG):
 - Jede Anfrage gehört zu genau EINEM Fall (Fallname in der Nutzer-Nachricht).
@@ -585,14 +593,12 @@ Kontext-Modell (kein Chat-Session-Speicher bei OpenAI):
 Regeln:
 - Bei JEDER Nachfrage: updatedSummary, updatedAssessment, updatedNextSteps, updatedStructuredSteps vollständig neu liefern — integriere alle bisherigen Infos, den Chat und neue Anhänge.
 - updatedSummary max. ~280 Zeichen; updatedAssessment 3–5 kurze Sätze, max. ~450 Zeichen — Details in Schritte/Claims, nicht im Fließtext.
-- Zusätzlich immer: updatedDocumentKind, updatedPrimaryDeadline, updatedPrimaryDeadlineLabel, updatedKeyClaims, updatedContestablePoints, updatedReplyDraftRecommended (vollständig neu; leere Arrays/"" wenn nichts passt).
+- Zusätzlich immer: updatedDocumentKind, updatedPrimaryDeadline, updatedPrimaryDeadlineLabel, updatedKeyClaims, updatedContestablePoints (vollständig neu; leere Arrays/"" wenn nichts passt).
 - Die Hauptauswertung oben in der App wird nach jeder Nachfrage aus diesen updated-Feldern neu gezeichnet.
 - answer: 2–4 kurze Sätze zur konkreten Nachfrage — nur Ergänzungen, die nicht schon in updatedAssessment oder den Schritten stehen.
 - Bei Streit/Gegenseite oder Nachfragen dazu: in answer und updatedAssessment Behauptungen und angreifbare Punkte klar machen; Schritte konkretisieren.
 - Bei Formularen / Formular-Nachfragen: Ausfüllbedarf und Prüfung schon gemachter Angaben in answer und Schritten konkretisieren.
-- updatedReplyDraftRecommended: true nur wenn ein formales Antwortschreiben jetzt sinnvoll ist (siehe Analyze-Regeln) — sonst false.
-- wordDocumentRequested: true NUR wenn der Nutzer ein formales Schreiben braucht (Widerspruch, Antwort an Behörde/Gericht, Fristverlängerung o. Ä.) und du einen Entwurf liefern sollst — ODER wenn die Nutzer-Nachricht ausdrücklich „Antwortschreiben“ / Word-Entwurf verlangt. Sonst false und wordDocument-Felder leer ("" bzw. leeres Array).
-- Bei wordDocumentRequested=true: wordDocumentTitle, wordDocumentSubject, wordDocumentBodyParagraphs (Absätze), wordDocumentPreviewText (Kurzvorschau für die App) ausfüllen — sachlich, höflich, Du-Form im Chat, Sie-Form im Schreiben; angreifbare Punkte der Gegenseite gezielt aufgreifen. answer dann nur 1–2 Sätze zur Vorschau — keine Ausweich-Antwort wie „stell eine Rückfrage“ oder „lade ein Dokument hoch“.
+- Keine Word-/Antwortschreiben-Entwürfe erzeugen — weder angefordert noch angeboten.
 - contextSummary: eine kurze Zeile für die UI, z. B. „Fallakte + 1 PDF“ — kein Prompt-Text.
 - Du-Form im Chat, klar, keine technischen Begriffe (JSONL, Fallakte, KI).`
 
@@ -604,8 +610,6 @@ export function buildClarifyUserPrompt(options: {
   question: string
   attachmentCount: number
   pdfCount: number
-  /** Button „Antwortschreiben“: Entwurf zwingend liefern. */
-  requestWordDocument?: boolean
   currentReview: {
     summary: string
     assessment: string
@@ -692,16 +696,8 @@ export function buildClarifyUserPrompt(options: {
   sections.push(
     '',
     'Beziehe dich konkret auf Auswertung, Historie, Chat und neue Anhänge.',
-    'Liefere answer, die vollständig aktualisierten updated-Felder (inkl. Frist, Behauptungen, Angriffspunkte, updatedReplyDraftRecommended), ggf. wordDocument-Felder und contextSummary.',
+    'Liefere answer, die vollständig aktualisierten updated-Felder (inkl. Frist, Behauptungen, Angriffspunkte) und contextSummary.',
   )
-
-  if (options.requestWordDocument) {
-    sections.push(
-      '',
-      'PFLICHT für diese Anfrage: wordDocumentRequested=true und vollständiger Word-Entwurf (Titel, Betreff, Absätze, Kurzvorschau).',
-      'answer nur kurz zur Vorschau — keine Aufforderung zu Rückfragen oder weiteren Uploads statt des Entwurfs.',
-    )
-  }
 
   return sections.join('\n')
 }

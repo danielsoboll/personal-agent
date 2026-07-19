@@ -3,12 +3,11 @@ import { NextResponse } from 'next/server'
 import { CLARIFY_SCHEMA, normalizeDecisionFields, normalizeStructuredSteps, type ClarifyPayload } from '@/lib/analyzeSchema'
 import { CLARIFY_SYSTEM_PROMPT, buildClarifyUserPrompt } from '@/lib/analyzePrompts'
 import { ATTACHMENTS_ONLY_QUESTION } from '@/lib/chatFollowUp'
-import type { AnalyzeAttachment, ClarifyRequestBody, ClarifyResponseBody, FollowUpWordDocument } from '@/lib/analyzeTypes'
+import type { AnalyzeAttachment, ClarifyRequestBody, ClarifyResponseBody } from '@/lib/analyzeTypes'
 import { validateCaseFileJsonl } from '@/lib/caseFileJsonl'
 import { callOpenAiChatCompletion } from '@/lib/openaiChat'
 import { buildOpenAiAttachmentParts } from '@/lib/openaiAttachments'
 import { resolveOpenAiModel } from '@/lib/openaiModel'
-import { isPreparedDocumentContent } from '@/lib/wordDocument'
 
 export const maxDuration = 120
 
@@ -75,7 +74,6 @@ export async function POST(request: Request) {
     question: effectiveQuestion,
     attachmentCount: attachments.length,
     pdfCount,
-    requestWordDocument: Boolean(body.requestWordDocument),
     currentReview: body.currentReview,
     priorMessages: body.priorMessages?.slice(-8).map((message) => ({
       role: message.role,
@@ -131,26 +129,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'KI-Antwort war leer.' }, { status: 502 })
   }
 
-  let wordDocument: FollowUpWordDocument | undefined
-  if (parsed.wordDocumentRequested) {
-    const candidate = {
-      title: parsed.wordDocumentTitle?.trim() ?? '',
-      subject: parsed.wordDocumentSubject?.trim() ?? '',
-      bodyParagraphs: (parsed.wordDocumentBodyParagraphs ?? []).map((paragraph) => paragraph.trim()).filter(Boolean),
-      previewText: parsed.wordDocumentPreviewText?.trim() ?? '',
-    }
-    if (isPreparedDocumentContent(candidate)) {
-      wordDocument = candidate
-    }
-  }
-
   const decision = normalizeDecisionFields({
     documentKind: parsed.updatedDocumentKind,
     primaryDeadline: parsed.updatedPrimaryDeadline,
     primaryDeadlineLabel: parsed.updatedPrimaryDeadlineLabel,
     keyClaims: parsed.updatedKeyClaims,
     contestablePoints: parsed.updatedContestablePoints,
-    replyDraftRecommended: parsed.updatedReplyDraftRecommended,
+    replyDraftRecommended: false,
   })
 
   return NextResponse.json({
@@ -165,7 +150,6 @@ export async function POST(request: Request) {
     primaryDeadlineLabel: decision.primaryDeadlineLabel,
     keyClaims: decision.keyClaims,
     contestablePoints: decision.contestablePoints,
-    replyDraftRecommended: decision.replyDraftRecommended,
-    ...(wordDocument ? { wordDocument } : {}),
+    replyDraftRecommended: false,
   } satisfies ClarifyResponseBody)
 }

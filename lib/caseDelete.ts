@@ -3,6 +3,7 @@ import { LOCAL_STORES, runLocalTransaction } from '@/lib/localDb'
 import { listCases, removeCase } from '@/lib/localCases'
 import { clearDocumentPhotos } from '@/lib/localDocuments'
 import { deleteLibraryDocumentsForCase } from '@/lib/localLibrary'
+import { deleteFallakteEventsForCase } from '@/lib/localFallakte'
 
 /** Alte Ein-Fall-Stores (vor v3) — bei kompletter Löschung bereinigen. */
 async function clearLegacyCaseStores(): Promise<void> {
@@ -12,7 +13,7 @@ async function clearLegacyCaseStores(): Promise<void> {
 
 /**
  * Entfernt alle lokalen Daten eines Falls:
- * Scan-Fotos, Word-Dokumente, JSONL-Fallakte, gespeicherte KI-Auswertung.
+ * Scan-Fotos, Word-Dokumente, JSONL-Fallakte, gespeicherte KI-Auswertung, Fallakte-Events.
  */
 export async function deleteCaseCompletely(caseId: string): Promise<void> {
   const casesBefore = await listCases()
@@ -20,6 +21,7 @@ export async function deleteCaseCompletely(caseId: string): Promise<void> {
 
   await clearDocumentPhotos(caseId)
   await deleteLibraryDocumentsForCase(caseId)
+  await deleteFallakteEventsForCase(caseId)
   await removeCase(caseId)
 
   if (isLastCase) {

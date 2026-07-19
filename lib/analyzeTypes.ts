@@ -97,6 +97,11 @@ export type AnalyzeResult = {
   photoCount: number
   /** Nachfragen zur Auswertung — aktualisieren Bewertung und Schritte. */
   followUpMessages?: FollowUpMessage[]
+  /**
+   * Timeline-Findings für die Fallakte — nur in der Analyse-Antwort,
+   * werden lokal in IndexedDB gespeichert, nicht dauerhaft in latestReview.
+   */
+  fallakteFindings?: import('@/lib/fallakteTypes').FallakteFindingsPayload
 }
 
 export type AnalyzeAttachment = {

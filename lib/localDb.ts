@@ -1,5 +1,5 @@
 const DB_NAME = 'behoerdenpost-local'
-export const DB_VERSION = 4
+export const DB_VERSION = 5
 
 export const LOCAL_STORES = {
   photos: 'document-photos',
@@ -7,6 +7,7 @@ export const LOCAL_STORES = {
   review: 'latest-review',
   cases: 'cases',
   library: 'library',
+  fallakteEvents: 'fallakte-events',
 } as const
 
 export type LocalStoreName = (typeof LOCAL_STORES)[keyof typeof LOCAL_STORES]
@@ -40,6 +41,11 @@ export function openLocalDb(): Promise<IDBDatabase> {
 
       if (oldVersion < 4 && !db.objectStoreNames.contains(LOCAL_STORES.library)) {
         db.createObjectStore(LOCAL_STORES.library, { keyPath: 'id' })
+      }
+
+      if (oldVersion < 5 && !db.objectStoreNames.contains(LOCAL_STORES.fallakteEvents)) {
+        const store = db.createObjectStore(LOCAL_STORES.fallakteEvents, { keyPath: 'id' })
+        store.createIndex('byCaseId', 'caseId', { unique: false })
       }
     }
 

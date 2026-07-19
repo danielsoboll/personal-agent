@@ -344,14 +344,31 @@ export default function ScanClient() {
       const peekContext = await waitForPeekContext()
       const result = await analyzeCurrentPhotos({ intent, peekContext })
       const photoCount = photos.length
+      const { fallakteFindings, ...reviewFields } = result
 
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
       await saveLatestReview(activeCase.id, {
-        ...result,
+        ...reviewFields,
         analyzedAt: Date.now(),
         intent,
         photoCount,
       })
+
+      if (fallakteFindings?.events?.length) {
+        const { persistFallakteFindings } = await import('@/lib/localFallakte')
+        const uploadedAt = Date.now()
+        await persistFallakteFindings({
+          caseId: activeCase.id,
+          findings: fallakteFindings,
+          analysisBatchId: `analyze_${uploadedAt}`,
+          documentRefs: photos.map((photo) => ({
+            fileName: photo.fileName || (photo.kind === 'pdf' ? 'Dokument.pdf' : 'Foto.jpg'),
+            kind: photo.kind === 'pdf' ? 'pdf' : 'image',
+            uploadedAt: photo.createdAt || uploadedAt,
+          })),
+        })
+      }
+
       recordCaseReviewCompleted()
 
       await clearDocumentPhotos(activeCase.id)

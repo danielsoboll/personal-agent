@@ -16,6 +16,7 @@ import { callOpenAiChatCompletion } from '@/lib/openaiChat'
 import { resolveOpenAiModel } from '@/lib/openaiModel'
 import type { AnalyzeAttachment, AnalyzeRequestBody, AnalyzeResponseBody } from '@/lib/analyzeTypes'
 import { buildOpenAiAttachmentParts } from '@/lib/openaiAttachments'
+import { validateFallakteFindings } from '@/lib/fallakteValidate'
 
 export const maxDuration = 60
 
@@ -41,6 +42,7 @@ function parseAndValidate(content: string): { ok: true; result: ParsedAnalyzePay
   const documents = normalizeDocumentsFields(parsed)
   const decision = normalizeDecisionFields(parsed)
   const phase = normalizeAnalyzePhase(parsed.phase, parsed.phase === 'final' ? 'final' : 'interim')
+  const fallakteFindings = validateFallakteFindings(parsed.fallakteFindings)
 
   return {
     ok: true,
@@ -50,6 +52,7 @@ function parseAndValidate(content: string): { ok: true; result: ParsedAnalyzePay
       structuredSteps: normalizeStructuredSteps(parsed.structuredSteps ?? []),
       summary: parsed.summary?.trim() || '',
       phase,
+      fallakteFindings,
       ...documents,
       ...decision,
     },
@@ -239,6 +242,7 @@ export async function POST(request: Request) {
       documentChoiceRequired: body.intent === 'initial' ? true : result.documentChoiceRequired,
       readyForFinalAssessment: result.readyForFinalAssessment,
       phase: result.phase,
+      fallakteFindings: result.fallakteFindings ?? { events: [] },
     },
   } satisfies AnalyzeResponseBody)
 }

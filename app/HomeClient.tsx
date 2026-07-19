@@ -217,6 +217,17 @@ export default function HomeClient() {
                       )}
                     </div>
 
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveCaseId(caseItem.id)
+                        router.push('/fallakte')
+                      }}
+                      className={buttonStyles.secondary}
+                    >
+                      Fallakte einsehen
+                    </button>
+
                     {confirming ? (
                       <div className="rounded-2xl border border-red-300 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/30">
                         <p className="text-sm text-red-900 dark:text-red-100">

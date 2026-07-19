@@ -4,6 +4,7 @@ import type {
   DocumentsStatus,
   KeyClaim,
 } from '@/lib/analyzeTypes'
+import { ENABLE_REPLY_DRAFT } from '@/lib/featureFlags'
 
 export const DOCUMENT_KIND_VALUES = [
   'behoerde',
@@ -82,7 +83,7 @@ export const DECISION_OUTPUT_PROPERTIES = {
   replyDraftRecommended: {
     type: 'boolean' as const,
     description:
-      'true nur wenn ein formales Antwortschreiben jetzt sinnvoll ist (Widerspruch, Einspruch, Stellungnahme, Fristverlängerung, Antwort an Behörde/Gericht/Versicherung/Gegenseite); sonst false',
+      'Immer false — Antwortschreiben ist vorübergehend deaktiviert; später ggf. wieder aktivieren',
   },
 } as const
 
@@ -268,6 +269,6 @@ export function normalizeDecisionFields(payload: {
     ...(primaryDeadline && primaryDeadlineLabel ? { primaryDeadlineLabel } : {}),
     keyClaims: normalizeKeyClaims(payload.keyClaims),
     contestablePoints: normalizeContestablePoints(payload.contestablePoints),
-    replyDraftRecommended: payload.replyDraftRecommended === true,
+    replyDraftRecommended: ENABLE_REPLY_DRAFT && payload.replyDraftRecommended === true,
   }
 }

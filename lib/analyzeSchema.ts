@@ -10,6 +10,8 @@ import {
   normalizeReviewPhase,
   normalizeStepPriority,
 } from '@/lib/decisionFields'
+import { FALLAKTE_FINDINGS_SCHEMA } from '@/lib/fallakteSchema'
+import type { FallakteFindingsPayload } from '@/lib/fallakteTypes'
 
 export const ANALYZE_RESULT_SCHEMA = {
   type: 'object' as const,
@@ -75,6 +77,7 @@ export const ANALYZE_RESULT_SCHEMA = {
       type: 'string' as const,
       description: 'interim oder final',
     },
+    fallakteFindings: FALLAKTE_FINDINGS_SCHEMA,
   },
   required: [
     'caseFileContent',
@@ -91,6 +94,7 @@ export const ANALYZE_RESULT_SCHEMA = {
     'documentChoiceRequired',
     'readyForFinalAssessment',
     'phase',
+    'fallakteFindings',
   ],
 }
 
@@ -114,6 +118,7 @@ export type ParsedAnalyzePayload = {
   documentChoiceRequired: boolean
   readyForFinalAssessment: boolean
   phase: 'interim' | 'final'
+  fallakteFindings?: FallakteFindingsPayload
 }
 
 export function normalizeDocumentsFields(payload: {
@@ -240,15 +245,6 @@ export const CLARIFY_SCHEMA = {
     updatedPrimaryDeadlineLabel: DECISION_OUTPUT_PROPERTIES.primaryDeadlineLabel,
     updatedKeyClaims: DECISION_OUTPUT_PROPERTIES.keyClaims,
     updatedContestablePoints: DECISION_OUTPUT_PROPERTIES.contestablePoints,
-    updatedReplyDraftRecommended: DECISION_OUTPUT_PROPERTIES.replyDraftRecommended,
-    wordDocumentRequested: { type: 'boolean' as const },
-    wordDocumentTitle: { type: 'string' as const },
-    wordDocumentSubject: { type: 'string' as const },
-    wordDocumentBodyParagraphs: {
-      type: 'array' as const,
-      items: { type: 'string' as const },
-    },
-    wordDocumentPreviewText: { type: 'string' as const },
   },
   required: [
     'answer',
@@ -262,12 +258,6 @@ export const CLARIFY_SCHEMA = {
     'updatedPrimaryDeadlineLabel',
     'updatedKeyClaims',
     'updatedContestablePoints',
-    'updatedReplyDraftRecommended',
-    'wordDocumentRequested',
-    'wordDocumentTitle',
-    'wordDocumentSubject',
-    'wordDocumentBodyParagraphs',
-    'wordDocumentPreviewText',
   ],
 }
 
@@ -283,12 +273,6 @@ export type ClarifyPayload = {
   updatedPrimaryDeadlineLabel?: string
   updatedKeyClaims?: { id: string; text: string }[]
   updatedContestablePoints?: { id: string; claim: string; why: string; suggestedAction: string }[]
-  updatedReplyDraftRecommended?: boolean
-  wordDocumentRequested: boolean
-  wordDocumentTitle: string
-  wordDocumentSubject: string
-  wordDocumentBodyParagraphs: string[]
-  wordDocumentPreviewText: string
 }
 
 export const DOCUMENT_PEEK_SCHEMA = {

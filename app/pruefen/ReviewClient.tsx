@@ -86,7 +86,6 @@ export default function ReviewClient() {
   const [error, setError] = useState('')
   const [reviewChanges, setReviewChanges] = useState<ReviewChangeItem[]>([])
   const [doneStepIds, setDoneStepIds] = useState<string[]>([])
-  const [replyDraftBusy, setReplyDraftBusy] = useState(false)
 
   useEffect(() => {
     async function loadReview() {
@@ -212,7 +211,6 @@ export default function ReviewClient() {
   async function handleChatSubmit(input: {
     userText?: string
     files?: File[]
-    requestWordDocument?: boolean
   }) {
     if (!activeCase || !review) return
 
@@ -222,10 +220,6 @@ export default function ReviewClient() {
     try {
       const previous = review
       const result = await submitChatMessage(input)
-
-      if (input.requestWordDocument && !result.wordDocument) {
-        throw new Error('Der Entwurf konnte nicht erstellt werden. Bitte erneut versuchen.')
-      }
 
       const now = Date.now()
       const attachmentMeta: FollowUpAttachmentMeta[] = (input.files ?? []).map((file) => {
@@ -253,7 +247,6 @@ export default function ReviewClient() {
         {
           role: 'assistant',
           content: result.answer,
-          wordDocument: result.wordDocument,
           at: now + 1,
         },
       ]
@@ -270,7 +263,7 @@ export default function ReviewClient() {
         primaryDeadlineLabel: result.primaryDeadlineLabel,
         keyClaims: result.keyClaims,
         contestablePoints: result.contestablePoints,
-        replyDraftRecommended: result.replyDraftRecommended,
+        replyDraftRecommended: false,
         followUpMessages: nextMessages,
         analyzedAt: now,
       }
@@ -288,7 +281,6 @@ export default function ReviewClient() {
         case_id: activeCase.id,
         case_number: activeCase.caseNumber,
         has_attachments: attachmentMeta.length > 0,
-        has_word_document: Boolean(result.wordDocument),
       })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Nachfrage fehlgeschlagen.')
@@ -302,37 +294,6 @@ export default function ReviewClient() {
     if (!activeCase || !stepId) return
     const next = toggleDoneStepId(activeCase.id, stepId)
     setDoneStepIds(next)
-  }
-
-  async function handleRequestReplyDraft() {
-    if (!review?.replyDraftRecommended) return
-
-    const pointsText = (review.contestablePoints ?? [])
-      .slice(0, 3)
-      .map(
-        (point, index) =>
-          `${index + 1}. ${point.claim} — Warum: ${point.why}. Aktion: ${point.suggestedAction}`,
-      )
-      .join('\n')
-
-    const question = [
-      'Bitte erstelle einen höflichen Entwurf eines Antwortschreibens als Word-Dokument.',
-      pointsText
-        ? `Gehe besonders auf diese Prüfpunkte ein:\n${pointsText}`
-        : 'Nutze die aktuelle Auswertung und die Fallakte.',
-      'Sachlich, klar, ohne unnötige Fachsprache.',
-    ].join('\n')
-
-    setReplyDraftBusy(true)
-    setError('')
-    try {
-      await handleChatSubmit({ userText: question, requestWordDocument: true })
-      setChatOpen(true)
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Antwortschreiben fehlgeschlagen.')
-    } finally {
-      setReplyDraftBusy(false)
-    }
   }
 
   async function handleSaveWordDocument(messageAt: number, wordDocument: FollowUpWordDocument) {
@@ -400,8 +361,7 @@ export default function ReviewClient() {
   return (
     <>
       {busy ? <AnalyzingOverlay message="Wird bearbeitet …" /> : null}
-      {replyDraftBusy ? <AnalyzingOverlay message="Antwortschreiben wird erstellt …" /> : null}
-      {followUpBusy && !replyDraftBusy ? <AnalyzingOverlay message="Chat wird beantwortet …" /> : null}
+      {followUpBusy ? <AnalyzingOverlay message="Chat wird beantwortet …" /> : null}
 
       <OnboardingShell
         title="Auswertung"
@@ -510,10 +470,6 @@ export default function ReviewClient() {
               <ClaimsPanel
                 claims={review.keyClaims}
                 points={review.contestablePoints}
-                draftBusy={replyDraftBusy || followUpBusy}
-                onRequestReplyDraft={
-                  review.replyDraftRecommended ? () => void handleRequestReplyDraft() : undefined
-                }
               />
 
               {steps.length > 0 ? (
@@ -584,6 +540,10 @@ export default function ReviewClient() {
               ) : null}
 
 
+              <Link href="/fallakte" className={buttonStyles.accentSoft}>
+                Fallakte einsehen
+              </Link>
+
               <button
                 type="button"
                 disabled={busy || wordDocBusyAt !== null}
@@ -629,6 +589,9 @@ export default function ReviewClient() {
                   </>
                 }
               />
+              <Link href="/fallakte" className={buttonStyles.accentSoft}>
+                Fallakte einsehen
+              </Link>
               <div className="border-t border-border pt-6">
                 {activeCase ? (
                   <DeleteCaseSection

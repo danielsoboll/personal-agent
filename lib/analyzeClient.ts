@@ -243,7 +243,6 @@ export async function buildWordDocument(content: FollowUpWordDocument): Promise<
 export async function submitChatMessage(options: {
   userText?: string
   files?: File[]
-  requestWordDocument?: boolean
 }): Promise<ClarifyResponseBody> {
   const activeCase = await getActiveCase()
   if (!activeCase?.latestReview) {
@@ -304,7 +303,6 @@ export async function submitChatMessage(options: {
     caseFileContent: rawCaseFile,
     question: trimmedText,
     attachments,
-    requestWordDocument: options.requestWordDocument || undefined,
     currentReview: {
       summary: review.summary,
       assessment: review.assessment,
