@@ -60,10 +60,14 @@ async function reorganizeCaseFileInBackground(
   await saveCaseFileContent(caseId, payload.caseFileContent)
 
   if (caseRecord.latestReview) {
-    await saveLatestReview(caseId, {
-      ...caseRecord.latestReview,
-      caseFileContent: payload.caseFileContent,
-    })
+    await saveLatestReview(
+      caseId,
+      {
+        ...caseRecord.latestReview,
+        caseFileContent: payload.caseFileContent,
+      },
+      { archivePrevious: false },
+    )
   }
 
   return payload.caseFileContent

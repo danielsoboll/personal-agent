@@ -2,18 +2,25 @@
 
 import { useState } from 'react'
 
+import FallakteRelationsBlock from '@/components/fallakte/FallakteRelationsBlock'
 import {
   FALLAKTE_EVENT_TYPE_LABELS,
   FALLAKTE_SOURCE_TYPE_LABELS,
   type FallakteEvent,
 } from '@/lib/fallakteTypes'
+import type { FallakteRelationView } from '@/lib/fallakteRelationDisplay'
+import type { FallakteRelation } from '@/lib/fallakteRelationTypes'
 import { formatDeadlineDate } from '@/lib/deadlineDisplay'
 
 type FallakteConfirmedEventRowProps = {
   event: FallakteEvent
   groupDateKey: string
   busy?: boolean
+  relationViews?: FallakteRelationView[]
   onCorrect?: () => void
+  onLink?: () => void
+  onEditRelation?: (relation: FallakteRelation) => void
+  onRemoveRelation?: (relation: FallakteRelation) => void
   formatUploadDate: (timestamp: number) => string
 }
 
@@ -34,7 +41,11 @@ export default function FallakteConfirmedEventRow({
   event,
   groupDateKey,
   busy = false,
+  relationViews = [],
   onCorrect,
+  onLink,
+  onEditRelation,
+  onRemoveRelation,
   formatUploadDate,
 }: FallakteConfirmedEventRowProps) {
   const [detailsOpen, setDetailsOpen] = useState(false)
@@ -58,6 +69,13 @@ export default function FallakteConfirmedEventRow({
           <p className="line-clamp-2 text-sm font-medium leading-5 text-foreground/90">{event.title}</p>
           {dateHint ? <p className="mt-0.5 text-xs text-muted">{dateHint}</p> : null}
 
+          <FallakteRelationsBlock
+            views={relationViews}
+            dense
+            onEdit={onEditRelation}
+            onRemove={onRemoveRelation}
+          />
+
           <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
             <button
               type="button"
@@ -66,18 +84,35 @@ export default function FallakteConfirmedEventRow({
             >
               {detailsOpen ? 'Details ausblenden' : 'Details'}
             </button>
-            <span className="text-muted/50" aria-hidden>
-              ·
-            </span>
             {onCorrect ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={onCorrect}
-                className="inline-flex min-h-10 items-center py-1 text-sm font-medium text-accent"
-              >
-                Ändern
-              </button>
+              <>
+                <span className="text-muted/50" aria-hidden>
+                  ·
+                </span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onCorrect}
+                  className="inline-flex min-h-10 items-center py-1 text-sm font-medium text-accent"
+                >
+                  Ändern
+                </button>
+              </>
+            ) : null}
+            {onLink ? (
+              <>
+                <span className="text-muted/50" aria-hidden>
+                  ·
+                </span>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onLink}
+                  className="inline-flex min-h-10 items-center py-1 text-sm font-medium text-accent"
+                >
+                  Verknüpfen
+                </button>
+              </>
             ) : null}
           </div>
         </div>

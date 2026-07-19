@@ -4,10 +4,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import OnboardingShell, { PageIntro } from '@/components/onboarding/OnboardingShell'
+import FallakteCorrectSheet from '@/components/fallakte/FallakteCorrectSheet'
 import FallakteDateGroupCard from '@/components/fallakte/FallakteDateGroupCard'
 import FallakteEventCard from '@/components/fallakte/FallakteEventCard'
-import FallakteCorrectSheet from '@/components/fallakte/FallakteCorrectSheet'
-import { buttonStyles } from '@/lib/buttonStyles'
+import FallakteLinkSheet from '@/components/fallakte/FallakteLinkSheet'
 import { getActiveCase, type StoredCase } from '@/lib/localCases'
 import {
   confirmFallakteEvent,
@@ -16,7 +16,14 @@ import {
   listFallakteEvents,
   rejectFallakteEvent,
 } from '@/lib/localFallakte'
+import {
+  createConfirmedFallakteRelation,
+  listFallakteRelations,
+  removeFallakteRelation,
+  updateFallakteRelation,
+} from '@/lib/localFallakteRelations'
 import { groupEventsByDate } from '@/lib/fallakteGroupByDate'
+import type { FallakteRelation } from '@/lib/fallakteRelationTypes'
 import {
   FALLAKTE_CONFIRMATION_LABELS,
   type FallakteEvent,
@@ -34,15 +41,22 @@ export default function FallakteClient() {
   const router = useRouter()
   const [activeCase, setActiveCase] = useState<StoredCase | null>(null)
   const [events, setEvents] = useState<FallakteEvent[]>([])
+  const [relations, setRelations] = useState<FallakteRelation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [showRejected, setShowRejected] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [editing, setEditing] = useState<FallakteEvent | null>(null)
+  const [linkingFrom, setLinkingFrom] = useState<FallakteEvent | null>(null)
+  const [editingRelation, setEditingRelation] = useState<FallakteRelation | null>(null)
 
   async function reload(caseId: string) {
-    const next = await listFallakteEvents(caseId)
-    setEvents(next)
+    const [nextEvents, nextRelations] = await Promise.all([
+      listFallakteEvents(caseId),
+      listFallakteRelations(caseId),
+    ])
+    setEvents(nextEvents)
+    setRelations(nextRelations)
   }
 
   useEffect(() => {
@@ -68,6 +82,11 @@ export default function FallakteClient() {
     [events],
   )
   const dateGroups = useMemo(() => groupEventsByDate(activeEvents), [activeEvents])
+  const eventsById = useMemo(() => {
+    const map = new Map<string, FallakteEvent>()
+    for (const event of events) map.set(event.id, event)
+    return map
+  }, [events])
 
   const pendingCount = useMemo(
     () =>
@@ -98,11 +117,17 @@ export default function FallakteClient() {
     }
   }
 
+  const linkSheetFrom = linkingFrom
+  const linkSheetEditing = editingRelation
+  const linkSheetEvent =
+    linkSheetFrom ??
+    (linkSheetEditing ? eventsById.get(linkSheetEditing.fromEventId) ?? null : null)
+
   return (
     <OnboardingShell
       title="Fallakte"
       subtitle={activeCase?.title ?? 'Behördenpost'}
-      backNav={{ href: '/', label: 'Zurück zur Fallübersicht' }}
+      backNav={{ href: '/fall', label: 'Zurück zum Fall' }}
     >
       <section className="flex flex-col gap-6">
         {loading ? (
@@ -154,6 +179,8 @@ export default function FallakteClient() {
                       <FallakteDateGroupCard
                         group={group}
                         busyId={busyId}
+                        eventsById={eventsById}
+                        relations={relations}
                         onConfirm={(event) =>
                           void withBusy(event.id, async () => {
                             await confirmFallakteEvent(event.id)
@@ -168,6 +195,19 @@ export default function FallakteClient() {
                         onDefer={(event) =>
                           void withBusy(event.id, async () => {
                             await deferFallakteEvent(event.id)
+                          })
+                        }
+                        onLink={(event) => {
+                          setEditingRelation(null)
+                          setLinkingFrom(event)
+                        }}
+                        onEditRelation={(relation) => {
+                          setLinkingFrom(null)
+                          setEditingRelation(relation)
+                        }}
+                        onRemoveRelation={(relation) =>
+                          void withBusy(relation.fromEventId, async () => {
+                            await removeFallakteRelation(relation.id)
                           })
                         }
                         formatUploadDate={formatUploadDate}
@@ -211,8 +251,12 @@ export default function FallakteClient() {
               </div>
             ) : null}
 
-            <button type="button" onClick={() => router.push('/pruefen')} className={buttonStyles.secondary}>
-              Zur Auswertung
+            <button
+              type="button"
+              onClick={() => router.push('/fall')}
+              className="text-sm font-medium text-accent"
+            >
+              Zum Fall
             </button>
 
             {error ? (
@@ -232,6 +276,33 @@ export default function FallakteClient() {
             void withBusy(editing.id, async () => {
               await correctFallakteEvent(editing.id, edits)
               setEditing(null)
+            })
+          }
+        />
+      ) : null}
+
+      {linkSheetEvent && activeCase ? (
+        <FallakteLinkSheet
+          fromEvent={linkSheetEvent}
+          allEvents={activeEvents}
+          editingRelation={editingRelation}
+          onClose={() => {
+            setLinkingFrom(null)
+            setEditingRelation(null)
+          }}
+          onSave={(payload) =>
+            void withBusy(linkSheetEvent.id, async () => {
+              if (editingRelation) {
+                await updateFallakteRelation(editingRelation.id, payload)
+              } else {
+                await createConfirmedFallakteRelation({
+                  caseId: activeCase.id,
+                  fromEventId: linkSheetEvent.id,
+                  ...payload,
+                })
+              }
+              setLinkingFrom(null)
+              setEditingRelation(null)
             })
           }
         />

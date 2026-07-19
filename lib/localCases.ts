@@ -22,6 +22,10 @@ export type StoredCase = {
   caseFileContent: string | null
   format: typeof CASE_FILE_FORMAT | null
   latestReview: AnalyzeResult | null
+  /** Mindestens eine vorherige Review-Version zur Wiederherstellung. */
+  previousLatestReview?: AnalyzeResult | null
+  /** Dauerhafte ID des aktuellen Schreibens (case-documents). */
+  currentDocumentId?: string | null
   createdAt: number
   updatedAt: number
 }
@@ -143,6 +147,8 @@ export async function createCase(title: string, userName: string): Promise<Store
     caseFileContent: null,
     format: null,
     latestReview: null,
+    previousLatestReview: null,
+    currentDocumentId: null,
     createdAt: now,
     updatedAt: now,
   }
@@ -170,7 +176,20 @@ export async function saveCaseFileContent(caseId: string, content: string): Prom
   await runLocalTransaction(LOCAL_STORES.cases, 'readwrite', (store) => store.put(updated))
 }
 
-export async function saveLatestReview(caseId: string, review: AnalyzeResult): Promise<void> {
+export type SaveLatestReviewOptions = {
+  /**
+   * true (Standard): vorhandenes latestReview nach previousLatestReview archivieren,
+   * wenn sich die Review-Version ändert.
+   * false: nur Felder aktualisieren (z. B. caseFileContent nach Historie-Upload).
+   */
+  archivePrevious?: boolean
+}
+
+export async function saveLatestReview(
+  caseId: string,
+  review: AnalyzeResult,
+  options?: SaveLatestReviewOptions,
+): Promise<void> {
   const existing = await getCase(caseId)
   if (!existing) throw new Error('Fall nicht gefunden.')
 
@@ -178,15 +197,89 @@ export async function saveLatestReview(caseId: string, review: AnalyzeResult): P
     ? review.caseFileContent
     : existing.caseFileContent
 
+  const archivePrevious = options?.archivePrevious !== false
+  const previousChanged =
+    archivePrevious &&
+    existing.latestReview &&
+    existing.latestReview.reviewId &&
+    review.reviewId &&
+    existing.latestReview.reviewId !== review.reviewId
+  const previousFallback =
+    archivePrevious &&
+    existing.latestReview &&
+    (!existing.latestReview.reviewId || !review.reviewId) &&
+    (existing.latestReview.summary !== review.summary ||
+      existing.latestReview.assessment !== review.assessment ||
+      existing.latestReview.analyzedAt !== review.analyzedAt)
+
   const updated: StoredCase = {
     ...existing,
     caseFileContent,
     format: caseFileContent ? CASE_FILE_FORMAT : existing.format,
     latestReview: review,
+    previousLatestReview:
+      previousChanged || previousFallback ? existing.latestReview : existing.previousLatestReview,
     updatedAt: Date.now(),
   }
 
   await runLocalTransaction(LOCAL_STORES.cases, 'readwrite', (store) => store.put(updated))
+}
+
+/** Aktualisiert nur die JSONL in Case + latestReview — ohne Bewertung zu ersetzen. */
+export async function syncLatestReviewCaseFile(caseId: string, caseFileContent: string): Promise<void> {
+  const existing = await getCase(caseId)
+  if (!existing) throw new Error('Fall nicht gefunden.')
+
+  const { content: normalized } = prepareCaseFileContent(caseFileContent)
+  const validationError = validateCaseFileJsonl(normalized)
+  if (validationError) throw new Error(validationError)
+
+  const latestReview = existing.latestReview
+    ? { ...existing.latestReview, caseFileContent: normalized }
+    : null
+
+  const updated: StoredCase = {
+    ...existing,
+    caseFileContent: normalized,
+    format: CASE_FILE_FORMAT,
+    latestReview,
+    updatedAt: Date.now(),
+  }
+
+  await runLocalTransaction(LOCAL_STORES.cases, 'readwrite', (store) => store.put(updated))
+}
+
+export async function setCurrentDocumentId(caseId: string, documentId: string | null): Promise<void> {
+  const existing = await getCase(caseId)
+  if (!existing) throw new Error('Fall nicht gefunden.')
+
+  const updated: StoredCase = {
+    ...existing,
+    currentDocumentId: documentId,
+    updatedAt: Date.now(),
+  }
+
+  await runLocalTransaction(LOCAL_STORES.cases, 'readwrite', (store) => store.put(updated))
+}
+
+/** Stellt die archivierte vorherige Auswertung wieder her (Fallakte bleibt unberührt). */
+export async function restorePreviousLatestReview(caseId: string): Promise<AnalyzeResult | null> {
+  const existing = await getCase(caseId)
+  if (!existing?.previousLatestReview) return null
+
+  const restored = existing.previousLatestReview
+  const updated: StoredCase = {
+    ...existing,
+    latestReview: restored,
+    previousLatestReview: existing.latestReview,
+    caseFileContent: restored.caseFileContent?.trim()
+      ? restored.caseFileContent
+      : existing.caseFileContent,
+    updatedAt: Date.now(),
+  }
+
+  await runLocalTransaction(LOCAL_STORES.cases, 'readwrite', (store) => store.put(updated))
+  return restored
 }
 
 export async function updateCaseUserStatus(

@@ -22,6 +22,8 @@ export async function deleteAllLocalData(): Promise<void> {
   await clearStore(LOCAL_STORES.cases)
   await clearStore(LOCAL_STORES.library)
   await clearStore(LOCAL_STORES.fallakteEvents)
+  await clearStore(LOCAL_STORES.fallakteRelations)
+  await clearStore(LOCAL_STORES.caseDocuments)
   await clearStore(LOCAL_STORES.caseFile)
   await clearStore(LOCAL_STORES.review)
 

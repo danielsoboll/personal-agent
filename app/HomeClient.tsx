@@ -52,7 +52,7 @@ export default function HomeClient() {
   function openCase(caseItem: CaseListItem) {
     setActiveCaseId(caseItem.id)
     if (caseItem.latestReview) {
-      router.push('/pruefen')
+      router.push('/fall')
       return
     }
     router.push('/scan')

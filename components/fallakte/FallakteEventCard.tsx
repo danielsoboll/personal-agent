@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 
+import FallakteRelationsBlock from '@/components/fallakte/FallakteRelationsBlock'
 import SheetPortal from '@/components/plus/SheetPortal'
 import { buttonStyles } from '@/lib/buttonStyles'
+import type { FallakteRelationView } from '@/lib/fallakteRelationDisplay'
+import type { FallakteRelation } from '@/lib/fallakteRelationTypes'
 import {
   FALLAKTE_CONFIRMATION_LABELS,
   FALLAKTE_EVENT_TYPE_LABELS,
@@ -15,14 +18,16 @@ import { formatDeadlineDate, formatDeadlineShort } from '@/lib/deadlineDisplay'
 type FallakteEventCardProps = {
   event: FallakteEvent
   busy?: boolean
-  /** Dokumentname steht schon in der Datumsgruppe — nicht wiederholen */
   hideDocumentName?: boolean
-  /** Verworfene / nur Lesen */
   readOnly?: boolean
+  relationViews?: FallakteRelationView[]
   onConfirm?: () => void
   onCorrect?: () => void
   onReject?: () => void
   onDefer?: () => void
+  onLink?: () => void
+  onEditRelation?: (relation: FallakteRelation) => void
+  onRemoveRelation?: (relation: FallakteRelation) => void
   formatUploadDate: (timestamp: number) => string
 }
 
@@ -62,7 +67,11 @@ function compactSourceLine(event: FallakteEvent, hideDocumentName: boolean): str
     parts.push(`Seite ${event.sourcePage}`)
   }
   if (parts.length === 0) {
-    if (event.sourceType && event.confirmationStatus !== 'confirmed' && event.confirmationStatus !== 'corrected') {
+    if (
+      event.sourceType &&
+      event.confirmationStatus !== 'confirmed' &&
+      event.confirmationStatus !== 'corrected'
+    ) {
       return FALLAKTE_SOURCE_TYPE_LABELS[event.sourceType]
     }
     return null
@@ -77,10 +86,14 @@ export default function FallakteEventCard({
   busy = false,
   hideDocumentName = false,
   readOnly = false,
+  relationViews = [],
   onConfirm,
   onCorrect,
   onReject,
   onDefer,
+  onLink,
+  onEditRelation,
+  onRemoveRelation,
   formatUploadDate,
 }: FallakteEventCardProps) {
   const [moreOpen, setMoreOpen] = useState(false)
@@ -135,6 +148,14 @@ export default function FallakteEventCard({
           <p className="mt-2 text-xs font-medium text-muted">{FALLAKTE_EVENT_TYPE_LABELS[event.eventType]}</p>
           {sourceLine ? <p className="mt-1 text-xs leading-5 text-muted">{sourceLine}</p> : null}
         </>
+      ) : null}
+
+      {!readOnly ? (
+        <FallakteRelationsBlock
+          views={relationViews}
+          onEdit={onEditRelation}
+          onRemove={onRemoveRelation}
+        />
       ) : null}
 
       {detailsOpen ? (
@@ -246,6 +267,19 @@ export default function FallakteEventCard({
               >
                 Falsch erkannt
               </button>
+              {onLink ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setMoreOpen(false)
+                    onLink()
+                  }}
+                  className={buttonStyles.secondary}
+                >
+                  Mit früherem Ereignis verknüpfen
+                </button>
+              ) : null}
               <button
                 type="button"
                 disabled={busy}

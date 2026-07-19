@@ -61,12 +61,12 @@ export function documentChoiceHint(
   }
 
   if (showAllCapturedButton) {
-    return 'Noch Dokumente zum aktuellen Schreiben, weitere Unterlagen — oder weiter, wenn alles da ist.'
+    return 'Noch Antwort/Anlage zum aktuellen Schreiben, Vorgeschichte ergänzen — oder weiter, wenn alles da ist.'
   }
 
   if (review.intent === 'initial') {
-    return 'Weitere Dokumente zum aktuellen Schreiben oder zusätzliche Unterlagen für den Hintergrund.'
+    return 'Antwort oder Anlage zum aktuellen Schreiben, oder Vorgeschichte ergänzen.'
   }
 
-  return 'Weitere Dokumente zum aktuellen Schreiben oder zusätzliche Unterlagen hinzufügen.'
+  return 'Antwort oder Anlage ergänzen, Vorgeschichte ergänzen oder neues Schreiben hinzufügen.'
 }

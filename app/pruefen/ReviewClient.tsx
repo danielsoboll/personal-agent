@@ -1,22 +1,19 @@
 'use client'
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useRef, useState } from 'react'
 
 import AnalyzingOverlay from '@/components/AnalyzingOverlay'
-import OnboardingShell, { PageIntro, PrimaryButton, SecondaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
+import OnboardingShell, { PageIntro, PrimaryButton, PrivacyNote } from '@/components/onboarding/OnboardingShell'
 import DocumentsStatusPanel from '@/components/review/DocumentsStatusPanel'
 import DeadlineBanner from '@/components/review/DeadlineBanner'
 import ClaimsPanel from '@/components/review/ClaimsPanel'
 import ReviewChangesBanner from '@/components/review/ReviewChangesBanner'
 import ChatHistorySheet from '@/components/review/ChatHistorySheet'
-import DeleteCaseSection from '@/components/review/DeleteCaseSection'
 import { IconAi } from '@/components/icons/BehoerdenIcons'
 import { usePlusDiscoverHeader } from '@/hooks/usePlusDiscoverHeader'
-import { buttonStyles, PRESSABLE_3D } from '@/lib/buttonStyles'
+import { PRESSABLE_3D } from '@/lib/buttonStyles'
 import { logUserActivity } from '@/lib/activityLog'
-import { scheduleCaseFileReorganize } from '@/lib/caseFileReorganizeClient'
 import {
   base64ToBlob,
   buildWordDocument,
@@ -28,12 +25,6 @@ import type { AnalyzeResult, FollowUpAttachmentMeta, FollowUpMessage, FollowUpWo
 import { normalizeDecisionFields, normalizeDocumentsFields, normalizeStructuredSteps } from '@/lib/analyzeSchema'
 import { buildAttachmentMetaSummary, buildDefaultContextSummary } from '@/lib/chatFollowUp'
 import { upsertAktuellResultatFromReview } from '@/lib/caseFileJsonl'
-import {
-  closeOpenAktuellBlock,
-  markReadyForAssessment,
-  openAktuellBlock,
-  openHistorischBlock,
-} from '@/lib/caseFileOps'
 import { displaySummary, shouldShowSummary } from '@/lib/reviewDisplay'
 import { formatDeadlineShort } from '@/lib/deadlineDisplay'
 import { buildReviewChanges, type ReviewChangeItem } from '@/lib/reviewDiff'
@@ -45,6 +36,12 @@ import {
   saveLatestReview,
   type StoredCase,
 } from '@/lib/localCases'
+import { getCaseDocument } from '@/lib/localCaseDocuments'
+import {
+  assessmentSubjectLabel,
+  createReviewId,
+  ensureReviewIdentity,
+} from '@/lib/caseReviewIdentity'
 import { saveLibraryDocument } from '@/lib/localLibrary'
 import { recordFinalAssessmentCompleted, recordWordDocumentCreated } from '@/lib/plusEngagement'
 
@@ -75,6 +72,7 @@ function normalizeReview(review: AnalyzeResult & { round?: string }): AnalyzeRes
 
 export default function ReviewClient() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const plus = usePlusDiscoverHeader()
   const [activeCase, setActiveCase] = useState<StoredCase | null>(null)
   const [review, setReview] = useState<AnalyzeResult | null>(null)
@@ -86,6 +84,10 @@ export default function ReviewClient() {
   const [error, setError] = useState('')
   const [reviewChanges, setReviewChanges] = useState<ReviewChangeItem[]>([])
   const [doneStepIds, setDoneStepIds] = useState<string[]>([])
+  const [assessLabel, setAssessLabel] = useState(
+    'Aktuelles Schreiben erneut im gesamten Fallkontext bewerten',
+  )
+  const assessInFlightRef = useRef(false)
 
   useEffect(() => {
     async function loadReview() {
@@ -98,6 +100,15 @@ export default function ReviewClient() {
       setActiveCase(currentCase)
       setReview(currentCase.latestReview ? normalizeReview(currentCase.latestReview) : null)
       setDoneStepIds(loadDoneStepIds(currentCase.id))
+      const currentDoc = currentCase.currentDocumentId
+        ? await getCaseDocument(currentCase.currentDocumentId)
+        : null
+      setAssessLabel(
+        assessmentSubjectLabel({
+          currentDocument: currentDoc,
+          latestReview: currentCase.latestReview,
+        }),
+      )
       logUserActivity('review_opened', {
         case_id: currentCase.id,
         case_number: currentCase.caseNumber,
@@ -108,6 +119,13 @@ export default function ReviewClient() {
 
     void loadReview()
   }, [router])
+
+  useEffect(() => {
+    if (loading) return
+    if (searchParams.get('chat') === '1' && review) {
+      setChatOpen(true)
+    }
+  }, [loading, searchParams, review])
 
   async function persistCaseFile(content: string) {
     if (!activeCase) return
@@ -121,68 +139,19 @@ export default function ReviewClient() {
     setActiveCase({ ...activeCase, latestReview: nextReview })
   }
 
-  async function handleDocumentChoice(mode: 'current_more' | 'historical' | 'all_captured') {
-    if (!activeCase || !review?.caseFileContent) return
-
-    setError('')
-    setBusy(true)
-
-    try {
-      let caseFile = closeOpenAktuellBlock(review.caseFileContent)
-
-      if (mode === 'current_more') {
-        caseFile = openAktuellBlock(caseFile, 'Ergänzung aktuelles Schreiben')
-        await persistCaseFile(caseFile)
-        await persistReview({
-          ...review,
-          caseFileContent: caseFile,
-          documentChoiceRequired: false,
-          readyForFinalAssessment: false,
-        })
-        router.push('/scan?intent=current_more')
-        return
-      }
-
-      if (mode === 'historical') {
-        caseFile = openHistorischBlock(caseFile)
-        await persistCaseFile(caseFile)
-        await persistReview({
-          ...review,
-          caseFileContent: caseFile,
-          documentChoiceRequired: false,
-          readyForFinalAssessment: false,
-        })
-        router.push('/scan?intent=historical')
-        return
-      }
-
-      caseFile = markReadyForAssessment(caseFile)
-      await persistCaseFile(caseFile)
-      await persistReview({
-        ...review,
-        caseFileContent: caseFile,
-        documentChoiceRequired: false,
-        readyForFinalAssessment: true,
-      })
-      scheduleCaseFileReorganize(activeCase.id, 'consolidate_historie')
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Aktion fehlgeschlagen.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
   async function handleFinalAssessment() {
     if (!activeCase || !review) return
+    if (assessInFlightRef.current || busy) return
 
+    assessInFlightRef.current = true
     setError('')
     setBusy(true)
 
     try {
       const previous = review
       const result = await requestFinalAssessment()
-      const nextReview: AnalyzeResult = {
-        ...normalizeReview({
+      const nextReview = ensureReviewIdentity(
+        normalizeReview({
           ...result,
           documentChoiceRequired: false,
           readyForFinalAssessment: false,
@@ -190,8 +159,16 @@ export default function ReviewClient() {
           intent: 'final',
           photoCount: review.photoCount,
           followUpMessages: review.followUpMessages ?? [],
+          reviewId: createReviewId(),
+          documentId: activeCase.currentDocumentId ?? review.documentId,
+          supersedesReviewId: review.reviewId,
+          caseFileContent: result.caseFileContent,
         }),
-      }
+        {
+          documentId: activeCase.currentDocumentId ?? review.documentId,
+          supersedesReviewId: review.reviewId,
+        },
+      )
 
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
       await persistReview(nextReview)
@@ -200,10 +177,13 @@ export default function ReviewClient() {
       logUserActivity('final_assessment', {
         case_id: activeCase.id,
         case_number: activeCase.caseNumber,
+        review_id: nextReview.reviewId ?? null,
+        document_id: nextReview.documentId ?? null,
       })
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Bewertung fehlgeschlagen.')
     } finally {
+      assessInFlightRef.current = false
       setBusy(false)
     }
   }
@@ -252,21 +232,30 @@ export default function ReviewClient() {
       ]
 
       const updatedSteps = normalizeStructuredSteps(result.updatedStructuredSteps)
-      const nextReview: AnalyzeResult = {
-        ...review,
-        summary: result.updatedSummary || review.summary,
-        assessment: result.updatedAssessment || review.assessment,
-        nextSteps: result.updatedNextSteps || review.nextSteps,
-        structuredSteps: updatedSteps.length > 0 ? updatedSteps : review.structuredSteps,
-        documentKind: result.documentKind,
-        primaryDeadline: result.primaryDeadline,
-        primaryDeadlineLabel: result.primaryDeadlineLabel,
-        keyClaims: result.keyClaims,
-        contestablePoints: result.contestablePoints,
-        replyDraftRecommended: false,
-        followUpMessages: nextMessages,
-        analyzedAt: now,
-      }
+      const nextReview = ensureReviewIdentity(
+        {
+          ...review,
+          summary: result.updatedSummary || review.summary,
+          assessment: result.updatedAssessment || review.assessment,
+          nextSteps: result.updatedNextSteps || review.nextSteps,
+          structuredSteps: updatedSteps.length > 0 ? updatedSteps : review.structuredSteps,
+          documentKind: result.documentKind,
+          primaryDeadline: result.primaryDeadline,
+          primaryDeadlineLabel: result.primaryDeadlineLabel,
+          keyClaims: result.keyClaims,
+          contestablePoints: result.contestablePoints,
+          replyDraftRecommended: false,
+          followUpMessages: nextMessages,
+          analyzedAt: now,
+          reviewId: createReviewId(),
+          documentId: activeCase.currentDocumentId ?? review.documentId,
+          supersedesReviewId: review.reviewId,
+        },
+        {
+          documentId: activeCase.currentDocumentId ?? review.documentId,
+          supersedesReviewId: review.reviewId,
+        },
+      )
 
       const nextCaseFile = upsertAktuellResultatFromReview(review.caseFileContent, {
         summary: nextReview.summary,
@@ -366,64 +355,37 @@ export default function ReviewClient() {
       <OnboardingShell
         title="Auswertung"
         subtitle={activeCase?.title ?? 'Behördenpost'}
-        backNav={{ href: '/', label: 'Zurück zur Fallübersicht' }}
+        backNav={{ href: '/fall', label: 'Zurück zum Fall' }}
         headerAction={plus.headerAction}
         footer={
           !loading && activeCase ? (
-            <div className="space-y-3">
-              {review ? (
-                <>
-                  {footer.showDocumentChoice ? (
-                    <>
-                      {footer.showAllCapturedButton ? (
-                        <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
-                          Fertig — weiter
-                        </PrimaryButton>
-                      ) : null}
-                      {footer.showCurrentMoreButton ? (
-                        <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                          Noch was zum aktuellen Schreiben
-                        </SecondaryButton>
-                      ) : null}
-                      {footer.showHistoricalButton ? (
-                        <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                          Weitere Dokumente hochladen
-                        </SecondaryButton>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {footer.showOptionalDocumentChoice ? (
-                    <>
-                      {footer.showProceedToAssessment ? (
-                        <PrimaryButton inactive={busy} onClick={() => void handleDocumentChoice('all_captured')}>
-                          Weiter zur Bewertung
-                        </PrimaryButton>
-                      ) : null}
-                      {footer.showCurrentMoreButton ? (
-                        <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('current_more')}>
-                          Noch eine Datei
-                        </SecondaryButton>
-                      ) : null}
-                      {footer.showHistoricalButton ? (
-                        <SecondaryButton inactive={busy} onClick={() => void handleDocumentChoice('historical')}>
-                          Weitere Dokumente hochladen
-                        </SecondaryButton>
-                      ) : null}
-                    </>
-                  ) : null}
-                  {footer.showFinalButton ? (
-                    <PrimaryButton inactive={busy} onClick={() => void handleFinalAssessment()}>
-                      Bewertung einholen
-                    </PrimaryButton>
-                  ) : null}
-                  {review.phase === 'final' ? (
-                    <PrimaryButton href="/scan">Neues Schreiben fotografieren</PrimaryButton>
-                  ) : null}
-                </>
-              ) : (
-                <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
-              )}
-            </div>
+            review ? (
+              <div className="space-y-2">
+                <PrimaryButton inactive={busy} onClick={() => router.push('/fall')}>
+                  Fertig – weiter
+                </PrimaryButton>
+                <div className="flex flex-col items-center gap-2 pb-1 pt-1">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => router.push('/vorgeschichte')}
+                    className="text-sm font-medium text-accent"
+                  >
+                    Vorgeschichte ergänzen
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => router.push('/scan?intent=initial')}
+                    className="text-sm font-medium text-accent"
+                  >
+                    Neues Schreiben hinzufügen
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <PrimaryButton href="/scan">Zum Fotografieren</PrimaryButton>
+            )
           ) : null
         }
       >
@@ -530,47 +492,36 @@ export default function ReviewClient() {
               )}
 
               {(showDocumentChoice || showOptionalDocumentChoice) && review ? (
-                <p className="rounded-2xl border border-border bg-surface px-4 py-3 text-sm leading-7 text-muted">
+                <p className="text-sm leading-6 text-muted">
                   {documentChoiceHint(review, footer.showAllCapturedButton, showOptionalDocumentChoice)}
                 </p>
               ) : null}
 
-              {showFinalButton ? (
-                <p className="text-sm leading-6 text-muted">Unten: „Bewertung einholen“ tippen.</p>
+              {showFinalButton || review.phase === 'final' ? (
+                <button
+                  type="button"
+                  disabled={busy || assessInFlightRef.current}
+                  onClick={() => void handleFinalAssessment()}
+                  className="text-left text-sm font-medium leading-6 text-accent"
+                >
+                  {assessLabel}
+                </button>
               ) : null}
 
-
-              <Link href="/fallakte" className={buttonStyles.accentSoft}>
-                Fallakte einsehen
-              </Link>
-
-              <button
-                type="button"
-                disabled={busy || wordDocBusyAt !== null}
-                onClick={() => setChatOpen(true)}
-                className={buttonStyles.primaryActive}
-              >
-                Chatverlauf
-                {(review.followUpMessages?.length ?? 0) > 0
-                  ? ` (${Math.ceil((review.followUpMessages?.length ?? 0) / 2)})`
-                  : ''}
-              </button>
-
-              <Link href="/bibliothek" className={buttonStyles.secondary}>
-                Zur Bibliothek
-              </Link>
-
-              {activeCase ? (
-                <div className="border-t border-border pt-6">
-                  <DeleteCaseSection
-                    caseId={activeCase.id}
-                    caseTitle={activeCase.title}
-                    disabled={busy || wordDocBusyAt !== null || followUpBusy}
-                    onDeleted={() => router.replace('/')}
-                    onError={setError}
-                  />
-                </div>
-              ) : null}
+              <div className="rounded-xl border border-border bg-surface px-3 py-3">
+                <p className="text-sm font-semibold tracking-tight">Fall noch besser einordnen</p>
+                <p className="mt-1 text-sm leading-6 text-muted">
+                  Frühere Unterlagen helfen, den Zusammenhang zu verstehen.
+                </p>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => router.push('/vorgeschichte')}
+                  className="mt-2 text-sm font-medium text-accent"
+                >
+                  Vorgeschichte ergänzen
+                </button>
+              </div>
 
               {error ? (
                 <p className="rounded-2xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
@@ -589,20 +540,13 @@ export default function ReviewClient() {
                   </>
                 }
               />
-              <Link href="/fallakte" className={buttonStyles.accentSoft}>
-                Fallakte einsehen
-              </Link>
-              <div className="border-t border-border pt-6">
-                {activeCase ? (
-                  <DeleteCaseSection
-                    caseId={activeCase.id}
-                    caseTitle={activeCase.title}
-                    disabled={busy}
-                    onDeleted={() => router.replace('/')}
-                    onError={setError}
-                  />
-                ) : null}
-              </div>
+              <button
+                type="button"
+                onClick={() => router.push('/fall')}
+                className="text-sm font-medium text-accent"
+              >
+                Zum Fall
+              </button>
               <PrivacyNote variant="analysis" />
             </>
           )}

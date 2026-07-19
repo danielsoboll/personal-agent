@@ -42,7 +42,7 @@ export default function DeleteCaseSection({
         type="button"
         disabled={disabled || deleting}
         onClick={() => setConfirming(true)}
-        className={buttonStyles.dangerOutline}
+        className="text-sm font-medium text-red-700 underline-offset-2 hover:underline dark:text-red-400"
       >
         Fall löschen
       </button>

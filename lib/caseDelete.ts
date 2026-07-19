@@ -4,6 +4,8 @@ import { listCases, removeCase } from '@/lib/localCases'
 import { clearDocumentPhotos } from '@/lib/localDocuments'
 import { deleteLibraryDocumentsForCase } from '@/lib/localLibrary'
 import { deleteFallakteEventsForCase } from '@/lib/localFallakte'
+import { deleteFallakteRelationsForCase } from '@/lib/localFallakteRelations'
+import { deleteCaseDocumentsForCase } from '@/lib/localCaseDocuments'
 
 /** Alte Ein-Fall-Stores (vor v3) — bei kompletter Löschung bereinigen. */
 async function clearLegacyCaseStores(): Promise<void> {
@@ -22,6 +24,8 @@ export async function deleteCaseCompletely(caseId: string): Promise<void> {
   await clearDocumentPhotos(caseId)
   await deleteLibraryDocumentsForCase(caseId)
   await deleteFallakteEventsForCase(caseId)
+  await deleteFallakteRelationsForCase(caseId)
+  await deleteCaseDocumentsForCase(caseId)
   await removeCase(caseId)
 
   if (isLastCase) {

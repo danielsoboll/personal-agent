@@ -7,15 +7,22 @@ import {
   sharedDocumentName,
   type FallakteDateGroup,
 } from '@/lib/fallakteGroupByDate'
+import { relationsForEvent, type FallakteRelationView } from '@/lib/fallakteRelationDisplay'
+import type { FallakteRelation } from '@/lib/fallakteRelationTypes'
 import type { FallakteEvent } from '@/lib/fallakteTypes'
 
 type FallakteDateGroupCardProps = {
   group: FallakteDateGroup
   busyId: string | null
+  eventsById: Map<string, FallakteEvent>
+  relations: FallakteRelation[]
   onConfirm: (event: FallakteEvent) => void
   onCorrect: (event: FallakteEvent) => void
   onReject: (event: FallakteEvent) => void
   onDefer: (event: FallakteEvent) => void
+  onLink: (event: FallakteEvent) => void
+  onEditRelation: (relation: FallakteRelation) => void
+  onRemoveRelation: (relation: FallakteRelation) => void
   formatUploadDate: (timestamp: number) => string
 }
 
@@ -23,13 +30,26 @@ function isConfirmedEvent(event: FallakteEvent): boolean {
   return event.confirmationStatus === 'confirmed' || event.confirmationStatus === 'corrected'
 }
 
+function viewsFor(
+  eventId: string,
+  relations: FallakteRelation[],
+  eventsById: Map<string, FallakteEvent>,
+): FallakteRelationView[] {
+  return relationsForEvent(eventId, relations, eventsById)
+}
+
 export default function FallakteDateGroupCard({
   group,
   busyId,
+  eventsById,
+  relations,
   onConfirm,
   onCorrect,
   onReject,
   onDefer,
+  onLink,
+  onEditRelation,
+  onRemoveRelation,
   formatUploadDate,
 }: FallakteDateGroupCardProps) {
   const sharedDoc = sharedDocumentName(group.events)
@@ -65,7 +85,11 @@ export default function FallakteDateGroupCard({
                   event={event}
                   groupDateKey={group.dateKey}
                   busy={busyId === event.id}
+                  relationViews={viewsFor(event.id, relations, eventsById)}
                   onCorrect={() => onCorrect(event)}
+                  onLink={() => onLink(event)}
+                  onEditRelation={onEditRelation}
+                  onRemoveRelation={onRemoveRelation}
                   formatUploadDate={formatUploadDate}
                 />
               ))}
@@ -87,10 +111,14 @@ export default function FallakteDateGroupCard({
                     event={event}
                     busy={busyId === event.id}
                     hideDocumentName={Boolean(sharedDoc)}
+                    relationViews={viewsFor(event.id, relations, eventsById)}
                     onConfirm={() => onConfirm(event)}
                     onCorrect={() => onCorrect(event)}
                     onReject={() => onReject(event)}
                     onDefer={() => onDefer(event)}
+                    onLink={() => onLink(event)}
+                    onEditRelation={onEditRelation}
+                    onRemoveRelation={onRemoveRelation}
                     formatUploadDate={formatUploadDate}
                   />
                 </li>

@@ -17,8 +17,12 @@ import {
   getActiveCase,
   saveCaseFileContent,
   saveLatestReview,
+  setCurrentDocumentId,
+  syncLatestReviewCaseFile,
   type StoredCase,
 } from '@/lib/localCases'
+import { persistPhotosAsCaseDocuments } from '@/lib/localCaseDocuments'
+import { createReviewId, ensureReviewIdentity } from '@/lib/caseReviewIdentity'
 import {
   MAX_FOLLOWUP_PHOTOS,
   MAX_INITIAL_PHOTOS,
@@ -92,6 +96,7 @@ export default function ScanClient() {
   const [showIcloudHint, setShowIcloudHint] = useState(false)
 
   const intent = parseIntent(searchParams.get('intent'))
+  const fromFlow = searchParams.get('from')
   const maxPhotos = intent === 'initial' ? MAX_INITIAL_PHOTOS : MAX_FOLLOWUP_PHOTOS
   const canAddMore = photos.length < maxPhotos
 
@@ -104,16 +109,19 @@ export default function ScanClient() {
   const copy = useMemo(() => {
     if (intent === 'current_more') {
       return {
-        title: 'Weitere Dokumente zum aktuellen Schreiben',
-        heading: 'Ergänze das aktuelle Schreiben',
+        title: 'Aktuelles Schreiben',
+        heading: 'Antwort oder Anlage ergänzen',
         hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — Foto oder Datei.`,
       }
     }
 
     if (intent === 'historical') {
       return {
-        title: 'Weitere Dokumente hochladen',
-        heading: 'Weitere Unterlagen ergänzen',
+        title: fromFlow === 'vorgeschichte' ? 'Vorgeschichte' : 'Früheres Dokument',
+        heading:
+          fromFlow === 'vorgeschichte'
+            ? 'Früheres Dokument zur Vorgeschichte'
+            : 'Früheres Dokument ergänzen',
         hint: `Bis zu ${MAX_FOLLOWUP_PHOTOS} Dokumente — Foto oder Datei.`,
       }
     }
@@ -123,7 +131,7 @@ export default function ScanClient() {
       heading: 'Fotografiere oder lade dein Dokument hoch',
       hint: `Bis zu ${MAX_INITIAL_PHOTOS} Dokumente — Foto aufnehmen oder Dokument hochladen.`,
     }
-  }, [intent])
+  }, [intent, fromFlow])
 
   useEffect(() => {
     async function loadPhotos() {
@@ -345,22 +353,58 @@ export default function ScanClient() {
       const result = await analyzeCurrentPhotos({ intent, peekContext })
       const photoCount = photos.length
       const { fallakteFindings, ...reviewFields } = result
+      const uploadedAt = Date.now()
+      const analysisBatchId = `analyze_${uploadedAt}`
+      const isHistorical = intent === 'historical'
+      const isNewCurrent =
+        intent === 'initial' || (intent === 'current_more' && !activeCase.currentDocumentId)
+
+      const persistedDocs = await persistPhotosAsCaseDocuments({
+        caseId: activeCase.id,
+        photos,
+        intent,
+        analysisBatchId,
+        setAsCurrent: intent === 'initial',
+      })
+
+      if (intent === 'initial' && persistedDocs[0]) {
+        await setCurrentDocumentId(activeCase.id, persistedDocs[0].id)
+      } else if (isNewCurrent && !activeCase.currentDocumentId && persistedDocs[0]) {
+        await setCurrentDocumentId(activeCase.id, persistedDocs[0].id)
+      }
 
       await saveCaseFileContent(activeCase.id, result.caseFileContent)
-      await saveLatestReview(activeCase.id, {
-        ...reviewFields,
-        analyzedAt: Date.now(),
-        intent,
-        photoCount,
-      })
+
+      if (isHistorical) {
+        // Historie erweitert Fallakte/JSONL, überschreibt die aktuelle Auswertung nicht.
+        await syncLatestReviewCaseFile(activeCase.id, result.caseFileContent)
+      } else {
+        const documentId =
+          intent === 'initial'
+            ? persistedDocs[0]?.id
+            : activeCase.currentDocumentId || persistedDocs[0]?.id
+        const nextReview = ensureReviewIdentity(
+          {
+            ...reviewFields,
+            analyzedAt: uploadedAt,
+            intent,
+            photoCount,
+            reviewId: createReviewId(),
+            documentId: documentId ?? undefined,
+            supersedesReviewId: activeCase.latestReview?.reviewId,
+            caseFileContent: result.caseFileContent,
+          },
+          { documentId },
+        )
+        await saveLatestReview(activeCase.id, nextReview)
+      }
 
       if (fallakteFindings?.events?.length) {
         const { persistFallakteFindings } = await import('@/lib/localFallakte')
-        const uploadedAt = Date.now()
         await persistFallakteFindings({
           caseId: activeCase.id,
           findings: fallakteFindings,
-          analysisBatchId: `analyze_${uploadedAt}`,
+          analysisBatchId,
           documentRefs: photos.map((photo) => ({
             fileName: photo.fileName || (photo.kind === 'pdf' ? 'Dokument.pdf' : 'Foto.jpg'),
             kind: photo.kind === 'pdf' ? 'pdf' : 'image',
@@ -395,7 +439,13 @@ export default function ScanClient() {
 
       scheduleCaseFileReorganizeAfterAnalyze(activeCase.id, intent)
 
-      router.push('/pruefen?from=scan')
+      if (fromFlow === 'vorgeschichte') {
+        router.push('/vorgeschichte?done=1')
+      } else if (isHistorical) {
+        router.push('/fall')
+      } else {
+        router.push('/pruefen?from=scan')
+      }
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : 'Prüfung fehlgeschlagen.')
     } finally {
@@ -416,9 +466,13 @@ export default function ScanClient() {
         backNav={
           loading
             ? undefined
-            : activeCase?.latestReview || intent !== 'initial'
-              ? { href: '/pruefen', label: 'Zurück zur Auswertung' }
-              : { href: '/', label: 'Zurück zur Fallübersicht' }
+            : fromFlow === 'vorgeschichte'
+              ? { href: '/vorgeschichte', label: 'Zurück zur Vorgeschichte' }
+              : fromFlow === 'rolle' || (activeCase?.latestReview && intent !== 'initial')
+                ? { href: '/fall', label: 'Zurück zum Fall' }
+                : activeCase?.latestReview || intent !== 'initial'
+                  ? { href: '/pruefen', label: 'Zurück zur Auswertung' }
+                  : { href: '/', label: 'Zurück zur Fallübersicht' }
         }
         footer={
           <div className="space-y-2">

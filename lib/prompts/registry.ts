@@ -230,9 +230,10 @@ Workflow-Felder:
 export const ASSESS_SYSTEM_PROMPT = `Du bist Behördenpost — abschließende Bewertung aus der Fallakte.
 Prompt-Version: ${PROMPT_VERSION}
 
-Lies zuerst den formatierten Fall-Kontext (aktuell + Historie).
-Bereich 1 (anfrage + resultat) = maßgeblich für Fristen und nächste Schritte.
-Bereich 2 Historie = Hintergrund für persönlichere, fundiertere Einordnung.
+Lies zuerst den Bewertungsgegenstand (aktuelles Schreiben) und dann den formatierten Fall-Kontext.
+Bereich 1 (anfrage + resultat) = maßgeblich für Fristen und nächste Schritte — das ist der Bewertungsgegenstand.
+Bereich 2 Historie und bestätigte Fallakte = nur Kontext für persönlichere, fundiertere Einordnung.
+Historische Dokumente dürfen das aktuelle Schreiben nicht ersetzen.
 
 ${CASE_SCOPE_RULES}
 
@@ -275,7 +276,8 @@ const INTENT_INSTRUCTIONS: Record<Exclude<AnalyzeIntent, 'initial'>, string> = {
 
   historical: `Intent: historical — Hintergrund / Historie (viele Seiten über Zeit).
 - Bereich 2 Historie: block art=historisch + kontext bereich=historie + dokument pro Dokument
-- Bereich 1 (resultat) nur anpassen wenn nötig — Bewertung bezieht sich weiter auf aktuelle Post
+- Bereich 1 (anfrage + resultat) NICHT überschreiben und NICHT neu formulieren
+- summary/assessment/structuredSteps dürfen die Historie beschreiben, werden clientseitig aber NICHT als Hauptauswertung gespeichert
 - phase = interim`,
 
   final: `Intent: final — finale Bewertung.
@@ -532,6 +534,9 @@ export function buildAssessUserPrompt(options: {
   caseTitle: string
   caseNumber?: number
   caseFileContent: string
+  assessmentSubject?: string
+  fallakteContext?: string
+  currentDocumentId?: string
 }): string {
   const ctx = buildCasePromptContext({
     userName: options.userName,
@@ -550,6 +555,19 @@ export function buildAssessUserPrompt(options: {
     '',
   ]
   appendFormattedCaseContext(sections, ctx)
+
+  sections.push(
+    '',
+    '=== Bewertungsgegenstand ===',
+    options.assessmentSubject?.trim() ||
+      'Aktuelles Schreiben erneut im gesamten Fallkontext bewerten',
+    'Bewerte genau dieses aktuelle Schreiben. Historische Dokumente und die Fallakte sind nur Kontext.',
+    '',
+  )
+
+  if (options.fallakteContext?.trim()) {
+    sections.push(options.fallakteContext.trim(), '')
+  }
 
   if (ctx.hasHistorie) {
     sections.push(

@@ -22,6 +22,12 @@ import { enrichCaseFileForAssessment, hasHistorieRecords } from '@/lib/caseFileJ
 import { getActiveCase, getCaseFileContent } from '@/lib/localCases'
 import { listDocumentPhotos } from '@/lib/localDocuments'
 import { awaitCaseFileReorganizeForAssessment } from '@/lib/caseFileReorganizeClient'
+import { getCaseDocument, listCaseDocuments } from '@/lib/localCaseDocuments'
+import { listFallakteEvents } from '@/lib/localFallakte'
+import {
+  assessmentSubjectLabel,
+  buildFallakteContextForAssess,
+} from '@/lib/caseReviewIdentity'
 
 export async function analyzeCurrentPhotos(options: {
   intent: AnalyzeIntent
@@ -179,11 +185,25 @@ export async function requestFinalAssessment(): Promise<AssessResponseBody['resu
     nextSteps: activeCase.latestReview?.nextSteps,
   })
 
+  const currentDocument = activeCase.currentDocumentId
+    ? await getCaseDocument(activeCase.currentDocumentId)
+    : (await listCaseDocuments(activeCase.id)).find((doc) => doc.role === 'current') ?? null
+
+  const fallakteEvents = await listFallakteEvents(activeCase.id)
+  const fallakteContext = buildFallakteContextForAssess(fallakteEvents)
+  const assessmentSubject = assessmentSubjectLabel({
+    currentDocument,
+    latestReview: activeCase.latestReview,
+  })
+
   const body: AssessRequestBody = {
     userName: activeCase.userName,
     caseTitle: activeCase.title,
     caseNumber: activeCase.caseNumber,
     caseFileContent,
+    assessmentSubject,
+    fallakteContext: fallakteContext || undefined,
+    currentDocumentId: currentDocument?.id ?? activeCase.currentDocumentId ?? undefined,
   }
 
   const response = await fetch('/api/assess', {

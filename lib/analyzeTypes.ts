@@ -95,6 +95,13 @@ export type AnalyzeResult = {
   analyzedAt: number
   intent: AnalyzeIntent
   photoCount: number
+  /** Stabile Review-Version — bei jeder neuen Auswertung neu. */
+  reviewId?: string
+  /** Bewertungsgegenstand: case-documents.id des aktuellen Schreibens. */
+  documentId?: string
+  /** Vorgänger-Review dieser Version (falls vorhanden). */
+  supersedesReviewId?: string
+  updatedAt?: number
   /** Nachfragen zur Auswertung — aktualisieren Bewertung und Schritte. */
   followUpMessages?: FollowUpMessage[]
   /**
@@ -148,6 +155,11 @@ export type AssessRequestBody = {
   caseTitle: string
   caseNumber?: number
   caseFileContent: string
+  /** Sichtbarer Bewertungsgegenstand, z. B. „Aktuelles Schreiben vom …“. */
+  assessmentSubject?: string
+  /** Bestätigte Fallakte + Historie nur als Kontext, nicht als Subject. */
+  fallakteContext?: string
+  currentDocumentId?: string
 }
 
 export type AssessResponseBody = {
