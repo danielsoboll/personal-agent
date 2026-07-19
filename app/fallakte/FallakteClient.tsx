@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 import OnboardingShell, { PageIntro } from '@/components/onboarding/OnboardingShell'
+import FallakteDateGroupCard from '@/components/fallakte/FallakteDateGroupCard'
 import FallakteEventCard from '@/components/fallakte/FallakteEventCard'
 import FallakteCorrectSheet from '@/components/fallakte/FallakteCorrectSheet'
 import { buttonStyles } from '@/lib/buttonStyles'
@@ -15,6 +16,7 @@ import {
   listFallakteEvents,
   rejectFallakteEvent,
 } from '@/lib/localFallakte'
+import { groupEventsByDate } from '@/lib/fallakteGroupByDate'
 import {
   FALLAKTE_CONFIRMATION_LABELS,
   type FallakteEvent,
@@ -65,6 +67,8 @@ export default function FallakteClient() {
     () => events.filter((event) => event.confirmationStatus === 'rejected'),
     [events],
   )
+  const dateGroups = useMemo(() => groupEventsByDate(activeEvents), [activeEvents])
+
   const pendingCount = useMemo(
     () =>
       activeEvents.filter(
@@ -140,32 +144,28 @@ export default function FallakteClient() {
                   Dokumentprüfung erscheinen hier Vorschläge zur Bestätigung.
                 </p>
               ) : (
-                <ol className="relative space-y-4 border-l-2 border-accent/30 pl-5">
-                  {activeEvents.map((event) => (
-                    <li key={event.id} className="relative">
+                <ol className="relative space-y-5 border-l-2 border-accent/30 pl-5">
+                  {dateGroups.map((group) => (
+                    <li key={group.dateKey} className="relative">
                       <span
-                        className="absolute -left-[1.6rem] top-4 h-3 w-3 rounded-full border-2 border-accent bg-surface"
+                        className="absolute -left-[1.6rem] top-5 h-3 w-3 rounded-full border-2 border-accent bg-surface"
                         aria-hidden
                       />
-                      <FallakteEventCard
-                        event={event}
-                        busy={busyId === event.id}
-                        compactActions={
-                          event.confirmationStatus === 'confirmed' ||
-                          event.confirmationStatus === 'corrected'
-                        }
-                        onConfirm={() =>
+                      <FallakteDateGroupCard
+                        group={group}
+                        busyId={busyId}
+                        onConfirm={(event) =>
                           void withBusy(event.id, async () => {
                             await confirmFallakteEvent(event.id)
                           })
                         }
-                        onCorrect={() => setEditing(event)}
-                        onReject={() =>
+                        onCorrect={(event) => setEditing(event)}
+                        onReject={(event) =>
                           void withBusy(event.id, async () => {
                             await rejectFallakteEvent(event.id)
                           })
                         }
-                        onDefer={() =>
+                        onDefer={(event) =>
                           void withBusy(event.id, async () => {
                             await deferFallakteEvent(event.id)
                           })
@@ -183,26 +183,27 @@ export default function FallakteClient() {
                 <button
                   type="button"
                   onClick={() => setShowRejected((value) => !value)}
-                  className={buttonStyles.secondary}
+                  className="text-sm font-medium text-muted underline-offset-2 hover:text-foreground hover:underline"
                 >
                   {showRejected
                     ? 'Verworfene Einträge ausblenden'
                     : `Verworfene Einträge anzeigen (${rejectedEvents.length})`}
                 </button>
                 {showRejected ? (
-                  <ul className="space-y-3 opacity-80">
+                  <ul className="space-y-2.5 opacity-85">
                     {rejectedEvents.map((event) => (
                       <li key={`rejected-${event.id}`}>
                         <FallakteEventCard
                           event={event}
                           busy={false}
-                          compactActions
+                          readOnly
                           formatUploadDate={formatUploadDate}
                         />
-                        <p className="mt-1 text-xs text-muted">
-                          {FALLAKTE_CONFIRMATION_LABELS.rejected}
-                          {event.rejectionReason ? ` — ${event.rejectionReason}` : ''}
-                        </p>
+                        {event.rejectionReason ? (
+                          <p className="mt-1 text-xs text-muted">
+                            {FALLAKTE_CONFIRMATION_LABELS.rejected} — {event.rejectionReason}
+                          </p>
+                        ) : null}
                       </li>
                     ))}
                   </ul>

@@ -1,5 +1,8 @@
 'use client'
 
+import { useState } from 'react'
+
+import SheetPortal from '@/components/plus/SheetPortal'
 import { buttonStyles } from '@/lib/buttonStyles'
 import {
   FALLAKTE_CONFIRMATION_LABELS,
@@ -7,38 +10,20 @@ import {
   FALLAKTE_SOURCE_TYPE_LABELS,
   type FallakteEvent,
 } from '@/lib/fallakteTypes'
-import { formatDeadlineDate } from '@/lib/deadlineDisplay'
+import { formatDeadlineDate, formatDeadlineShort } from '@/lib/deadlineDisplay'
 
 type FallakteEventCardProps = {
   event: FallakteEvent
   busy?: boolean
-  compactActions?: boolean
+  /** Dokumentname steht schon in der Datumsgruppe — nicht wiederholen */
+  hideDocumentName?: boolean
+  /** Verworfene / nur Lesen */
+  readOnly?: boolean
   onConfirm?: () => void
   onCorrect?: () => void
   onReject?: () => void
   onDefer?: () => void
   formatUploadDate: (timestamp: number) => string
-}
-
-function formatEventDateDisplay(event: FallakteEvent): string {
-  if (event.datePrecision === 'day' && event.eventDate) {
-    return formatDeadlineDate(event.eventDate)
-  }
-  if (event.eventDateLabel) return event.eventDateLabel
-  return 'Datum unklar'
-}
-
-function sourceBadgeClass(event: FallakteEvent): string {
-  if (event.confirmationStatus === 'confirmed' || event.confirmationStatus === 'corrected') {
-    return 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-100'
-  }
-  if (event.sourceType === 'app_inferred') {
-    return 'border-amber-300 bg-amber-50 text-amber-950 dark:border-amber-800 dark:bg-amber-950/35 dark:text-amber-100'
-  }
-  if (event.sourceType === 'derived') {
-    return 'border-sky-300 bg-sky-50 text-sky-950 dark:border-sky-800 dark:bg-sky-950/35 dark:text-sky-100'
-  }
-  return 'border-border bg-surface text-foreground'
 }
 
 function statusBadgeClass(event: FallakteEvent): string {
@@ -55,93 +40,141 @@ function statusBadgeClass(event: FallakteEvent): string {
   }
 }
 
+function shortStatusLabel(event: FallakteEvent): string {
+  if (event.confirmationStatus === 'confirmed' || event.confirmationStatus === 'corrected') {
+    return 'Bestätigt'
+  }
+  if (event.confirmationStatus === 'deferred') return 'Später prüfen'
+  if (event.confirmationStatus === 'rejected') return 'Falsch erkannt'
+  return 'Offen'
+}
+
+function compactSourceLine(event: FallakteEvent, hideDocumentName: boolean): string | null {
+  const parts: string[] = []
+  if (!hideDocumentName && event.documentRef) {
+    if (event.documentRef.documentDate) {
+      parts.push(`Schreiben vom ${formatDeadlineShort(event.documentRef.documentDate)}`)
+    } else if (event.documentRef.fileName) {
+      parts.push(event.documentRef.fileName)
+    }
+  }
+  if (event.sourcePage) {
+    parts.push(`Seite ${event.sourcePage}`)
+  }
+  if (parts.length === 0) {
+    if (event.sourceType && event.confirmationStatus !== 'confirmed' && event.confirmationStatus !== 'corrected') {
+      return FALLAKTE_SOURCE_TYPE_LABELS[event.sourceType]
+    }
+    return null
+  }
+  return `Quelle: ${parts.join(' · ')}`
+}
+
+const DESC_COLLAPSE_CHARS = 160
+
 export default function FallakteEventCard({
   event,
   busy = false,
-  compactActions = false,
+  hideDocumentName = false,
+  readOnly = false,
   onConfirm,
   onCorrect,
   onReject,
   onDefer,
   formatUploadDate,
 }: FallakteEventCardProps) {
-  const showActions =
-    !compactActions &&
-    (event.confirmationStatus === 'pending' || event.confirmationStatus === 'deferred') &&
-    (onConfirm || onCorrect || onReject || onDefer)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [descExpanded, setDescExpanded] = useState(false)
 
-  const infoLabel =
-    event.confirmationStatus === 'confirmed' || event.confirmationStatus === 'corrected'
-      ? 'Vom Nutzer bestätigt'
-      : FALLAKTE_SOURCE_TYPE_LABELS[event.sourceType]
+  const needsReview =
+    !readOnly &&
+    (event.confirmationStatus === 'pending' || event.confirmationStatus === 'deferred')
+
+  const description = event.description.trim()
+  const descLong = description.length > DESC_COLLAPSE_CHARS
+  const shownDescription =
+    !descExpanded && descLong ? `${description.slice(0, DESC_COLLAPSE_CHARS).trim()}…` : description
+
+  const sourceLine = compactSourceLine(event, hideDocumentName)
+  const infoKindLabel = FALLAKTE_SOURCE_TYPE_LABELS[event.sourceType]
 
   return (
-    <article className="rounded-2xl border-2 border-border bg-surface p-4 shadow-sm">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="text-sm font-semibold text-accent">{formatEventDateDisplay(event)}</p>
-        <div className="flex flex-wrap gap-1.5">
-          <span
-            className={`rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold ${sourceBadgeClass(event)}`}
-          >
-            {infoLabel}
+    <article className="rounded-xl border border-border bg-background/80 p-3 dark:bg-slate-900/40">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span
+          className={`rounded-full border px-2 py-0.5 text-[0.7rem] font-semibold ${statusBadgeClass(event)}`}
+        >
+          {shortStatusLabel(event)}
+        </span>
+        {!readOnly ? (
+          <span className="rounded-full border border-border px-2 py-0.5 text-[0.7rem] font-medium text-muted">
+            {infoKindLabel}
           </span>
-          <span
-            className={`rounded-full border px-2.5 py-0.5 text-[0.7rem] font-semibold ${statusBadgeClass(event)}`}
-          >
-            {FALLAKTE_CONFIRMATION_LABELS[event.confirmationStatus]}
-          </span>
-        </div>
+        ) : null}
       </div>
 
-      <h3 className="mt-2 text-base font-semibold leading-6 text-foreground">{event.title}</h3>
-      <p className="mt-1 text-sm leading-6 text-foreground/90">{event.description}</p>
+      <h3 className="mt-2 text-[0.95rem] font-semibold leading-6 text-foreground">{event.title}</h3>
+      {!readOnly || detailsOpen ? (
+        <>
+          <p className="mt-1 text-sm leading-6 text-foreground/90">{shownDescription}</p>
+          {descLong && !readOnly ? (
+            <button
+              type="button"
+              onClick={() => setDescExpanded((value) => !value)}
+              className="mt-0.5 text-sm font-medium text-accent"
+            >
+              {descExpanded ? 'Weniger anzeigen' : 'Mehr anzeigen'}
+            </button>
+          ) : null}
+        </>
+      ) : null}
 
-      <p className="mt-3 text-xs font-medium text-muted">
-        {FALLAKTE_EVENT_TYPE_LABELS[event.eventType]}
-      </p>
+      {!readOnly ? (
+        <>
+          <p className="mt-2 text-xs font-medium text-muted">{FALLAKTE_EVENT_TYPE_LABELS[event.eventType]}</p>
+          {sourceLine ? <p className="mt-1 text-xs leading-5 text-muted">{sourceLine}</p> : null}
+        </>
+      ) : null}
 
-      {event.documentRef ? (
-        <div className="mt-2 space-y-0.5 text-sm leading-6 text-foreground/80">
-          <p>
-            Quelle: {event.documentRef.fileName}
-            {event.documentRef.documentDate
-              ? ` · Dokumentdatum ${formatDeadlineDate(event.documentRef.documentDate)}`
-              : ''}
-          </p>
-          <p className="text-xs text-muted">
-            Hochgeladen am {formatUploadDate(event.documentRef.uploadedAt)}
-          </p>
+      {detailsOpen ? (
+        <div className="mt-3 space-y-1.5 rounded-lg border border-border/80 bg-surface px-3 py-2.5 text-xs leading-5 text-foreground/85">
+          <p className="whitespace-pre-wrap text-sm leading-6">{event.description}</p>
+          {event.documentRef?.fileName ? <p>Dokument: {event.documentRef.fileName}</p> : null}
+          {event.documentRef?.documentDate ? (
+            <p>Dokumentdatum: {formatDeadlineDate(event.documentRef.documentDate)}</p>
+          ) : null}
+          {event.documentRef ? (
+            <p>Hochgeladen am {formatUploadDate(event.documentRef.uploadedAt)}</p>
+          ) : null}
+          {event.sourcePage ? <p>Seite: {event.sourcePage}</p> : null}
+          {event.sourceExcerpt ? <p>Textausschnitt: „{event.sourceExcerpt}“</p> : null}
+          <p>Informationsart: {FALLAKTE_SOURCE_TYPE_LABELS[event.sourceType]}</p>
+          <p>Ereignistyp: {FALLAKTE_EVENT_TYPE_LABELS[event.eventType]}</p>
+          {event.confidence !== null ? (
+            <p>Vertrauensgrad: {Math.round(event.confidence * 100)}&nbsp;%</p>
+          ) : null}
+          {event.relatedDeadline ? (
+            <p>Frist: {formatDeadlineDate(event.relatedDeadline)} (bitte prüfen)</p>
+          ) : null}
+          <p>Status: {FALLAKTE_CONFIRMATION_LABELS[event.confirmationStatus]}</p>
+          <button
+            type="button"
+            onClick={() => setDetailsOpen(false)}
+            className="pt-1 text-sm font-medium text-accent"
+          >
+            Details ausblenden
+          </button>
         </div>
       ) : null}
 
-      {event.sourcePage || event.sourceExcerpt ? (
-        <p className="mt-2 text-xs leading-5 text-muted">
-          {event.sourcePage ? `Seite ${event.sourcePage}` : null}
-          {event.sourcePage && event.sourceExcerpt ? ' · ' : null}
-          {event.sourceExcerpt ? `„${event.sourceExcerpt}“` : null}
-        </p>
-      ) : null}
-
-      {event.relatedDeadline ? (
-        <p className="mt-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
-          Frist: {formatDeadlineDate(event.relatedDeadline)}
-          <span className="ml-1 text-xs font-medium text-muted">(bitte prüfen)</span>
-        </p>
-      ) : null}
-
-      {event.datePrecision !== 'day' ? (
-        <p className="mt-2 text-xs font-medium text-amber-800 dark:text-amber-200">
-          Datumsangabe unsicher ({event.datePrecision === 'month' ? 'nur Monat' : event.datePrecision === 'year' ? 'nur Jahr' : 'unklar'})
-        </p>
-      ) : null}
-
-      {showActions ? (
-        <div className="mt-4 grid grid-cols-2 gap-2">
+      {needsReview ? (
+        <div className="mt-3 flex gap-2">
           <button
             type="button"
             disabled={busy}
             onClick={onConfirm}
-            className={buttonStyles.accentSoft}
+            className={`${buttonStyles.accentSoft} h-11 min-h-11 flex-1 px-2 text-sm`}
           >
             Stimmt
           </button>
@@ -149,42 +182,100 @@ export default function FallakteEventCard({
             type="button"
             disabled={busy}
             onClick={onCorrect}
-            className={buttonStyles.secondary}
+            className={`${buttonStyles.secondary} h-11 min-h-11 flex-1 px-2 text-sm`}
           >
-            Korrigieren
+            Ändern
           </button>
           <button
             type="button"
             disabled={busy}
-            onClick={onReject}
-            className={buttonStyles.dangerOutline}
+            onClick={() => setMoreOpen(true)}
+            className={`${buttonStyles.secondary} h-11 min-h-11 flex-1 px-2 text-sm`}
           >
-            Falsch erkannt
-          </button>
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onDefer}
-            className={buttonStyles.secondary}
-          >
-            Später prüfen
+            Mehr
           </button>
         </div>
       ) : null}
 
-      {compactActions &&
-      (event.confirmationStatus === 'confirmed' || event.confirmationStatus === 'corrected') &&
-      onCorrect ? (
-        <div className="mt-4">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={onCorrect}
-            className={buttonStyles.secondary}
+      {readOnly && !detailsOpen ? (
+        <button
+          type="button"
+          onClick={() => setDetailsOpen(true)}
+          className="mt-2 text-sm font-medium text-accent"
+        >
+          Details
+        </button>
+      ) : null}
+
+      {moreOpen ? (
+        <SheetPortal>
+          <div
+            className="fixed inset-0 z-50 flex flex-col bg-black/40"
+            onClick={() => setMoreOpen(false)}
+            role="presentation"
           >
-            Korrigieren
-          </button>
-        </div>
+            <div
+              className="mt-auto w-full space-y-2 rounded-t-3xl border-t border-border bg-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-4"
+              onClick={(clickEvent) => clickEvent.stopPropagation()}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`fallakte-more-${event.id}`}
+            >
+              <h2 id={`fallakte-more-${event.id}`} className="text-base font-semibold tracking-tight">
+                Weitere Aktionen
+              </h2>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setMoreOpen(false)
+                  onDefer?.()
+                }}
+                className={buttonStyles.secondary}
+              >
+                Später prüfen
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setMoreOpen(false)
+                  onReject?.()
+                }}
+                className={buttonStyles.dangerOutline}
+              >
+                Falsch erkannt
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => {
+                  setMoreOpen(false)
+                  setDetailsOpen(true)
+                }}
+                className={buttonStyles.secondary}
+              >
+                Details anzeigen
+              </button>
+              {!detailsOpen && (event.sourceExcerpt || event.documentRef) ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setMoreOpen(false)
+                    setDetailsOpen(true)
+                  }}
+                  className={buttonStyles.secondary}
+                >
+                  Quelle vollständig anzeigen
+                </button>
+              ) : null}
+              <button type="button" onClick={() => setMoreOpen(false)} className={buttonStyles.secondary}>
+                Schließen
+              </button>
+            </div>
+          </div>
+        </SheetPortal>
       ) : null}
     </article>
   )
